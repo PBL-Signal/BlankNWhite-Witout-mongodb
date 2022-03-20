@@ -7,12 +7,13 @@ socketIO.on('connection', function(socket) {
     
     socketIO.emit('PlayerConnected');
 
-   let Players = [];
+    let Players = [];
     socket.on('PlayerEnter', function(nickname) {
         let playerInfo = [socket.id, nickname, "false", "false", "0", "7"];
         Players[Players.length]=playerInfo;
         console.log("Players >> ", Players);
     });
+    socket.emit('PlayersData', Players);
 
     socketIO.on('disconnect', function() {
         console.log('A Player disconnected');

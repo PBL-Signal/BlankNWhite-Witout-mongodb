@@ -6,7 +6,7 @@ const { Socket } = require('dgram');
 module.exports = (io) => {
     
     var gameserver = io.of("blacknwhite");
-
+ 
     let Players = [];
 
     gameserver.on('connection', (socket) => {
@@ -18,14 +18,17 @@ module.exports = (io) => {
     
         socket.emit('PlayerConnected');
     
+    
         socket.on('PlayerEnter', function(nickname) {
             console.log("Players >> ");
             let playerInfo = [socket.id, nickname, "false", "false", "0", "7"];
             Players[Players.length]=playerInfo;
             console.log("Players >> ", Players);
+
+            socket.emit('PlayersData', Players);
         });
 
-        socket.emit('PlayersData', Players);
+     
     
         socket.on('disconnect', function() {
             console.log('A Player disconnected');

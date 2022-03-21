@@ -35,7 +35,7 @@ module.exports = (io) => {
 
             const PlayersJson = JSON.stringify(Players);
             console.log("jsonStringify : ", PlayersJson.toString());
-            socketIO.emit('PlayersData', PlayersJson);
+            socket.emit('PlayersData', PlayersJson);
         });
 
     

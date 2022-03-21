@@ -26,7 +26,16 @@ module.exports = (io) => {
             let playerInfo = [socket.id, nickname, "false", "false", "0", "7"];
             Players[Players.length]=playerInfo;
             console.log("Players >> ", Players);
-            socket.emit('PlayersData', Players);
+            
+
+            // JSON 형식으로 유니티에 데이터 보내기
+            Players = {socket : "abcd", nickname: "efg", readyStatus:"false", teamStatus: "false", team: "0", color: "7"};
+
+            console.log("json : ", Players);
+
+            const PlayersJson = JSON.stringify(Players);
+            console.log("jsonStringify : ", PlayersJson.toString());
+            socketIO.emit('PlayersData', PlayersJson);
         });
 
     

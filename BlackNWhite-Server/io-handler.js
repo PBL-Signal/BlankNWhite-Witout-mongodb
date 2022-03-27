@@ -53,10 +53,41 @@ module.exports = (io) => {
         });
         
         socket.on('changeStatus', function(jsonStr) {
-            gamePlayer = JSON.parse(jsonStr);
+            let changePlayerInfo = JSON.parse(jsonStr);
 
             console.log('new Player info Jsong string : ', jsonStr);
-            socket.emit('PlayersData', jsonStr);
+            console.log('new Player info gamePlayer : ', changePlayerInfo);
+
+            let playerNum = changePlayerInfo["playerNum"];
+            let ready = (changePlayerInfo["readyStatus"] == 'True') ? true : false;
+            let teamChange = (changePlayerInfo["teamStatus"] == 'True') ? true : false;
+
+            gamePlayer.player[playerNum]["readyStatus"] = ready;
+            gamePlayer.player[playerNum]["teamStatus"] = teamChange;
+
+            console.log("new josn file : ", gamePlayer);
+
+            var PlayersJson = JSON.stringify(gamePlayer);
+            console.log("jsonStringify : ", PlayersJson.toString());
+            socket.emit('PlayersData', PlayersJson);
+        });
+
+        socket.on('changeColor', function(jsonStr) {
+            let changePlayerInfo = JSON.parse(jsonStr);
+
+            console.log('new Player info Jsong string : ', jsonStr);
+            console.log('new Player info gamePlayer : ', changePlayerInfo);
+
+            let playerNum = changePlayerInfo["playerNum"];
+            let colorNum = changePlayerInfo["value"];
+
+            gamePlayer.player[playerNum]["color"] = colorNum;
+
+            console.log("new josn file : ", gamePlayer);
+
+            var PlayersJson = JSON.stringify(gamePlayer);
+            console.log("jsonStringify : ", PlayersJson.toString());
+            socket.emit('PlayersData', PlayersJson);
         });
         
         socket.on('disconnect', function() {

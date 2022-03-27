@@ -125,12 +125,12 @@ module.exports = (io) => {
 
         ////////////////////////////////////////////////////////////////////////////////////
         // PlayerEnter
-        socket.on('PlayerEnter', function(nickname) {
+        socket.on('PlayerEnter', function() {
             console.log("Players >> ");
             const rand_Color = Math.floor(Math.random() * 12);
             // eval("Players.player" + numPlayer + " = playerInfo")
             let playerOrder = "player" + numPlayer;
-            let playerInfo = {playerOrder: playerOrder, socket: socket.id, nickname: nickname, readyStatus: false, teamStatus: false, team: evenNumPlayer, color: rand_Color};
+            let playerInfo = {playerOrder: playerOrder, socket: socket.id, nickname: socket.nickname, readyStatus: false, teamStatus: false, team: evenNumPlayer, color: rand_Color};
             Players.push(playerInfo);
             gamePlayer.player = Players;
             // Players[Players.length]=playerInfo;

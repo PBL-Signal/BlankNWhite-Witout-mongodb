@@ -65,10 +65,17 @@ module.exports = (io) => {
             }
 
             console.log("[createRoom] rooms 딕셔너리 : " , rooms);
-
+            console.log("succesCreateRoom room.roomPin.toString() : " , room.roomPin.toString());
             socket.emit('succesCreateRoom', {
                 roomPin: room.roomPin.toString()
             });
+            
+            // var room_data = { 
+            //     roomPin: room.roomPin.toString()
+            // };
+            // var roomJson = JSON.stringify(room_data);
+            //     console.log('check : ', roomJson);
+            //     socket.emit('succesCreateRoom',roomJson);
         });
 
         // [WaitingRoom] 

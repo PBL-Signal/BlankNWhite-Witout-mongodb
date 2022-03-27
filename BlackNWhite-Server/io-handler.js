@@ -69,6 +69,62 @@ module.exports = (io) => {
             socket.emit('succesCreateRoom', {
                 roomPin: room.roomPin.toString()
             });
+        });
+
+        // [WaitingRoom] 
+        let addedUser = false; // added 유저 경우 
+
+        socket.on('add user', (data) => {
+            // console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', data.nickname, "data : ", data, 'room : ', data.room );
+            console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', socket.nickname, "data : ", data, 'room : ', data.room );
+
+            if (addedUser) return;
+
+            // socket.nickname = data.nickname;
+            var room = data.room;
+            socket.room = data.room;
+            
+        //    // 방 매니저가 아닌 경우에 rooms 리스트에 접속한 사용자 추가 (명수, 유저리스트)
+        //    if (data.nickname != data.manager)
+        //    {
+        //        ++rooms[room].numUsers;
+        //        rooms[room].users.push(socket.nickname); 
+        //    }
+
+        //    console.log("[add user *] : " + socket.nickname  + " room : " + rooms[room]);
+
+            socket.join(room);
+            addedUser = true;
+
+        //    // Room 정보 전달 
+        //    func.loadRoom(data.room).then(function (room){
+        //        console.log('[socket-loadRoom] room:',room);
+        //        socket.emit('loadRoom',room);
+        //        console.log('룸 정보 전송 완료');
+        //    });
+
+
+            // 사용자 로그인 알림
+        //    io.in(room).emit('login', {
+        //        numUsers: rooms[room].numUsers,
+        //        users : rooms[room].users
+        //    });
+
+            
+            // 새 사용자 입장 알림 
+        //    gameserver.in(room).emit('user joined', {
+        //        nickname: socket.nickname,
+        //        numUsers: rooms[room].numUsers,
+        //        users : rooms[room].users
+        //    });
+
+        });
+    
+           
+
+
+        ////////////////////////////////////////////////////////////////////////////////////
+        // PlayerEnter
         socket.on('PlayerEnter', function(nickname) {
             console.log("Players >> ");
             const rand_Color = Math.floor(Math.random() * 12);
@@ -98,61 +154,7 @@ module.exports = (io) => {
         });
         
         socket.on('changeStatus', function(jsonStr) {
-            let changePlayerInfo = JSON.parse(jsonStr);
-
-
-        // [WaitingRoom] 
-        let addedUser = false; // added 유저 경우 
-    
-        socket.on('add user', (data) => {
-            // console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', data.nickname, "data : ", data, 'room : ', data.room );
-            console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', socket.nickname, "data : ", data, 'room : ', data.room );
-
-            if (addedUser) return;
-
-            // socket.nickname = data.nickname;
-            var room = data.room;
-            socket.room = data.room;
-            
-        //    // 방 매니저가 아닌 경우에 rooms 리스트에 접속한 사용자 추가 (명수, 유저리스트)
-        //    if (data.nickname != data.manager)
-        //    {
-        //        ++rooms[room].numUsers;
-        //        rooms[room].users.push(socket.nickname); 
-        //    }
-
-        //    console.log("[add user *] : " + socket.nickname  + " room : " + rooms[room]);
-
-           socket.join(room);
-           addedUser = true;
-
-        //    // Room 정보 전달 
-        //    func.loadRoom(data.room).then(function (room){
-        //        console.log('[socket-loadRoom] room:',room);
-        //        socket.emit('loadRoom',room);
-        //        console.log('룸 정보 전송 완료');
-        //    });
-
-
-           // 사용자 로그인 알림
-        //    io.in(room).emit('login', {
-        //        numUsers: rooms[room].numUsers,
-        //        users : rooms[room].users
-        //    });
-
-           
-           // 새 사용자 입장 알림 
-        //    gameserver.in(room).emit('user joined', {
-        //        nickname: socket.nickname,
-        //        numUsers: rooms[room].numUsers,
-        //        users : rooms[room].users
-        //    });
-
-       });
-
-       
-    
-        
+            let changePlayerInfo = JSON.parse(jsonStr);        
     
             console.log('new Player info Jsong string : ', jsonStr);
             console.log('new Player info gamePlayer : ', changePlayerInfo);

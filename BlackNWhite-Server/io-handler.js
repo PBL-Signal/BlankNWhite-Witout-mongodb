@@ -37,6 +37,7 @@ module.exports = (io) => {
 
     
     // func.SaveAttackList(dbTest);
+    // func.InsertArea();
     
 
     io.on('connection', (socket) => {

@@ -13,6 +13,31 @@ module.exports = (io) => {
     let evenNumPlayer = false;
     let numPlayer = 1;
 
+    
+    let dbTest = {
+        roomPin : "27031",
+        team : "White",
+        attackCard : [
+            { activity : true, level : 1, time : 2, pita : 1 },
+            { activity : false, level : 1, time : 2, pita : 1 },
+            { activity : true, level : 1, time : 2, pita : 1 },
+            { activity : true, level : 1, time : 2, pita : 1 },
+            { activity : true, level : 1, time : 4, pita : 3 },
+            { activity : true, level : 1, time : 4, pita : 3 },
+            { activity : true, level : 1, time : 3, pita : 2 },
+            { activity : true, level : 1, time : 6, pita : 4 },
+            { activity : true, level : 1, time : 3, pita : 2 },
+            { activity : true, level : 1, time : 3, pita : 2 },
+            { activity : true, level : 1, time : 3, pita : 2 },
+            { activity : true, level : 1, time : 9, pita : 5 },
+            { activity : true, level : 1, time : 9, pita : 5 }
+        ]
+    };
+
+    
+    // func.SaveAttackList(dbTest);
+    
+
     io.on('connection', (socket) => {
         console.log("io-handler.js socket connect!!");
         console.log("socketid : "+ socket.id); 
@@ -196,6 +221,24 @@ module.exports = (io) => {
             var PlayersJson = JSON.stringify(gamePlayer);
             console.log("jsonStringify : ", PlayersJson.toString());
             socket.emit('PlayersData', PlayersJson);
+        });
+
+        // 게임 카드 리스트 보내기
+        socket.on("Penetration Test", function(){
+
+            func.loadAttackList("27031").then(function (attackList){
+                console.log('[socket-loadAttackList] attak list[0] : ', attackList);
+                console.log('[socket-loadAttackList] attak list[0] : ', attackList[0]);
+                
+                var AttackTableJson = JSON.stringify(attackList[0]);
+
+                console.log('[socket-loadAttackList] attak list : ', AttackTableJson);
+                socket.emit("Attack List", AttackTableJson);
+            });
+        });
+
+        socket.on("Click Response", function(data){
+            console.log("Click Response jsonStr : ", data);
         });
         
         socket.on('disconnect', function() {

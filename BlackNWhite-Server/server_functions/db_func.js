@@ -56,4 +56,22 @@ func.IsValidRoom = function(roomPin){
     });
 }
 
+
+// waitingRoom _ 방 정보 불러오기
+func.loadRoom= function(roomPin){
+    console.log('[db_func] loadRoom 함수 호출, roomPin : ', roomPin);
+ 
+    return new Promise((resolve)=>{
+        Room.find({roomPin: roomPin}, function(error, room){
+            console.log('--- loadRoom ---');
+            if(error){
+                console.log(error);
+            }else{
+                resolve(room);
+            }
+        });
+    });
+}
+
+
 module.exports = func;

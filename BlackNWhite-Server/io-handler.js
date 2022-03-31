@@ -37,6 +37,12 @@ module.exports = (io) => {
                     room: room
                 };
 
+                if (data.permission) {
+                    console.log("permission True");
+                    socket.room = room;
+                    console.log("socket.room : ", socket.room);
+                }
+
                 var roomJson = JSON.stringify(room_data);
                 console.log('check : ', roomJson);
                 socket.emit('room permission',roomJson);
@@ -48,7 +54,7 @@ module.exports = (io) => {
 
         // [CreateRoom]
         socket.on("createRoom", (room) =>{
-            console.log('[socket-createRoom] 호출됨, 받은 room 정보: ', room);
+            console.log('[socket-createRoom] 호출됨, 받은 room 정보 (maxPlayer): ', room);
 
             room['manager'] = socket.nickname;
             room['creationDate'] = nowDate();
@@ -60,12 +66,19 @@ module.exports = (io) => {
 
             rooms[room.roomPin] = { 
                 numUsers : 0,
-                users : [],
-                manager :  room.manager
+                users : {},  //{key닉네임: value팀정보}
+                manager :  room.manager,
+                blackUsers : [], // [ {}, ... ,] - {}는  playerInfo = { team: evenNumPlayer, readyStatus: false, teamStatus: false, color: rand_Color};
+                whiteUsers : []
             }
 
             console.log("[createRoom] rooms 딕셔너리 : " , rooms);
             console.log("succesCreateRoom room.roomPin.toString() : " , room.roomPin.toString());
+
+            // 추가 
+            socket.room = room.roomPin;
+            console.log("socket.room : ", socket.room);
+
             socket.emit('succesCreateRoom', {
                 roomPin: room.roomPin.toString()
             });
@@ -81,49 +94,92 @@ module.exports = (io) => {
         // [WaitingRoom] 
         let addedUser = false; // added 유저 경우 
 
-        socket.on('add user', (data) => {
+        // 사용자 첫 입장 시 'add user' emit 
+        socket.on('add user', () => {
             // console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', data.nickname, "data : ", data, 'room : ', data.room );
-            console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', socket.nickname, "data : ", data, 'room : ', data.room );
+            // console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', socket.nickname, "data : ", data, 'room : ', data.room );
+            console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', socket.nickname, 'room : ', socket.room );
 
             if (addedUser) return;
 
-            // socket.nickname = data.nickname;
-            var room = data.room;
-            socket.room = data.room;
+            var room = socket.room;
+  
+            // 룸 정보 수정 
+            ++rooms[room].numUsers;
+
+            // 새새 코드 
+            // 1. users에 저장(닉네임 : 팀 정보)
+            const rand_Color = Math.floor(Math.random() * 12);
+            rooms[room].users[socket.nickname] = evenNumPlayer;     // evenNumPlayer는 팀 정보
+
+
+            // 2. blackUsers/whiteUsers에 저장 (playerInfo 저장)
+            let playerInfo = { socket: socket.id, nickname: socket.nickname, team: evenNumPlayer, readyStatus: false, teamStatus: false, color: rand_Color};
+            console.log("PlayersInfo : ", playerInfo);
+
+            if (evenNumPlayer){
+                // 1(true)이면 black 팀 
+                rooms[room].blackUsers.push(playerInfo);
+            }else{
+                // 0(false) 이면 white팀 
+                rooms[room].whiteUsers.push(playerInfo);
+            }
+
+            console.log("rooms[room].users : ", rooms[room].users);
+            console.log("[add user *]  blackUsers: " + rooms[room].blackUsers + " whiteUsers : " + rooms[room].whiteUsers);
+
+
+           // 다음 플레이어 black과 white 팀 입장 구분을 위해 둠
+            if (evenNumPlayer == false){
+                evenNumPlayer = true;
+            } else {
+                evenNumPlayer = false;
+            }
+
             
-        //    // 방 매니저가 아닌 경우에 rooms 리스트에 접속한 사용자 추가 (명수, 유저리스트)
-        //    if (data.nickname != data.manager)
-        //    {
-        //        ++rooms[room].numUsers;
-        //        rooms[room].users.push(socket.nickname); 
-        //    }
+            // JSON 형식으로 유니티에 데이터 보내기
 
-        //    console.log("[add user *] : " + socket.nickname  + " room : " + rooms[room]);
+            // var PlayersJson = JSON.stringify(gamePlayer);
+            // console.log("jsonStringify : ", PlayersJson.toString());
+            // socket.emit('PlayersData', PlayersJson);
 
+            // 원래 코드 
             socket.join(room);
             addedUser = true;
 
-        //    // Room 정보 전달 
-        //    func.loadRoom(data.room).then(function (room){
-        //        console.log('[socket-loadRoom] room:',room);
-        //        socket.emit('loadRoom',room);
-        //        console.log('룸 정보 전송 완료');
-        //    });
+           // Room 정보 전달 
+        //    func.loadRoom(socket.room).then(function (room){
+        //         console.log('[socket-loadRoom] room:',room);
+        //         socket.emit('loadRoom',room);
+        //         console.log('룸 정보 전송 완료');
+        //     });
 
+            // 사용자 로그인 알림 (모든 사용자의 정보를 push함) 
+              var room_data = { 
+                room : room,
+                blackUsers : rooms[room].blackUsers,
+                whiteUsers : rooms[room].whiteUsers,
+            };
+            var roomJson = JSON.stringify(room_data);
 
-            // 사용자 로그인 알림
-        //    io.in(room).emit('login', {
-        //        numUsers: rooms[room].numUsers,
-        //        users : rooms[room].users
-        //    });
+            console.log('check : ', roomJson);
+            io.sockets.in(room).emit('login',roomJson);
+
+        //    io.sockets.in(room).emit('login', {
+           
+        //        room : room,
+        //         blackUsers : rooms[room].blackUsers,
+        //         whiteUsers : rooms[room].whiteUsers,
+        //    }); 
 
             
-            // 새 사용자 입장 알림 
+            // 새 사용자가 입장하였음을 다른 사용자들에게 알림 (새로 온 사용자 정보만 push함) 
         //    gameserver.in(room).emit('user joined', {
-        //        nickname: socket.nickname,
-        //        numUsers: rooms[room].numUsers,
-        //        users : rooms[room].users
-        //    });
+            io.sockets.in(room).emit('user joined', {
+               nickname: socket.nickname,
+               numUsers: rooms[room].numUsers,
+               users : rooms[room].users
+           });
 
         });
     
@@ -143,7 +199,7 @@ module.exports = (io) => {
             // Players[Players.length]=playerInfo;
             console.log("PlayersInfo", numPlayer, " >> ", playerInfo);
             console.log("Players >> ", Players);
-            console.log("gmaePlayer >> ", gamePlayer);
+            console.log("gamePlayer >> ", gamePlayer);
 
             if (evenNumPlayer == false){
                 evenNumPlayer = true;

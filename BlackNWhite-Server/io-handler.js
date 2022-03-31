@@ -2,6 +2,7 @@ const url = require('url');
 const async = require('async');
 const func = require('./server_functions/db_func');
 const { Socket } = require('dgram');
+const { stringify } = require('querystring');
 
 module.exports = (io) => {
     
@@ -240,6 +241,45 @@ module.exports = (io) => {
         socket.on("Click Response", function(data){
             console.log("Click Response jsonStr : ", data);
         });
+
+
+// ===================================================================================================================
+        // [Area] 영역 클릭 시 
+        socket.on('Area_Name', (areaName) => {
+            console.log('[Area] Area_Name  : ', areaName);
+
+            var corp = "회사B"
+            // 해당 영역의 레벨을 DB에서 read
+            func.SelectAreaField(corp, areaName, "level").then(function (data){
+                console.log("[Area] before level >> ", data);
+                var newLevel = {level: data.level+1};
+                console.log("[Area] after level >> ", newLevel);
+
+                // 레벨 수정(1증가)
+                func.UpdateArea(corp, areaName, newLevel);   
+                var area_level = areaName + "-" + (data.level+1);
+                console.log("Before Split >> ", area_level.toString())
+                socket.emit('New_Level', area_level.toString());
+            });
+        });
+
+        // [Area] 구조도 페이지 시작 시
+        socket.on('Area_Start', (cropName) => {
+            console.log('[Area] Corp_Name  : ', cropName);
+            func.SelectCrop(cropName).then(function (data){
+                console.log("[Area] Corp data >> ", data);
+                
+
+                for(var i=0; i<data.length; i++){
+                    // console.log("[Area] Corp data *********** >> ", data[i]);
+                    socket.emit('Area_Start_Emit', JSON.stringify(data[i]));
+                    //socket.emit('Area_Start_Emit', data[i]);
+                }
+                
+            });
+            
+        });
+// ===================================================================================================================
         
         socket.on('disconnect', function() {
             console.log('A Player disconnected!!!');

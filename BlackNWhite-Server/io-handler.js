@@ -243,6 +243,11 @@ module.exports = (io) => {
         });
 
 
+        socket.on("Click Upgrade Attack", function(data){
+            console.log("Click Upgrade Attacke jsonStr : ", data);
+        });
+
+
 // ===================================================================================================================
         // [Area] 영역 클릭 시 
         socket.on('Area_Name', (areaName) => {

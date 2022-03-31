@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 const Room = require("../schemas/room");
+const AttackList = require("../schemas/attackList");
+const Area = require("../schemas/area");
 const express = require("express");
 //===== Mongo DB ====
 //MongoDB 연결
@@ -73,5 +75,108 @@ func.loadRoom= function(roomPin){
     });
 }
 
+// attack List db 저장
+func.SaveAttackList = function(data){
+    console.log('SaveAttackList 함수 호출');
+
+    var newList = new AttackList(data);
+    newList.save(function(error, data){
+        if(error){
+            console.log(error);
+        }else{
+            console.log('New AttackList Saved!');
+        }
+    });
+}
+
+// attack List 상태 불러오기
+func.loadAttackList = function(roomPin){
+    console.log('[db_func] loadQuiz 함수 호출, settings : ', roomPin);
+ 
+    return new Promise((resolve)=>{
+        AttackList.find({roomPin: roomPin}, function(error, attackList){
+            console.log('--- Read Attack List ---');
+            if(error){
+                console.log(error);
+            }else{
+                resolve(attackList);
+            }
+        });
+    });
+}
+
+
+// Area 생성 함수 - 게임 시작 시 1번 실행
+func.InsertArea = function(){
+    console.log('InsertArea 함수 호출');
+
+    
+    const CorpArray = ["회사A", "회사B", "회사C", "회사D", "회사E"];
+    const AreaArray = ["Area_DMZ", "Area_Interal", "Area_Sec"];
+
+    var areaData;
+    // i는 회사 수, j는 회사 별 영역 수
+    for(var i=0; i<5; i++){
+        for(var j=0; j<3; j++){
+            areaData = {
+                Corp : CorpArray[i],
+                area : AreaArray[j],
+                level : 0,
+                vuln : parseInt(Math.random() * 4)
+            };
+            console.log(areaData);
+
+            var newArea = new Area(areaData);
+            newArea.save(function(error, data){
+                if(error){
+                    console.log(error);
+                }else{
+                    console.log('New Area Saved!');
+                }
+            });
+        }
+    }
+}
+
+// 전체 영역 정보 read
+func.SelectCrop = function(corp){
+    return new Promise((resolve)=>{
+        Area.find({Corp: corp}, function(error, data){
+            if(error){
+                console.log(error);
+          
+            }else{
+                resolve(data);
+            }
+        });
+    });    
+}
+
+// 필요한 영역 정보 중 필요한 필드만 read
+func.SelectAreaField = function(corp, area, field){
+    return new Promise((resolve)=>{
+        Area.findOne({Corp: corp, area: area}, {_id: 0, level: 1}, function(error, data){
+            if(error){
+                console.log(error);
+          
+            }else{
+                resolve(data);
+            }
+        });
+    });    
+}
+
+// Area 정보 수정
+func.UpdateArea = function(corp, area, data){
+    console.log('[Area] UpdateArea 함수 호출');
+    Area.updateOne({Corp: corp, area: area}, {$set: data}, function(error, data){
+        if(error){
+            console.log(error);
+      
+        }else{
+            console.log('[Area] UpdateArea Success');
+        }
+    });
+}
 
 module.exports = func;

@@ -2,6 +2,7 @@ const url = require('url');
 const async = require('async');
 const func = require('./server_functions/db_func');
 const { Socket } = require('dgram');
+const { stringify } = require('querystring');
 
 module.exports = (io) => {
     
@@ -12,6 +13,31 @@ module.exports = (io) => {
     let gamePlayer = {};
     let evenNumPlayer = false;
     let numPlayer = 1;
+
+    
+    let dbTest = {
+        roomPin : "27031",
+        team : "White",
+        attackCard : [
+            { activity : true, level : 1, time : 2, pita : 1 },
+            { activity : false, level : 1, time : 2, pita : 1 },
+            { activity : true, level : 1, time : 2, pita : 1 },
+            { activity : true, level : 1, time : 2, pita : 1 },
+            { activity : true, level : 1, time : 4, pita : 3 },
+            { activity : true, level : 1, time : 4, pita : 3 },
+            { activity : true, level : 1, time : 3, pita : 2 },
+            { activity : true, level : 1, time : 6, pita : 4 },
+            { activity : true, level : 1, time : 3, pita : 2 },
+            { activity : true, level : 1, time : 3, pita : 2 },
+            { activity : true, level : 1, time : 3, pita : 2 },
+            { activity : true, level : 1, time : 9, pita : 5 },
+            { activity : true, level : 1, time : 9, pita : 5 }
+        ]
+    };
+
+    
+    // func.SaveAttackList(dbTest);
+    
 
     io.on('connection', (socket) => {
         console.log("io-handler.js socket connect!!");
@@ -253,6 +279,68 @@ module.exports = (io) => {
             console.log("jsonStringify : ", PlayersJson.toString());
             socket.emit('PlayersData', PlayersJson);
         });
+
+        // 게임 카드 리스트 보내기
+        socket.on("Penetration Test", function(){
+
+            func.loadAttackList("27031").then(function (attackList){
+                console.log('[socket-loadAttackList] attak list[0] : ', attackList);
+                console.log('[socket-loadAttackList] attak list[0] : ', attackList[0]);
+                
+                var AttackTableJson = JSON.stringify(attackList[0]);
+
+                console.log('[socket-loadAttackList] attak list : ', AttackTableJson);
+                socket.emit("Attack List", AttackTableJson);
+            });
+        });
+
+        socket.on("Click Response", function(data){
+            console.log("Click Response jsonStr : ", data);
+        });
+
+
+        socket.on("Click Upgrade Attack", function(data){
+            console.log("Click Upgrade Attacke jsonStr : ", data);
+        });
+
+
+// ===================================================================================================================
+        // [Area] 영역 클릭 시 
+        socket.on('Area_Name', (areaName) => {
+            console.log('[Area] Area_Name  : ', areaName);
+
+            var corp = "회사B"
+            // 해당 영역의 레벨을 DB에서 read
+            func.SelectAreaField(corp, areaName, "level").then(function (data){
+                console.log("[Area] before level >> ", data);
+                var newLevel = {level: data.level+1};
+                console.log("[Area] after level >> ", newLevel);
+
+                // 레벨 수정(1증가)
+                func.UpdateArea(corp, areaName, newLevel);   
+                var area_level = areaName + "-" + (data.level+1);
+                console.log("Before Split >> ", area_level.toString())
+                socket.emit('New_Level', area_level.toString());
+            });
+        });
+
+        // [Area] 구조도 페이지 시작 시
+        socket.on('Area_Start', (cropName) => {
+            console.log('[Area] Corp_Name  : ', cropName);
+            func.SelectCrop(cropName).then(function (data){
+                console.log("[Area] Corp data >> ", data);
+                
+
+                for(var i=0; i<data.length; i++){
+                    // console.log("[Area] Corp data *********** >> ", data[i]);
+                    socket.emit('Area_Start_Emit', JSON.stringify(data[i]));
+                    //socket.emit('Area_Start_Emit', data[i]);
+                }
+                
+            });
+            
+        });
+// ===================================================================================================================
         
         socket.on('disconnect', function() {
             console.log('A Player disconnected!!!');

@@ -168,10 +168,24 @@ func.SelectCrop = function(corp){
     });    
 }
 
-// 필요한 영역 정보 중 필요한 필드만 read
-func.SelectAreaField = function(corp, area, field){
+// 필요한 영역 정보 중 level만 read
+func.SelectAreaLevel = function(corp, area){
     return new Promise((resolve)=>{
         Area.findOne({Corp: corp, area: area}, {_id: 0, level: 1}, function(error, data){
+            if(error){
+                console.log(error);
+          
+            }else{
+                resolve(data);
+            }
+        });
+    });    
+}
+
+// 필요한 영역 정보 중 vuln만 read
+func.SelectAreaVuln = function(corp, area){
+    return new Promise((resolve)=>{
+        Area.findOne({Corp: corp, area: area}, {_id: 0, area: 1, vuln: 1}, function(error, data){
             if(error){
                 console.log(error);
           

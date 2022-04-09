@@ -16,7 +16,7 @@ module.exports = (io) => {
 
     
     let dbTest = {
-        roomPin : "12345",
+        roomPin : "73613",
         team : "White",
         attackCard : [
             { attackNum : 0, activity : false, level : 0 },
@@ -36,7 +36,7 @@ module.exports = (io) => {
     };
 
     
-    // func.SaveAttackList(dbTest);
+    func.SaveAttackList(dbTest);
     // func.InsertArea();
     
 
@@ -285,7 +285,7 @@ module.exports = (io) => {
         socket.on("Load Attack List", function(){
 
             // 나중에 실제 입력한 pin 번호로 바꾸기!
-            func.loadAttackList("12345").then(function (attackList){
+            func.loadAttackList("73613").then(function (attackList){
                 console.log('[socket-loadAttackList] attak list[0] : ', attackList);
                 
                 var AttackTableJson = JSON.stringify(attackList);
@@ -344,12 +344,15 @@ module.exports = (io) => {
 
 // ===================================================================================================================
         // [Area] 영역 클릭 시 
-        socket.on('Area_Name', (areaName) => {
-            console.log('[Area] Area_Name  : ', areaName);
+        socket.on('Area_Name', (data) => {
+            console.log('[Area] Area_Name  : ', data);
+            data = JSON.parse(data);
 
-            var corp = "회사B"
+            var corp = data.Corp;
+            var areaName = data.area;
+
             // 해당 영역의 레벨을 DB에서 read
-            func.SelectAreaField(corp, areaName, "level").then(function (data){
+            func.SelectAreaLevel(corp, areaName).then(function (data){
                 console.log("[Area] before level >> ", data);
                 var newLevel = {level: data.level+1};
                 console.log("[Area] after level >> ", newLevel);
@@ -377,6 +380,19 @@ module.exports = (io) => {
                 
             });
             
+        });
+
+        // [Vuln] 영역 클릭 시 
+        socket.on('Get_Vuln', (data) => {
+            console.log('[Vuln] Area_Name  : ', data);
+            data = JSON.parse(data);
+
+            var corp = data.Corp;
+            var area = data.area;
+            // 해당 영역의 취약점을 DB에서 read
+            func.SelectAreaVuln(corp, area).then(function (data){
+                socket.emit('Area_Vuln', data.area, data.vuln);
+            });
         });
 // ===================================================================================================================
         

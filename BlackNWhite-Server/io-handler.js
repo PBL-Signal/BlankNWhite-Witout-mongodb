@@ -272,13 +272,13 @@ module.exports = (io) => {
         // 게임 시작시 해당 룸의 사용자 정보 넘김
         socket.on('Game Start',  () =>{
             var room_data = { 
-                room : room,
-                users : rooms[room].users
+                room : socket.room,
+                users : rooms[socket.room].users
             };
             var roomJson = JSON.stringify(room_data);
 
             console.log('check : ', roomJson);
-            io.sockets.in(room).emit('onGameStart',roomJson);
+            io.sockets.in(socket.room).emit('onGameStart',roomJson);
         });
 
 

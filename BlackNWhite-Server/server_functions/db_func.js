@@ -90,11 +90,11 @@ func.SaveAttackList = function(data){
 }
 
 // attack List 상태 불러오기
-func.loadAttackList = function(roomPin){
-    console.log('[db_func] loadAttackList 함수 호출, settings : ', roomPin);
+func.loadAttackList = function(loadInfo){    // loadInfo = {roomPin : "12345", teamName : teamName};
+    console.log('[db_func] loadAttackList 함수 호출, settings : ', loadInfo.roomPin);
  
     return new Promise((resolve)=>{
-        AttackList.find({roomPin: roomPin}, function(error, attackList){
+        AttackList.find({roomPin: loadInfo.roomPin, team: loadInfo.teamName}, function(error, attackList){
             console.log('--- Read Attack List ---');
             if(error){
                 console.log(error);
@@ -109,7 +109,7 @@ func.upgradeAttackLevel = function(data){     // data = { roomPin : roomPin, bef
     console.log('[db_func] updateAttackLevel 함수 호출, settings : ', data);
 
     return new Promise((resolve)=>{
-        AttackList.update({roomPin: data.roomPin, attackCard: data.beforeAttackLevel}, {'attackCard.$': data.newAttackLevel}, function(error, attackList){
+        AttackList.update({roomPin: data.roomPin, team: data.teamName, attackCard: data.beforeAttackLevel}, {'attackCard.$': data.newAttackLevel}, function(error, attackList){
             if(error){
                 console.log(error);
           

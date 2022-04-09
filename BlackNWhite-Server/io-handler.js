@@ -17,7 +17,7 @@ module.exports = (io) => {
     
     let dbTest = {
         roomPin : "12345",
-        team : "White",
+        team : "Black",
         attackCard : [
             { attackNum : 0, activity : false, level : 0 },
             { attackNum : 1, activity : false, level : 0 },
@@ -282,10 +282,11 @@ module.exports = (io) => {
         });
 
         // 게임 카드 리스트 보내기
-        socket.on("Load Attack List", function(){
+        socket.on("Load Attack List", function(teamName){
+            var loadInfo = {roomPin : "12345", teamName : teamName};
 
             // 나중에 실제 입력한 pin 번호로 바꾸기!
-            func.loadAttackList("12345").then(function (attackList){
+            func.loadAttackList(loadInfo).then(function (attackList){
                 console.log('[socket-loadAttackList] attak list[0] : ', attackList);
                 
                 var AttackTableJson = JSON.stringify(attackList);
@@ -306,21 +307,23 @@ module.exports = (io) => {
             console.log('[socket-loadAttackList] upgrade Attack Info : ', upgradeAttackInfo);
             let attackIndex = upgradeAttackInfo["AttackIndex"];
             let roomPin = upgradeAttackInfo["RoomPin"];
+            let team = upgradeAttackInfo["team"];
+            var loadInfo = {roomPin : roomPin, teamName : team};
 
-            func.loadAttackList(roomPin).then(function (attackList){
+            func.loadAttackList(loadInfo).then(function (attackList){
                 var attackActivity = attackList["attackCard"][attackIndex]["activity"];
                 var attackLevel = attackList["attackCard"][attackIndex]["level"];
                 console.log('[socket-loadAttackList] attackList["attackCard"][AttackIndex]["level"] : ', attackLevel);
 
                 var beforeAttackLevel = { attackNum: attackIndex, activity: attackActivity, level: attackLevel };
                 var newAttackLevel = { attackNum: attackIndex, activity: true, level: attackLevel+1 };
-                var upgradeDataJson = { roomPin : roomPin, beforeAttackLevel : beforeAttackLevel, newAttackLevel : newAttackLevel };
+                var upgradeDataJson = { roomPin : roomPin, teamName: team, beforeAttackLevel : beforeAttackLevel, newAttackLevel : newAttackLevel };
                 
                 func.upgradeAttackLevel(upgradeDataJson).then(function(updateDBInfo){
                     console.log('[socket-loadAttackList] attackList : ', updateDBInfo);
 
                     if (updateDBInfo["acknowledged"]){
-                        func.loadAttackList(roomPin).then(function (attackList){
+                        func.loadAttackList(loadInfo).then(function (attackList){
                             console.log('[socket-loadAttackList] attak list[0] : ', attackList);
                             
                             var AttackTableJson = JSON.stringify(attackList);

@@ -264,10 +264,22 @@ module.exports = (io) => {
             // 2. 수정한 내용 client들에게 뿌리기
             var playerJson = JSON.stringify(playerInfo);
 
-            console.log('check : ', playerJson);
+             console.log('check : ', playerJson);
             io.sockets.in(socket.room).emit('updateUI',playerJson);
 
         });  
+
+        // 게임 시작시 해당 룸의 사용자 정보 넘김
+        socket.on('Game Start',  () =>{
+            var room_data = { 
+                room : room,
+                users : rooms[room].users
+            };
+            var roomJson = JSON.stringify(room_data);
+
+            console.log('check : ', roomJson);
+            io.sockets.in(room).emit('onGameStart',roomJson);
+        });
 
 
         ////////////////////////////////////////////////////////////////////////////////////

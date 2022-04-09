@@ -16,27 +16,28 @@ module.exports = (io) => {
 
     
     let dbTest = {
-        roomPin : "27031",
-        team : "White",
+        roomPin : "12345",
+        team : "Black",
         attackCard : [
-            { activity : true, level : 1, time : 2, pita : 1 },
-            { activity : false, level : 1, time : 2, pita : 1 },
-            { activity : true, level : 1, time : 2, pita : 1 },
-            { activity : true, level : 1, time : 2, pita : 1 },
-            { activity : true, level : 1, time : 4, pita : 3 },
-            { activity : true, level : 1, time : 4, pita : 3 },
-            { activity : true, level : 1, time : 3, pita : 2 },
-            { activity : true, level : 1, time : 6, pita : 4 },
-            { activity : true, level : 1, time : 3, pita : 2 },
-            { activity : true, level : 1, time : 3, pita : 2 },
-            { activity : true, level : 1, time : 3, pita : 2 },
-            { activity : true, level : 1, time : 9, pita : 5 },
-            { activity : true, level : 1, time : 9, pita : 5 }
+            { attackNum : 0, activity : false, level : 0 },
+            { attackNum : 1, activity : false, level : 0 },
+            { attackNum : 2, activity : false, level : 0 },
+            { attackNum : 3, activity : false, level : 0 },
+            { attackNum : 4, activity : false, level : 0 },
+            { attackNum : 5, activity : false, level : 0 },
+            { attackNum : 6, activity : false, level : 0 },
+            { attackNum : 7, activity : false, level : 0 },
+            { attackNum : 8, activity : false, level : 0 },
+            { attackNum : 9, activity : false, level : 0 },
+            { attackNum : 10, activity : false, level : 0 },
+            { attackNum : 11, activity : false, level : 0 },
+            { attackNum : 12, activity : false, level : 0 }
         ]
     };
 
     
     // func.SaveAttackList(dbTest);
+    // func.InsertArea();
     
 
     io.on('connection', (socket) => {
@@ -338,13 +339,14 @@ module.exports = (io) => {
         });
 
         // 게임 카드 리스트 보내기
-        socket.on("Penetration Test", function(){
+        socket.on("Load Attack List", function(teamName){
+            var loadInfo = {roomPin : "12345", teamName : teamName};
 
-            func.loadAttackList("27031").then(function (attackList){
+            // 나중에 실제 입력한 pin 번호로 바꾸기!
+            func.loadAttackList(loadInfo).then(function (attackList){
                 console.log('[socket-loadAttackList] attak list[0] : ', attackList);
-                console.log('[socket-loadAttackList] attak list[0] : ', attackList[0]);
                 
-                var AttackTableJson = JSON.stringify(attackList[0]);
+                var AttackTableJson = JSON.stringify(attackList);
 
                 console.log('[socket-loadAttackList] attak list : ', AttackTableJson);
                 socket.emit("Attack List", AttackTableJson);
@@ -356,8 +358,47 @@ module.exports = (io) => {
         });
 
 
-        socket.on("Click Upgrade Attack", function(data){
-            console.log("Click Upgrade Attacke jsonStr : ", data);
+        socket.on("Click Upgrade Attack", function(jsonStr){
+            console.log("Click Upgrade Attacke jsonStr : ", jsonStr);
+            let upgradeAttackInfo = JSON.parse(jsonStr);
+            console.log('[socket-loadAttackList] upgrade Attack Info : ', upgradeAttackInfo);
+            let attackIndex = upgradeAttackInfo["AttackIndex"];
+            let roomPin = upgradeAttackInfo["RoomPin"];
+            let team = upgradeAttackInfo["team"];
+            var loadInfo = {roomPin : roomPin, teamName : team};
+
+            func.loadAttackList(loadInfo).then(function (attackList){
+                var attackActivity = attackList["attackCard"][attackIndex]["activity"];
+                var attackLevel = attackList["attackCard"][attackIndex]["level"];
+                console.log('[socket-loadAttackList] attackList["attackCard"][AttackIndex]["level"] : ', attackLevel);
+
+                var beforeAttackLevel = { attackNum: attackIndex, activity: attackActivity, level: attackLevel };
+                var newAttackLevel = { attackNum: attackIndex, activity: true, level: attackLevel+1 };
+                var upgradeDataJson = { roomPin : roomPin, teamName: team, beforeAttackLevel : beforeAttackLevel, newAttackLevel : newAttackLevel };
+                
+                func.upgradeAttackLevel(upgradeDataJson).then(function(updateDBInfo){
+                    console.log('[socket-loadAttackList] attackList : ', updateDBInfo);
+
+                    if (updateDBInfo["acknowledged"]){
+                        func.loadAttackList(loadInfo).then(function (attackList){
+                            console.log('[socket-loadAttackList] attak list[0] : ', attackList);
+                            
+                            var AttackTableJson = JSON.stringify(attackList);
+
+                            console.log('[socket-loadAttackList] attak list : ', AttackTableJson);
+                            socket.emit("Attack List", AttackTableJson);
+                        });
+                    } else {
+                        console.log('upgradeAttackLevel Failed');
+                    }
+                });
+
+                // socket.emit("Attack List", AttackTableJson);
+            });
+
+            // roompin이랑 attack index 번호를 json 형식으로 보낼 것 { roomPin : roomPin, attackIndex : attackIndex }
+            
+
         });
 
 

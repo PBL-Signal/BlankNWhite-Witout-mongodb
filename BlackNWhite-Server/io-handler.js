@@ -15,28 +15,7 @@ module.exports = (io) => {
     let numPlayer = 1;
 
     
-    let dbTest = {
-        roomPin : "12345",
-        team : "Black",
-        attackCard : [
-            { attackNum : 0, activity : false, level : 0 },
-            { attackNum : 1, activity : false, level : 0 },
-            { attackNum : 2, activity : false, level : 0 },
-            { attackNum : 3, activity : false, level : 0 },
-            { attackNum : 4, activity : false, level : 0 },
-            { attackNum : 5, activity : false, level : 0 },
-            { attackNum : 6, activity : false, level : 0 },
-            { attackNum : 7, activity : false, level : 0 },
-            { attackNum : 8, activity : false, level : 0 },
-            { attackNum : 9, activity : false, level : 0 },
-            { attackNum : 10, activity : false, level : 0 },
-            { attackNum : 11, activity : false, level : 0 },
-            { attackNum : 12, activity : false, level : 0 }
-        ]
-    };
-
     
-    // func.SaveAttackList(dbTest);
     // func.InsertArea();
     
 
@@ -271,6 +250,48 @@ module.exports = (io) => {
 
         // 게임 시작시 해당 룸의 사용자 정보 넘김
         socket.on('Game Start',  () =>{
+            let dbTest = {
+                roomPin : socket.room,
+                team : 'White',
+                attackCard : [
+                    { attackNum : 0, activity : false, level : 0 },
+                    { attackNum : 1, activity : false, level : 0 },
+                    { attackNum : 2, activity : false, level : 0 },
+                    { attackNum : 3, activity : false, level : 0 },
+                    { attackNum : 4, activity : false, level : 0 },
+                    { attackNum : 5, activity : false, level : 0 },
+                    { attackNum : 6, activity : false, level : 0 },
+                    { attackNum : 7, activity : false, level : 0 },
+                    { attackNum : 8, activity : false, level : 0 },
+                    { attackNum : 9, activity : false, level : 0 },
+                    { attackNum : 10, activity : false, level : 0 },
+                    { attackNum : 11, activity : false, level : 0 },
+                    { attackNum : 12, activity : false, level : 0 }
+                ]
+            };
+            func.SaveAttackList(dbTest);
+
+            dbTest = {
+                roomPin : socket.room,
+                team : 'Black',
+                attackCard : [
+                    { attackNum : 0, activity : false, level : 0 },
+                    { attackNum : 1, activity : false, level : 0 },
+                    { attackNum : 2, activity : false, level : 0 },
+                    { attackNum : 3, activity : false, level : 0 },
+                    { attackNum : 4, activity : false, level : 0 },
+                    { attackNum : 5, activity : false, level : 0 },
+                    { attackNum : 6, activity : false, level : 0 },
+                    { attackNum : 7, activity : false, level : 0 },
+                    { attackNum : 8, activity : false, level : 0 },
+                    { attackNum : 9, activity : false, level : 0 },
+                    { attackNum : 10, activity : false, level : 0 },
+                    { attackNum : 11, activity : false, level : 0 },
+                    { attackNum : 12, activity : false, level : 0 }
+                ]
+            };
+            func.SaveAttackList(dbTest);
+
             var room_data = { 
                 room : socket.room,
                 users : rooms[socket.room].users
@@ -352,7 +373,7 @@ module.exports = (io) => {
 
         // 게임 카드 리스트 보내기
         socket.on("Load Attack List", function(teamName){
-            var loadInfo = {roomPin : "12345", teamName : teamName};
+            var loadInfo = {roomPin : socket.room, teamName : teamName};
 
             // 나중에 실제 입력한 pin 번호로 바꾸기!
             func.loadAttackList(loadInfo).then(function (attackList){

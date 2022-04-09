@@ -36,7 +36,7 @@ module.exports = (io) => {
     };
 
     
-    // func.SaveAttackList(dbTest);
+    func.SaveAttackList(dbTest);
     // func.InsertArea();
     
 

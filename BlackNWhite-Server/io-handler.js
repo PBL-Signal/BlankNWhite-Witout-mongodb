@@ -36,7 +36,7 @@ module.exports = (io) => {
     };
 
     
-    func.SaveAttackList(dbTest);
+    // func.SaveAttackList(dbTest);
     // func.InsertArea();
     
 
@@ -223,7 +223,8 @@ module.exports = (io) => {
         //        users : rooms[room].users
         //    });
             var playerJson = JSON.stringify(playerInfo);
-           io.sockets.in(room).emit('user joined', playerJson);
+        //    io.sockets.in(room).emit('user joined', playerJson);
+           socket.broadcast.to(room).emit('user joined', playerJson);
 
         });
         
@@ -265,7 +266,8 @@ module.exports = (io) => {
             var playerJson = JSON.stringify(playerInfo);
 
              console.log('check : ', playerJson);
-            io.sockets.in(socket.room).emit('updateUI',playerJson);
+            // io.sockets.in(socket.room).emit('updateUI',playerJson);
+            socket.broadcast.to(socket.room).emit('updateUI', playerJson);
 
         });  
 

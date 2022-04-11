@@ -373,7 +373,7 @@ module.exports = (io) => {
         socket.on('Game Start',  () =>{
             let dbTest = {
                 roomPin : socket.room,
-                team : 'White',
+                team : true,
                 attackCard : [
                     { attackNum : 0, activity : false, level : 0 },
                     { attackNum : 1, activity : false, level : 0 },
@@ -394,7 +394,7 @@ module.exports = (io) => {
 
             dbTest = {
                 roomPin : socket.room,
-                team : 'Black',
+                team : false,
                 attackCard : [
                     { attackNum : 0, activity : false, level : 0 },
                     { attackNum : 1, activity : false, level : 0 },
@@ -495,6 +495,7 @@ module.exports = (io) => {
         // 게임 카드 리스트 보내기
         socket.on("Load Attack List", function(teamName){
             var loadInfo = {roomPin : socket.room, teamName : teamName};
+            console.log("loadInfo json : ", loadInfo);
 
             // 나중에 실제 입력한 pin 번호로 바꾸기!
             func.loadAttackList(loadInfo).then(function (attackList){
@@ -517,7 +518,7 @@ module.exports = (io) => {
             let upgradeAttackInfo = JSON.parse(jsonStr);
             console.log('[socket-loadAttackList] upgrade Attack Info : ', upgradeAttackInfo);
             let attackIndex = upgradeAttackInfo["AttackIndex"];
-            let roomPin = upgradeAttackInfo["RoomPin"];
+            let roomPin = socket.room;
             let team = upgradeAttackInfo["team"];
             var loadInfo = {roomPin : roomPin, teamName : team};
 

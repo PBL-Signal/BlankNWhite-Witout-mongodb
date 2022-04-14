@@ -295,6 +295,13 @@ module.exports = (io) => {
             };
             func.SaveAttackList(dbTest);
 
+            // 영역 관련 DB 생성
+            var sectionDB = {
+                roomPin : socket.room,
+                sectionInfo : []
+            }
+            func.InsertSection(sectionDB);
+
             var room_data = { 
                 room : socket.room,
                 users : rooms[socket.room].users
@@ -462,20 +469,55 @@ module.exports = (io) => {
             });
         });
 
-        // [Area] 구조도 페이지 시작 시
-        socket.on('Area_Start', (cropName) => {
-            console.log('[Area] Corp_Name  : ', cropName);
-            func.SelectCrop(cropName).then(function (data){
-                console.log("[Area] Corp data >> ", data);
+        // // [Area] 구조도 페이지 시작 시
+        // socket.on('Area_Start', (cropName) => {
+        //     console.log('[Area] Corp_Name  : ', cropName);
+        //     func.SelectCrop(cropName).then(function (data){
+        //         console.log("[Area] Corp data >> ", data);
                 
 
-                for(var i=0; i<data.length; i++){
-                    // console.log("[Area] Corp data *********** >> ", data[i]);
-                    socket.emit('Area_Start_Emit', JSON.stringify(data[i]));
-                    //socket.emit('Area_Start_Emit', data[i]);
-                }
+        //         for(var i=0; i<data.length; i++){
+        //             // console.log("[Area] Corp data *********** >> ", data[i]);
+        //             socket.emit('Area_Start_Emit', JSON.stringify(data[i]));
+        //             //socket.emit('Area_Start_Emit', data[i]);
+        //         }
                 
+        //     });
+            
+        // });
+
+        // [Section] 구조도 페이지 시작 시
+        socket.on('Section_Start', (cropName) => {
+            console.log('[Section] Corp_Name  : ', cropName);
+            var PIN = socket.room;
+            console.log("[Section] PIN : ", PIN);
+
+            func.SelectCrop(PIN, cropName).then(function (data){
+                console.log("[Section] Corp data >> ", data.sectionInfo);
+
+                for(var i=0; i<data.sectionInfo.length; i++){
+                    // console.log("[Area] Corp data *********** >> ", data[i]);
+                    //socket.emit('Area_Start_Emit', JSON.stringify(data[i]));
+                    //socket.emit('Area_Start_Emit', data[i]);
+
+                    console.log("[Section] sectionInfo-detail", data.sectionInfo[i]);
+                }
             });
+
+
+
+
+
+            
+            // func.SelectCrop(cropName).then(function (data){
+            //     console.log("[Area] Corp data >> ", data);
+                
+
+            //     for(var i=0; i<data.length; i++){
+            //         socket.emit('Area_Start_Emit', JSON.stringify(data[i]));
+            //     }
+                
+            // });
             
         });
 

@@ -565,89 +565,60 @@ module.exports = (io) => {
 
 
 // ===================================================================================================================
-        // [Area] 영역 클릭 시 
-        socket.on('Area_Name', (data) => {
-            console.log('[Area] Area_Name  : ', data);
+        // ## [Section] 영역 클릭 시 
+        socket.on('Section_Name', (data) => {
+            console.log('[Section - Click Section] Click Area Info  : ', data);
             data = JSON.parse(data);
+
+            var PIN = socket.room;
+            console.log("[Section - Click Section] PIN : ", PIN);
 
             var corp = data.Corp;
             var areaName = data.area;
 
             // 해당 영역의 레벨을 DB에서 read
-            func.SelectAreaLevel(corp, areaName).then(function (data){
-                console.log("[Area] before level >> ", data);
-                var newLevel = {level: data.level+1};
-                console.log("[Area] after level >> ", newLevel);
+            func.SelectSectionLevel(PIN, corp, areaName).then(function (arr){
+                var specific = arr[0];
+                var index = arr[1];
+                console.log("[SelectSectionLevel] before level >> ", specific[0].sectionInfo[index]);
+                var selectedSectionInfo = specific[0].sectionInfo[index];
+                //selectedSectionInfo = JSON.parse(selectedSectionInfo);
+                var newLevel = {Corp: selectedSectionInfo.Corp, area: selectedSectionInfo.area, level: selectedSectionInfo.level+1, vuln: selectedSectionInfo.vuln};
+                console.log("[SelectSectionLevel] after level >> ", newLevel);
 
                 // 레벨 수정(1증가)
-                func.UpdateArea(corp, areaName, newLevel);   
-                var area_level = areaName + "-" + (data.level+1);
-                console.log("Before Split >> ", area_level.toString())
+                func.UpdateSection(PIN, corp, areaName, selectedSectionInfo, newLevel);   
+                var area_level = areaName + "-" + (selectedSectionInfo.level+1);
                 socket.emit('New_Level', area_level.toString());
             });
         });
 
-        // // [Area] 구조도 페이지 시작 시
-        // socket.on('Area_Start', (cropName) => {
-        //     console.log('[Area] Corp_Name  : ', cropName);
-        //     func.SelectCrop(cropName).then(function (data){
-        //         console.log("[Area] Corp data >> ", data);
-                
-
-        //         for(var i=0; i<data.length; i++){
-        //             // console.log("[Area] Corp data *********** >> ", data[i]);
-        //             socket.emit('Area_Start_Emit', JSON.stringify(data[i]));
-        //             //socket.emit('Area_Start_Emit', data[i]);
-        //         }
-                
-        //     });
-            
-        // });
-
-        // [Section] 구조도 페이지 시작 시
+        // ## [Section] 구조도 페이지 시작 시
         socket.on('Section_Start', (cropName) => {
             console.log('[Section] Corp_Name  : ', cropName);
             var PIN = socket.room;
             console.log("[Section] PIN : ", PIN);
 
             func.SelectCrop(PIN, cropName).then(function (data){
-                console.log("[Section] Corp data >> ", data.sectionInfo);
+               // console.log("[Section] Corp data >> ", data);
 
-                for(var i=0; i<data.sectionInfo.length; i++){
-                    // console.log("[Area] Corp data *********** >> ", data[i]);
-                    //socket.emit('Area_Start_Emit', JSON.stringify(data[i]));
-                    //socket.emit('Area_Start_Emit', data[i]);
-
-                    console.log("[Section] sectionInfo-detail", data.sectionInfo[i]);
+                for(var i=0; i<data.length; i++){
+                    // console.log("[Section] sectionInfo-detail", data[i]);
+                    socket.emit('Area_Start_Emit', JSON.stringify(data[i]));
+                    
                 }
             });
-
-
-
-
-
-            
-            // func.SelectCrop(cropName).then(function (data){
-            //     console.log("[Area] Corp data >> ", data);
-                
-
-            //     for(var i=0; i<data.length; i++){
-            //         socket.emit('Area_Start_Emit', JSON.stringify(data[i]));
-            //     }
-                
-            // });
-            
         });
 
-        // [Vuln] 영역 클릭 시 
+        // ## [Vuln] 영역 클릭 시 
         socket.on('Get_Vuln', (data) => {
-            console.log('[Vuln] Area_Name  : ', data);
+            console.log('[Vuln] Click Area_Name  : ', data);
             data = JSON.parse(data);
-
+            var PIN = socket.room;
             var corp = data.Corp;
             var area = data.area;
             // 해당 영역의 취약점을 DB에서 read
-            func.SelectAreaVuln(corp, area).then(function (data){
+            func.SelectSectionVuln(PIN, corp, area).then(function (data){
                 socket.emit('Area_Vuln', data.area, data.vuln);
             });
         });

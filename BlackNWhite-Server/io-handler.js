@@ -422,7 +422,18 @@ module.exports = (io) => {
             console.log('check : ', roomJson);
             io.sockets.in(socket.room).emit('onGameStart',roomJson);
         });
-
+        
+        // 무력화 test
+        socket.on('TestNeutralization', function() {
+            console.log("[On] TestNeutralization");
+            console.log("[Emit] OnNeutralization");
+            // io.sockets.in(socket.room).emit('OnNeutralization');
+            var test = { 
+                test : test
+            };
+            var testJson = JSON.stringify(test);
+            socket.emit('OnNeutralization', testJson);
+        });
 
         ////////////////////////////////////////////////////////////////////////////////////
         // PlayerEnter

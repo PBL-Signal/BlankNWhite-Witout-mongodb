@@ -1,8 +1,9 @@
 const mongoose = require('mongoose');
 const Room = require("../schemas/room");
 const AttackList = require("../schemas/attackList");
-const Area = require("../schemas/area");
+const Section = require("../schemas/section");
 const express = require("express");
+const { find } = require('../schemas/room');
 //===== Mongo DB ====
 //MongoDB 연결
 mongoose.connect('mongodb://localhost:27017/blacknWhite'); // 포트번호 뒤에 nodejs는 사용할 DB 이름 (현재는 nodejs DB를 사용)
@@ -121,16 +122,16 @@ func.upgradeAttackLevel = function(data){     // data = { roomPin : roomPin, bef
     });
 }
 
-
-// Area 생성 함수 - 게임 시작 시 1번 실행
-func.InsertArea = function(){
-    console.log('InsertArea 함수 호출');
-
-    
+//  ## Section(Area) 생성 함수 - 게임 시작 시 1번 실행
+func.InsertSection =  function(data){
+    console.log('InsertSection 함수 호출');
+    console.log('[InsertSection] 파라미터 >> ', data);
     const CorpArray = ["회사A", "회사B", "회사C", "회사D", "회사E"];
     const AreaArray = ["Area_DMZ", "Area_Interal", "Area_Sec"];
 
+
     var areaData;
+    let k = 0;
     // i는 회사 수, j는 회사 별 영역 수
     for(var i=0; i<5; i++){
         for(var j=0; j<3; j++){
@@ -140,71 +141,90 @@ func.InsertArea = function(){
                 level : 0,
                 vuln : parseInt(Math.random() * 4)
             };
-            console.log(areaData);
-
-            var newArea = new Area(areaData);
-            newArea.save(function(error, data){
-                if(error){
-                    console.log(error);
-                }else{
-                    console.log('New Area Saved!');
-                }
-            });
+            //console.log(areaData);
+            data.sectionInfo[k] = areaData;
+            k++;
         }
     }
+
+    var newSection = new Section(data);
+    newSection.save(function(error, data){
+        if(error){
+            console.log(error);
+        }else{
+            console.log('New Section Saved!>> ');
+        }
+    });
 }
 
-// 전체 영역 정보 read
-func.SelectCrop = function(corp){
+// ## 전체 영역 정보 read
+func.SelectCrop = function(PIN, corp){
     return new Promise((resolve)=>{
-        Area.find({Corp: corp}, function(error, data){
+        Section.find({roomPin: PIN}, {_id:0, rommPin:0}, function(error, data){
+            if(error){
+                console.log(error);
+            }else{
+                var corpSpecific = data[0].sectionInfo.filter(function (object){
+                    return object.Corp == corp;
+                });
+
+                //console.log("[DB func] test : ", corpSpecific);
+                resolve(corpSpecific);
+            }
+
+        });
+
+    });    
+}
+
+// ## 필요한 영역 정보의 index 찾기?
+func.SelectSectionLevel = function(PIN, corp, area){
+    return new Promise((resolve)=>{
+        Section.find({roomPin: PIN}, function(error, data){
             if(error){
                 console.log(error);
           
             }else{
-                resolve(data);
+                //console.log("[Section - Click Sction] level : ", data);
+                var corpSpecificIndex = data[0].sectionInfo.findIndex(function (object){
+                    return object.Corp == corp && object.area == area;
+                });
+
+                let arr = new Array(data, corpSpecificIndex);
+                resolve(arr);
             }
         });
     });    
 }
 
-// 필요한 영역 정보 중 level만 read
-func.SelectAreaLevel = function(corp, area){
+// ## 필요한 영역 정보 중 vuln만 read
+func.SelectSectionVuln = function(PIN, corp, area){
     return new Promise((resolve)=>{
-        Area.findOne({Corp: corp, area: area}, {_id: 0, level: 1}, function(error, data){
+        Section.find({roomPin: PIN}, function(error, data){
             if(error){
                 console.log(error);
           
             }else{
-                resolve(data);
+                var corpSpecific = data[0].sectionInfo.filter(function (object){
+                    return object.Corp == corp && object.area == area;
+                });
+                //console.log("[SelectSectionVuln] vuln num : ", corpSpecific);
+                //console.log("[SelectSectionVuln] vuln num : ", corpSpecific[0].vuln);
+                resolve(corpSpecific[0]);
             }
         });
     });    
 }
 
-// 필요한 영역 정보 중 vuln만 read
-func.SelectAreaVuln = function(corp, area){
-    return new Promise((resolve)=>{
-        Area.findOne({Corp: corp, area: area}, {_id: 0, area: 1, vuln: 1}, function(error, data){
-            if(error){
-                console.log(error);
-          
-            }else{
-                resolve(data);
-            }
-        });
-    });    
-}
-
-// Area 정보 수정
-func.UpdateArea = function(corp, area, data){
-    console.log('[Area] UpdateArea 함수 호출');
-    Area.updateOne({Corp: corp, area: area}, {$set: data}, function(error, data){
+// ## Area 정보 수정
+func.UpdateSection = function(PIN, corp, area, oldData, newData){
+    console.log('[UpdateSection] UpdateSection 함수 호출');
+    Section.updateOne({roomPin: PIN, Corp: corp, area: area, sectionInfo: oldData}, {'sectionInfo.$': newData}, function(error, data){
         if(error){
             console.log(error);
       
         }else{
-            console.log('[Area] UpdateArea Success');
+            console.log('[UpdateSection] UpdateArea Success');
         }
     });
 }

@@ -9,13 +9,12 @@ module.exports = (io) => {
     var gameserver = io.of("blacknwhite");
  
     var rooms ={};  // 여러 방 정보를 저장하는 딕셔너리
-    var waitingQueue ={}; // 방 별로 관리되는 waiting queue
+    var userPlacement ={}; // # WaitingRoom TeamChange 및 UI 배치 관련 정보 저장
     let Players = [];
     let gamePlayer = {};
     let evenNumPlayer = false;
     let numPlayer = 1;
 
-    
     
     // func.SaveAttackList(dbTest);
     // func.InsertArea();
@@ -67,18 +66,9 @@ module.exports = (io) => {
             room['manager'] = socket.nickname;
             room['creationDate'] = nowDate();
             room['roomPin'] = randomN();
-
             
             console.log('수정 후 room INFO ', room);
             func.InsertRoom(room);
-
-            // rooms[room.roomPin] = { 
-            //     numUsers : 0,
-            //     users : {},  //{socket.id : value팀정보}
-            //     manager :  room.manager,
-            //     blackUsers : [], // [ {}, ... ,] - {}는  playerInfo = { team: evenNumPlayer, readyStatus: false, teamStatus: false, color: rand_Color};
-            //     whiteUsers : [] // 굳이 black/white 따로 구분한 이유는 unity에서 컴포넌트 연결 쉽고 빠르게 하기 위함
-            // }
 
             rooms[room.roomPin] = { 
                 numTotalUsers : 0,
@@ -88,35 +78,24 @@ module.exports = (io) => {
                 manager :  room.manager,
             }
 
-            // waitingQueue[room.roomPin] ={
-            //     toBlackUsers : [], // 사용자 고유 id(socket.id 저장) 
-            //     toWhiteUsers: []
-            // }
-
-            waitingQueue[room.roomPin] ={
-                toBlackUsers : [],  // 사용자 고유 id(socket.id 저장) 
+            userPlacement[room.roomPin] ={
+                blackPlacement : [4,3,2,1], // Unity 자리 위치 할당 관리 큐
+                whitePlacement : [4,3,2,1],
+                toBlackUsers : [], // teamChange 대기 큐(사용자 고유 id 저장)
                 toWhiteUsers:  []
             }
 
-            
-
             console.log("[createRoom] rooms 딕셔너리 : " , rooms);
+            console.log("[createRoom] userPlacement Info : " , userPlacement);
             console.log("succesCreateRoom room.roomPin.toString() : " , room.roomPin.toString());
 
-            // 추가 
             socket.room = room.roomPin;
             console.log("socket.room : ", socket.room);
 
             socket.emit('succesCreateRoom', {
                 roomPin: room.roomPin.toString()
             });
-            
-            // var room_data = { 
-            //     roomPin: room.roomPin.toString()
-            // };
-            // var roomJson = JSON.stringify(room_data);
-            //     console.log('check : ', roomJson);
-            //     socket.emit('succesCreateRoom',roomJson);
+        
         });
 
 
@@ -124,58 +103,97 @@ module.exports = (io) => {
         // [WaitingRoom] 
         let addedUser = false; // added 유저 경우 
 
+        // [WaitingRoom] UI player 대응 컴포넌트 idx 할당
+        function PlaceUser(team){
+            // ++rooms[socket.room].numTotalUsers; // 여기서 쓰면 안될 것 같음
+            
+            if(!team){ //false(0)면 black  
+                // ++rooms[socket.room].numBlackUsers  ;
+                console.log("userPlacement blackPlacement.length" , userPlacement[socket.room].blackPlacement);
+                return userPlacement[socket.room].blackPlacement.pop();
+            }else{
+                // ++rooms[socket.room].numWhiteUsers ;
+                console.log("userPlacement whitePlacement.length" , userPlacement[socket.room].whitePlacement);
+                return userPlacement[socket.room].whitePlacement.pop();
+            }
+        }
+
+        // [WaitingRoom] UI player 대응 컴포넌트 idx 제거
+        function DeplaceUser(prevTeam, idx){
+            console.log("DeplaceUser idx ! : " ,idx , "team : " , prevTeam);
+
+            if(!prevTeam){ // false(0) 면 black팀
+                // blackPlayerIdx.Enqueue(idx);
+                userPlacement[socket.room].blackPlacement.push(idx);
+                console.log("$$DeplaceUser blackPlacement.length" ,userPlacement[socket.room].blackPlacement);
+            }else{
+                // whitePlayerIdx.Enqueue(idx);
+                userPlacement[socket.room].whitePlacement.push(idx);
+                console.log("$$DeplaceUser whitePlacement.length" , userPlacement[socket.room].whitePlacement);
+            }
+        }
+
+        // [WaitingRoom] 팀 배정
+        function SetTeam(){
+            console.log("SetTeam room: " ,socket.room, rooms[socket.room].numBlackUsers, rooms[socket.room].numWhiteUsers);
+            
+            ++rooms[socket.room].numTotalUsers;
+            if (rooms[socket.room].numBlackUsers > rooms[socket.room].numWhiteUsers){
+                ++rooms[socket.room].numWhiteUsers ;
+                return true
+            }else{
+                ++rooms[socket.room].numBlackUsers  ;
+                return false
+            }
+            
+        }
+
+
         // [WaitingRoom] 사용자 첫 입장 시 'add user' emit 
         socket.on('add user', () => {
-            // console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', data.nickname, "data : ", data, 'room : ', data.room );
-            // console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', socket.nickname, "data : ", data, 'room : ', data.room );
+        
             console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', socket.nickname, 'room : ', socket.room );
 
             if (addedUser) return;
 
             var room = socket.room;
   
-            // 룸 정보 수정
-            // 새새 코드 
             // 1. users에 저장(닉네임 : 팀 정보)
             const rand_Color = Math.floor(Math.random() * 12);
        
-
             // 2. blackUsers/whiteUsers에 저장 (playerInfo 저장)
-            let playerInfo = { socket: socket.id, nickname: socket.nickname, team: evenNumPlayer, status: 0, color: rand_Color};
+            var team = SetTeam();
+            let playerInfo = { socket: socket.id, nickname: socket.nickname, team: team, status: 0, color: rand_Color, place : PlaceUser(team) };
             console.log("PlayersInfo : ", playerInfo);
 
             rooms[room].users[socket.id] = playerInfo;     // evenNumPlayer는 팀 정보
 
-            if (evenNumPlayer){
-                // 1(true)이면 white팀 팀 
-                ++rooms[room].numWhiteUsers ;
-            }else{
-                // 0(false) 이면 black 팀 
-                ++rooms[room].numBlackUsers  ;
-            }
-            ++rooms[room].numTotalUsers;
+            // if (team){
+            //     // 1(true)이면 white팀 팀 
+            //     ++rooms[room].numWhiteUsers ;
+            // }else{
+            //     // 0(false) 이면 black 팀 
+            //     ++rooms[room].numBlackUsers  ;
+            // }
+            // ++rooms[room].numTotalUsers;
 
             console.log("[add user *] rooms[room].users : ", rooms[room].users);
             console.log("[add user *] rooms[room].numBlackUsers : ", rooms[room].numBlackUsers);
             console.log("[add user *] rooms[room].numWhiteUsers : ", rooms[room].numWhiteUsers);
             // console.log("[add user *]  blackUsers: " + rooms[room].blackUsers + " whiteUsers : " + rooms[room].whiteUsers);
 
+            console.log("#### blackPlacement" , userPlacement[socket.room].blackPlacement);
+            console.log("#### whitePlacement" , userPlacement[socket.room].whitePlacement);
 
-           // 다음 플레이어 black과 white 팀 입장 구분을 위해 둠
-            if (evenNumPlayer == false){
-                evenNumPlayer = true;
-            } else {
-                evenNumPlayer = false;
-            }
 
-            
-            // JSON 형식으로 유니티에 데이터 보내기
 
-            // var PlayersJson = JSON.stringify(gamePlayer);
-            // console.log("jsonStringify : ", PlayersJson.toString());
-            // socket.emit('PlayersData', PlayersJson);
+        //    // 다음 플레이어 black과 white 팀 입장 구분을 위해 둠
+        //     if (evenNumPlayer == false){
+        //         evenNumPlayer = true;
+        //     } else {
+        //         evenNumPlayer = false;
+        //     }
 
-            // 원래 코드 
             socket.join(room);
             addedUser = true;
 
@@ -190,12 +208,10 @@ module.exports = (io) => {
             var room_data = { 
                 room : room,
                 users : rooms[room].users
-                // blackUsers : rooms[room].blackUsers,
-                // whiteUsers : rooms[room].whiteUsers,
             };
             var roomJson = JSON.stringify(room_data);
 
-            console.log('check : ', roomJson);
+            console.log('check roomJson : ', roomJson);
             io.sockets.in(room).emit('login',roomJson);
 
         //    io.sockets.in(room).emit('login', {
@@ -219,7 +235,7 @@ module.exports = (io) => {
         });
         
 
-        // 새 코드
+    
         // [WaitingRoom] status 변경 시 
         socket.on('changeReadyStatus',  (newStatus) =>{
             console.log('changeReadyStatus status : ', newStatus);
@@ -235,10 +251,11 @@ module.exports = (io) => {
             // 2. 수정한 내용 client들에게 뿌리기
             var playerJson = JSON.stringify(playerInfo);
 
-            console.log('check : ', playerJson);
+            console.log('check playerJson : ', playerJson);
             io.sockets.in(socket.room).emit('updateUI',playerJson);
 
         });
+
 
         // [WaitingRoom] profile 변경 시 
         socket.on('changeProfileColor',  (colorIndex) =>{
@@ -267,7 +284,6 @@ module.exports = (io) => {
         socket.on('changeTeamStatus',  (changeStatus) =>{
             console.log('!!!!changeTeamStatus changeStatus : ', changeStatus);
 
-            
              // 1. 사용자 정보 수정 
              var playerInfo = rooms[socket.room].users[socket.id]; 
              playerInfo.status = changeStatus;
@@ -278,14 +294,17 @@ module.exports = (io) => {
             
 
             var prevTeam = playerInfo.team; // 팀 바꾸기 전 현재 사용자 팀 정보
+            var prevPlace = playerInfo.place;
 
             // 2. status 상황에 따라 행동 다르게
-            if (changeStatus == 0){     // 0이면 teamChange Off
+            // 0이면 teamChange Off
+            if (changeStatus == 0){     
                 // 2-1. 수정한 내용 client들에게 뿌리기
                 var playerJson = JSON.stringify(playerInfo);
                 console.log('check : ', playerJson);
                 socket.broadcast.to(socket.room).emit('updateUI', playerJson);
             }
+            // 2이면 teamChange On
             else if(changeStatus == 2){
                 /*
                 경우 2가지 : 
@@ -298,71 +317,143 @@ module.exports = (io) => {
                 // 경우 1-1 : 현재 white 팀 -> black 가능한지 확인
                 console.log("@rooms[socket.room].numBlackUsers : ", rooms[socket.room].numBlackUsers);
                 console.log("@rooms[socket.room].numWhiteUsers : ", rooms[socket.room].numWhiteUsers);
-                if (prevTeam == true && rooms[socket.room].numBlackUsers <4)
+
+                if ((prevTeam == true && rooms[socket.room].numBlackUsers <4) || (prevTeam == false && rooms[socket.room].numWhiteUsers <4))
                 {
 
+        
+                    
                     // 1. room의 사용자 team 정보 바꾸기
                     // playerInfo.team = false;
-                    console.log("[case1-1] PlayersInfo : ", playerInfo);
-                    rooms[socket.room].users[socket.id].team = false;
+                    console.log("[case1] PlayersInfo : ", playerInfo);
+                    rooms[socket.room].users[socket.id].team = !prevTeam;
                     rooms[socket.room].users[socket.id].status = 0; 
-                    -- rooms[socket.room].numWhiteUsers ; 
-                    ++ rooms[socket.room].numBlackUsers ; 
+
+                    // UI 위치 할당
+                    DeplaceUser(prevTeam, prevPlace);
+                    rooms[socket.room].users[socket.id].place = PlaceUser(!prevTeam);
+                 
+                    if(prevTeam){ // white팀이면
+                        -- rooms[socket.room].numWhiteUsers ; 
+                        ++ rooms[socket.room].numBlackUsers ; 
+                    }else{
+                        // black팀이면
+                        ++ rooms[socket.room].numWhiteUsers ; 
+                        -- rooms[socket.room].numBlackUsers ; 
+                    }
+
+
+                    console.log("####!! blackPlacement" , userPlacement[socket.room].blackPlacement);
+                    console.log("####!! whitePlacement" , userPlacement[socket.room].whitePlacement);
 
                     // 2. 바뀐 정보 클라쪽에 보내기
-                    var teamChangeStatus = JSON.stringify(playerInfo);
-                    console.log('check : ', teamChangeStatus);
-                    io.sockets.in(socket.room).emit('updateTeamChange',teamChangeStatus);
+                    var changeInfo = { 
+                        type : 1,
+                        // player1 : playerInfo, // 이전 
+                        player1 : rooms[socket.room].users[socket.id]  // 수정 후
+                    };
+
+                    var teamChangeInfo = JSON.stringify(changeInfo);
+                    console.log('check : ', teamChangeInfo);
+                    io.sockets.in(socket.room).emit('updateTeamChange',teamChangeInfo);
+
+
+
+                    // // 1. room의 사용자 team 정보 바꾸기
+                    // // playerInfo.team = false;
+                    // console.log("[case1-1] PlayersInfo : ", playerInfo);
+                    // rooms[socket.room].users[socket.id].team = false;
+                    // rooms[socket.room].users[socket.id].status = 0; 
+
+                    // // UI 위치 할당
+                    // DeplaceUser(prevTeam, prevPlace);
+                    // rooms[socket.room].users[socket.id].place = PlaceUser(false);
+                    // -- rooms[socket.room].numWhiteUsers ; 
+                    // ++ rooms[socket.room].numBlackUsers ; 
+
+                    // // 2. 바뀐 정보 클라쪽에 보내기
+                    // var teamChangeStatus = JSON.stringify(playerInfo);
+                    // console.log('check : ', teamChangeStatus);
+                    // io.sockets.in(socket.room).emit('updateTeamChange',teamChangeStatus);
                 }
 
-                // 경우 1-2 : 현재 black 팀 -> white 가능한지 확인
-                if (prevTeam == false && rooms[socket.room].numWhiteUsers <4)
-                {
+                // // 경우 1-2 : 현재 black 팀 -> white 가능한지 확인
+                // if (prevTeam == false && rooms[socket.room].numWhiteUsers <4)
+                // {
 
-                    // 1. room의 사용자 team 정보 바꾸기
-                    // playerInfo.team = true;
-                    console.log("[case1-2] PlayersInfo : ", playerInfo);
-                    rooms[socket.room].users[socket.id].team = true;
-                    rooms[socket.room].users[socket.id].status = 0;
-                    ++ rooms[socket.room].numWhiteUsers ; 
-                    -- rooms[socket.room].numBlackUsers ; 
+                //     // 1. room의 사용자 team 정보 바꾸기
+                //     // playerInfo.team = true;
+                //     console.log("[case1-2] PlayersInfo : ", playerInfo);
+                //     rooms[socket.room].users[socket.id].team = true;
+                //     rooms[socket.room].users[socket.id].status = 0;
 
-                    // 2. 바뀐 정보 클라쪽에 보내기
-                    var teamChangeStatus = JSON.stringify(playerInfo);
-                    console.log('check : ', teamChangeStatus);
-                    io.sockets.in(socket.room).emit('updateTeamChange',teamChangeStatus);
-                }
+                //     // UI 위치 할당
+                //     DeplaceUser(prevTeam, prevPlace);
+                //     rooms[socket.room].users[socket.id].place = PlaceUser(true);
+                //     ++ rooms[socket.room].numWhiteUsers ; 
+                //     -- rooms[socket.room].numBlackUsers ; 
+
+                //     // 2. 바뀐 정보 클라쪽에 보내기
+                //     var teamChangeStatus = JSON.stringify(playerInfo);
+                //     console.log('check : ', teamChangeStatus);
+                //     io.sockets.in(socket.room).emit('updateTeamChange',teamChangeStatus);
+                // }
 
 
                 // 경우 2 : full 상태라 1:1로 팀 change를 해야되는 상황 
                 // 과정 1 : 대기열 큐에 ADD
-                if (rooms[socket.room].numWhiteUsers >= 4 && rooms[socket.room].numBlackUsers >= 4) // 꽉 찬 상황이면 queue에 저장 (조정 : if문 걍 없애도 될듯)
+                else if (rooms[socket.room].numWhiteUsers >= 4 || rooms[socket.room].numBlackUsers >= 4) // 꽉 찬 상황이면 queue에 저장 (조정 : if문 걍 없애도 될듯)
                 {
 
                      // 1. 대기열에 저장 
                     if (prevTeam == false){ // 현재 black이니까 white 팀으로 변경하고자 함
-                        waitingQueue[socket.room].toWhiteUsers.push(socket.id);
+                        userPlacement[socket.room].toWhiteUsers.push(socket.id);
                     }
                     else{ // 현재 white이니까 black 팀으로 변경하고자 함
-                        waitingQueue[socket.room].toBlackUsers.push(socket.id);
+                        userPlacement[socket.room].toBlackUsers.push(socket.id);
                     }
 
-                     // 2. 매칭 하기
-                    if (waitingQueue[socket.room].toBlackUsers.length > 0 && waitingQueue[socket.room].toWhiteUsers.length > 0 ){
-                        var matchPlayer1Id = waitingQueue[socket.room].toBlackUsers.shift();
-                        var matchPlayer2Id = waitingQueue[socket.room].toWhiteUsers.shift();
-                        // var matchPlayerId = waitingQueue[room.roomPin].toWhiteUsers.Dequeue();
+                    // 2. 매칭 하기
+                    if (userPlacement[socket.room].toBlackUsers.length > 0 && userPlacement[socket.room].toWhiteUsers.length > 0 ){
+                        var matchPlayer1Id = userPlacement[socket.room].toBlackUsers.shift();
+                        var matchPlayer2Id = userPlacement[socket.room].toWhiteUsers.shift();
+                        // var matchPlayerId = userPlacement[room.roomPin].toWhiteUsers.Dequeue();
+
+                        var matchPlayer1 = rooms[socket.room].users[matchPlayer1Id];
+                        var matchPlayer2 = rooms[socket.room].users[matchPlayer2Id];
+
 
                         // 3. 변수 바꾸기 (numWhite, toBlackUsers, playerInfo)
-                        console.log('변경전 rooms[socket.room].users[matchPlayer1Id] : ', rooms[socket.room].users[matchPlayer1Id].team);
-                        console.log('변경전 rooms[socket.room].users[matchPlayer2Id] : ', rooms[socket.room].users[matchPlayer2Id].team);
-                        rooms[socket.room].users[matchPlayer1Id].filter((user) => user.team = !user.team );
-                        rooms[socket.room].users[matchPlayer2Id].filter((user) => user.team = !user.team );
+                        console.log('변경전 rooms[socket.room].users[matchPlayer1Id] : ', matchPlayer1);
+                        console.log('변경전 rooms[socket.room].users[matchPlayer2Id] : ', matchPlayer2);
                     
+                        // 2) place & team 변경
+                        DeplaceUser(matchPlayer1.team, matchPlayer1.place);
+                        DeplaceUser(matchPlayer2.team, matchPlayer2.place);
+
+                        matchPlayer1.team = !matchPlayer1.team
+                        matchPlayer2.team = !matchPlayer2.team
+
+                        matchPlayer1.place = PlaceUser(matchPlayer1.team);
+                        matchPlayer2.place = PlaceUser(matchPlayer2.team);
+
+                        // 3) 변경사항 저장
+                        rooms[socket.room].users[matchPlayer1Id] = matchPlayer1;
+                        rooms[socket.room].users[matchPlayer2Id] = matchPlayer2;
+
+                        console.log('변경후 rooms[socket.room].users[matchPlayer1Id] : ', rooms[socket.room].users[matchPlayer1Id]);
+                        console.log('변경후 rooms[socket.room].users[matchPlayer2Id] : ', rooms[socket.room].users[matchPlayer2Id]);
 
 
-                        console.log('변경후 rooms[socket.room].users[matchPlayer1Id] : ', rooms[socket.room].users[matchPlayer1Id].team);
-                        console.log('변경후 rooms[socket.room].users[matchPlayer2Id] : ', rooms[socket.room].users[matchPlayer2Id].team);
+                        var changeInfo = { 
+                            type : 2,
+                            player1 : rooms[socket.room].users[matchPlayer1Id], // player1
+                            player2 : rooms[socket.room].users[matchPlayer2Id]   // player2
+                        };
+
+                        var teamChangeInfo = JSON.stringify(changeInfo);
+                        console.log('check : ', teamChangeInfo);
+                        io.sockets.in(socket.room).emit('updateTeamChange',teamChangeInfo);
                     }
                 }
             }
@@ -674,5 +765,7 @@ module.exports = (io) => {
         var now_date = dateString + " " + timeString;
         return now_date;
     };
+
+    
 }
 

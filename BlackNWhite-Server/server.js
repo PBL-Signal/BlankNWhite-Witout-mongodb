@@ -14,6 +14,22 @@ const options = {
 };
 const io = socketio(server, options);
 
+
+const redis = require('redis')
+
+const redisInfo = {
+   host : '127.0.0.1',
+   port : 6379,
+   db : 0, // Redis에서 사용하는 DB 번호
+}
+
+const client = redis.createClient(redisInfo);
+client.connect();
+
+// Redis test 
+client.set("key", "value", redis.print);
+client.get("key", redis.print);
+
 require('./io-handler')(io);
 
 app.use(cors());

@@ -2,7 +2,11 @@
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
-const CompanySchema = require("./roomTotal/Company").schema;
+const CompanySchema = require("./Company").schema;
+
+const WhiteTeam = require("./WhiteTeam").schema;
+const BlackTeam = require("./BlackTeam").schema;
+
 
 const RoomTotalSchema = new Schema({
     server_start  : { type : Date, required : true },

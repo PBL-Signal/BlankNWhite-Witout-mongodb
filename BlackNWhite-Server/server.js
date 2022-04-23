@@ -42,3 +42,83 @@ server.listen(process.argv[2]);
 console.log(process.argv[2] +' Server Started!! ');
 
 
+/// test 
+// const { RoomTotalSchema, BlackTeam, WhiteTeam, BlackUsers, UserCompanyStatus, WhiteUsers, Section, Progress} = require("./schemas/roomTotal");
+const { section }= require("./schemas/section");
+
+
+const RoomTotalSchema = require("./schemas/roomTotal/RoomTotalSchema");
+const BlackTeam = require("./schemas/roomTotal/BlackTeam");
+const WhiteTeam = require("./schemas/roomTotal/WhiteTeam");
+const BlackUsers = require("./schemas/roomTotal/BlackUsers");
+const UserCompanyStatus = require("./schemas/roomTotal/UserCompanyStatus");
+const WhiteUsers = require("./schemas/roomTotal/WhiteUsers");
+const Company = require("./schemas/roomTotal/Company");
+const Section = require("./schemas/roomTotal/Section");
+const Progress = require("./schemas/roomTotal/Progress");
+
+
+var userCompanyStatus = new UserCompanyStatus({
+    warnCnt    : 0,
+    detectCnt : 2
+})
+
+
+var blackUsers = new BlackUsers({
+    userId   :"abc123",
+    IsBlocked   : false,
+    currentLocation : 3,
+    companyA    : userCompanyStatus,
+    companyB    : userCompanyStatus,
+    companyC    : userCompanyStatus,
+    companyD    : userCompanyStatus,
+    companyE    : userCompanyStatus,
+})
+
+var whiteUsers = new WhiteUsers({
+    userId   :"abc123",
+    IsBlocked   : true,
+    currentLocation : 1,
+})
+
+var progress = new Progress({
+    progress  :[5,4,1,2,3],
+    last  : 1,
+})
+
+var companyA = new Company({
+    abandonStatus : false,
+    penetrationTestingLV : [1,2,3,4],
+    attackLV : [1,2,3,4],
+    sections : [
+        new Section({
+        destroyStatus  : true ,
+        level  : 5,
+        attack : progress,
+        response : progress,
+        })
+    ]
+})
+
+
+var testRoomTotalJson  = {
+    server_start  : new Date(),
+    server_end  :  new Date(),
+    blackTeam  : new BlackTeam({ 
+        total_pita : 10,
+        users : blackUsers
+    }),
+    whiteTeam  : new WhiteTeam({ 
+        total_pita : 10,
+        users : whiteUsers
+    }),
+    companyA    : companyA,
+    companyB    : companyA,
+    companyC    : companyA,
+    companyD    : companyA,
+    companyE    : companyA,
+}
+
+const func = require('./server_functions/db_func');
+var testRoomTotal = new RoomTotalSchema(testRoomTotalJson);
+func.InsertRoomTotal(testRoomTotal);

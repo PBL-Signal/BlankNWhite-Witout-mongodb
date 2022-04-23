@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Room = require("../schemas/room");
 const AttackList = require("../schemas/attackList");
 const Section = require("../schemas/section");
+
 const express = require("express");
 const { find } = require('../schemas/room');
 //===== Mongo DB ====
@@ -20,6 +21,22 @@ db.once('open', function() {
 
 //==============================================================================
 func = express();
+
+// 테스트를 위한 하드코딩
+const RoomTotalSchema = require("../schemas/roomTotal/RoomTotalSchema");
+func.InsertRoomTotal = function(roomData){
+    console.log('InsertRoomTotal 함수 호출');
+
+    var newRoom = new RoomTotalSchema(roomData);
+    newRoom.save(function(error, data){
+        if(error){
+            console.log(error);
+        }else{
+            console.log('New Room Total Saved!');
+        }
+    });
+}
+
 
 // 방 생성 함수 
 func.InsertRoom = function(roomData){

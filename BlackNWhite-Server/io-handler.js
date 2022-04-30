@@ -4,6 +4,14 @@ const func = require('./server_functions/db_func');
 const { Socket } = require('dgram');
 const { stringify } = require('querystring');
 
+const Redis = require("ioredis"); 
+const redisClient = new Redis();
+const { RedisSessionStore } = require("./sessionStore");
+const sessionStore = new RedisSessionStore(redisClient);
+
+const crypto = require("crypto");
+const randomId = () => crypto.randomBytes(8).toString("hex");
+
 module.exports = (io) => {
     
     var gameserver = io.of("blacknwhite");
@@ -28,6 +36,13 @@ module.exports = (io) => {
         socket.on('join', (data) => {
             console.log('[join] data.nickname  : ', data.nickname);
             socket.nickname = data.nickname;
+
+            sessionStore.saveSession("socket.sessionID", {
+                userID: "random123",
+                username: "socket.username",
+                connected: true
+            });
+
         });
 
 

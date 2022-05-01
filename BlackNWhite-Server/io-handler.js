@@ -42,7 +42,7 @@ module.exports = (io) => {
                 username: "socket.username",
                 connected: true
             });
-
+              
         });
 
 

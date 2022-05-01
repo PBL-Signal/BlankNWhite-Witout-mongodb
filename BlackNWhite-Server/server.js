@@ -21,10 +21,10 @@ const server = http.createServer(app);
 const io = socketio(server,{
     cors: {
         // origin: 'http://localhost:7000',
-        origin: ['http://localhost:5000/blacknwhite/'],
+        origin: ['http://localhost:8080/blacknwhite/'],
         // methods: ["GET", "POST"]
     },
-    // transport: ["websocket"]
+    transport: ["websocket"]
 });
 
 io.adapter(socketredis({host: 'localhost', port: 6379}));
@@ -38,6 +38,9 @@ const { RedisSessionStore } = require("./sessionStore");
 const sessionStore = new RedisSessionStore(redisClient);
 
 // const SESSION_TTL = 24 * 60 * 60;
+// redisClient.set(
+//   "test",
+//   "userID");
 
 // redisClient.multi().hset(
 //   "session:23456",

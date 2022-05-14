@@ -2,6 +2,7 @@ const express = require("express");
 const http = require("http");
 const cors = require("cors");
 const bodyPaser = require('body-parser');
+const REDIS_PORT = 6380;
 
 const mongoose = require('mongoose');
 const socketio = require("socket.io");
@@ -10,7 +11,7 @@ const socketredis = require("socket.io-redis");
 
 
 const app = express();
-const redisClient = new Redis();
+const redisClient = new Redis(REDIS_PORT);
 const server = http.createServer(app);
 // const options = {
 //     cors: true,
@@ -27,7 +28,7 @@ const io = socketio(server,{
     transport: ["websocket"]
 });
 
-io.adapter(socketredis({host: 'localhost', port: 6379}));
+io.adapter(socketredis({host: 'localhost', port: 6380}));
 
 
 const { setupWorker } = require("@socket.io/sticky");
@@ -38,9 +39,9 @@ const { RedisSessionStore } = require("./sessionStore");
 const sessionStore = new RedisSessionStore(redisClient);
 
 // const SESSION_TTL = 24 * 60 * 60;
-// redisClient.set(
-//   "test",
-//   "userID");
+redisClient.set(
+  "test",
+  "userID");
 
 // redisClient.multi().hset(
 //   "session:23456",

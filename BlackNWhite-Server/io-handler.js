@@ -761,6 +761,22 @@ module.exports = (io) => {
                 socket.emit('Area_Vuln', data.area, data.vuln);
             });
         });
+
+        // Section Destroy TEST
+        socket.on('Get_Section_Destroy_State', () => {
+            testData = { "sections": [{"destroyStatus": true, "level": 5}, {"destroyStatus": false, "level": 3}, {"destroyStatus": false, "level": 1}]}
+            //testData = JSON.parse(testData);
+            console.log('Get_Section_Destroy_State CALLED  : ', testData);
+            socket.emit('Section_Destroy_State', JSON.stringify(testData));
+        });
+
+        // Section Attacked Name TEST
+        socket.on('Get_Section_Attacked_Name', () => {
+            testData = { "sections": [{"attack": {"progress": [5,4,1,2,3], "last": 12}}, {"attack": {"progress": [5,4,1,2,3], "last": 10}}, {"attack": {"progress": [5,4,1,2,3], "last": -1}}]}
+            //testData = JSON.parse(testData);
+            console.log('Get_Section_Attacked_Name CALLED  : ', testData);
+            socket.emit('Section_Attacked_Name', JSON.stringify(testData));
+        });
 // ===================================================================================================================
         
         socket.on('disconnect', function() {

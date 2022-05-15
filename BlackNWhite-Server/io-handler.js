@@ -681,6 +681,28 @@ module.exports = (io) => {
         });
 
 
+        // 회사 몰락 여부 확인 (현제 test로 하드코딩 하여 추후 json에서 가져와 수정해야 함)
+        socket.on('On Main Map', function() {
+            // let comapny_abandonStatus = {companyA: true, companyB: false, companyC: false, companyD: false, companyE: false};
+            let comapny_abandonStatus = [true, false, false, false, false];
+            // var companyStatusJson = JSON.stringify(comapny_abandonStatus);
+            console.log("jsonStringify : ", comapny_abandonStatus.toString());
+            socket.emit('Company Status', comapny_abandonStatus);
+
+
+        })
+        
+        // 회사 차단 인원 확인 (현제 test로 하드코딩 하여 추후 json에서 가져와 수정해야 함)
+        socket.on('On Monitoring', function() {
+            // let comapny_abandonStatus = {companyA: true, companyB: false, companyC: false, companyD: false, companyE: false};
+            let company_blockedNum = 2;
+            // var companyStatusJson = JSON.stringify(comapny_abandonStatus);
+            socket.emit('Blocked Num', company_blockedNum);
+
+
+        })
+
+
 // ===================================================================================================================
         // ## [Section] 영역 클릭 시 
         socket.on('Section_Name', (data) => {

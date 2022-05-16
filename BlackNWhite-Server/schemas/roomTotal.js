@@ -5,6 +5,7 @@ const { Schema } = mongoose;
 const CompanySchema = require("./roomTotal/Company").schema;
 
 const RoomTotalSchema = new Schema({
+    room_key :  { type : String, required : true },
     server_start  : { type : Date, required : true },
     server_end  : { type : Date, required : true },
     blackTeam  : { type : BlackTeam, required : true },

@@ -16,6 +16,7 @@
     }
   
     saveSession(id, session) {
+        console.log("saveSession 함수 호출");
         this.sessions.set(id, session);
     }
   
@@ -44,22 +45,34 @@
         .then(mapSession);
     }
   
-    saveSession(id, { userID, username, connected }) {
-        console.log("saveSession : "+ id,userID, username, connected); 
+    async saveSession(id, { userID, username, connected }) {
+        console.log("saveSession OUT : "+ id, userID, username, connected); 
      
-      this.redisClient
-        .multi()
-        .hset(
-          `session:${id}`,
-          "userID",
-          userID,
-          "username",
-          username,
-          "connected",
-          connected
-        )
-        .expire(`session:${id}`, SESSION_TTL)
-        .exec();
+        // this.redisClient.set("key1","value2");
+        try{
+            console.log("saveSession IN : "+ id,userID, username, connected); 
+          
+            this.redisClient
+              .multi()
+              .hset(
+                `session:${id}`,
+                "userID",
+                userID,
+                "username",
+                username,
+                "connected",
+                connected
+              )
+              .expire(`session:${id}`, SESSION_TTL)
+              .exec().catch( 
+                function (error) {
+                console.log('catch handler', error);
+                });
+      
+        }catch(error){
+          console.log("error");
+        }
+    
     }
 
     async deleteSession(id) {

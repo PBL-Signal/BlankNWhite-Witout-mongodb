@@ -3,6 +3,7 @@ const Room = require("../schemas/room");
 const AttackList = require("../schemas/attackList");
 const Section = require("../schemas/section");
 
+
 const express = require("express");
 const { find } = require('../schemas/room');
 //===== Mongo DB ====
@@ -24,7 +25,7 @@ func = express();
 
 // 테스트를 위한 하드코딩
 const RoomTotalSchema = require("../schemas/roomTotal/RoomTotalSchema");
-func.InsertRoomTotal = function(roomData){
+func.InsertGameJson = function(roomData){
     console.log('InsertRoomTotal 함수 호출');
 
     var newRoom = new RoomTotalSchema(roomData);
@@ -51,6 +52,7 @@ func.InsertRoom = function(roomData){
         }
     });
 }
+
 
 // 유효한 방인지 확인하는  함수 
 func.IsValidRoom = function(roomPin){
@@ -92,6 +94,10 @@ func.loadRoom= function(roomPin){
         });
     });
 }
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////
 
 // attack List db 저장
 func.SaveAttackList = function(data){

@@ -4,13 +4,30 @@ const func = require('./server_functions/db_func');
 const { Socket } = require('dgram');
 const { stringify } = require('querystring');
 
+const REDIS_PORT = 6380;
 const Redis = require("ioredis"); 
-const redisClient = new Redis();
+const redisClient = new Redis(REDIS_PORT);
 const { RedisSessionStore } = require("./sessionStore");
 const sessionStore = new RedisSessionStore(redisClient);
 
+
+const { RedisJsonStore } = require("./redisJsonStore");
+const jsonStore = new RedisJsonStore(redisClient);
+
+
 const crypto = require("crypto");
 const randomId = () => crypto.randomBytes(8).toString("hex");
+
+const RoomTotalSchema = require("./schemas/roomTotal/RoomTotalSchema");
+const BlackTeam = require("./schemas/roomTotal/BlackTeam");
+const WhiteTeam = require("./schemas/roomTotal/WhiteTeam");
+const BlackUsers = require("./schemas/roomTotal/BlackUsers");
+const UserCompanyStatus = require("./schemas/roomTotal/UserCompanyStatus");
+const WhiteUsers = require("./schemas/roomTotal/WhiteUsers");
+const Company = require("./schemas/roomTotal/Company");
+const Section = require("./schemas/roomTotal/Section");
+const Progress = require("./schemas/roomTotal/Progress");
+
 
 module.exports = (io) => {
     
@@ -27,21 +44,119 @@ module.exports = (io) => {
     // func.SaveAttackList(dbTest);
     // func.InsertArea();
     
+    io.use(async (socket, next) => {
+        console.log("io.use");
 
-    io.on('connection', (socket) => {
+        const sessionID = socket.handshake.auth.sessionID 
+        // 가장 먼저 CONNECTION들어가기 전에 SESSIONID 있는;지 확인
+        //finding existing session
+        const session = await sessionStore.findSession(sessionID);
+
+        if(sessionID){
+            socket.sessionID = sessionID;
+            socket.userID = session.userID;
+            socket.nickname = session.username;
+            console.log("io.use 세션 있음", session.userID, sessionID);
+            return next();
+        }
+        // 처음 연결되는 경우 즉, SESSIONID 없으면 
+        const username = socket.handshake.auth.username;
+
+        if (!username) {
+            return next(new Error("invalid username")); // 새로운 세션 계속 안생기게 해주는 것
+            // USERNAME 입력시에만 세션이 만들어짐 
+        }
+        console.log("io.use 세션 새로 생성", username);
+        //create new session
+        socket.sessionID = randomId();
+        socket.userID = randomId();
+        socket.nickname = username;
+
+
+        // console.log("session 설정 확인 - sessionID", socket.sessionID);
+        // console.log("session 설정 확인 - userID", socket.userID);
+        // console.log("session 설정 확인 - username", socket.username);
+        next();
+    });
+
+
+    io.on('connection', async(socket) => {
         console.log("io-handler.js socket connect!!");
         console.log("socketid : "+ socket.id); 
      
+        // console.log("sessionID : "+ socket.sessionID); 
+        // console.log("userID : "+ socket.userID); 
+ 
+        console.log("session 설정 확인 - sessionID", socket.sessionID);
+        console.log("session 설정 확인 - userID", socket.userID);
+        console.log("session 설정 확인 - username", socket.nickname);
+
+        // try{
+        //     await sessionStore.saveSession(socket.sessionID, {
+        //         userID: socket.userID,
+        //         username: socket.username,
+        //         connected: true,
+        //     });
+        // }catch(error){
+        //     console.log("ERROR! ", error);
+        // }
+        try{
+            await sessionStore.saveSession(socket.sessionID, {
+                userID: socket.userID,
+                username: socket.nickname,
+                connected: true,
+            }).catch( 
+            function (error) {
+            console.log('catch handler', error);
+            });
+
+        }catch(error){
+            console.log("ERROR! ", error);
+        }
+
+        console.log("connect: saveSession");
+
+
+
+
+
+        // var session = { 
+        //     sessionID: socket.sessionID,
+        //     userID: socket.userID,
+        //     username: socket.username,
+        // };
+
+        // var sessionJSON= JSON.stringify(session);
+        // socket.emit("session", sessionJSON);
+
+
+
+
+
+         // [StartMain] 
+         socket.on('check session', () => {
+            var session = { 
+                sessionID: socket.sessionID,
+                userID: socket.userID,
+                username: socket.nickname,
+            };
+    
+            var sessionJSON= JSON.stringify(session);
+            socket.emit("session", sessionJSON);
+        });
+
+
+
         // [StartMain] 닉네임 입력 시 
         socket.on('join', (data) => {
             console.log('[join] data.nickname  : ', data.nickname);
             socket.nickname = data.nickname;
 
-            sessionStore.saveSession("socket.sessionID", {
-                userID: "random123",
-                username: "socket.username",
-                connected: true
-            });
+            // sessionStore.saveSession("socket.sessionID", {
+            //     userID: "random123",
+            //     username: "socket.username",
+            //     connected: true
+            // });
               
         });
 
@@ -106,6 +221,7 @@ module.exports = (io) => {
 
             socket.room = room.roomPin;
             console.log("socket.room : ", socket.room);
+
 
             socket.emit('succesCreateRoom', {
                 roomPin: room.roomPin.toString()
@@ -476,7 +592,8 @@ module.exports = (io) => {
         });  
 
         // 게임 시작시 해당 룸의 사용자 정보 넘김
-        socket.on('Game Start',  () =>{
+        socket.on('Game Start',  async() =>{
+
             let dbTest = {
                 roomPin : socket.room,
                 team : true,
@@ -533,6 +650,19 @@ module.exports = (io) => {
             var roomJson = JSON.stringify(room_data);
 
             console.log('check : ', roomJson);
+
+
+            // 게임 관련 Json 생성 (new)
+            var blackUsersID = ['black1ID', 'black2ID', 'black3ID', 'black4ID'];
+            var whiteUsersID = ['white1ID', 'white2ID', 'white3ID', 'white4ID'];
+            var roomTotalJson = InitGame(socket.room, blackUsersID, whiteUsersID);
+            //func.InsertRoomTotal( new RoomTotalSchema(roomTotalJson));
+
+            // redis에 저징
+            jsonStore.storejson(roomTotalJson, socket.room);
+            const roomjson_Redis = await jsonStore.getjson(socket.room);
+            console.log("!@#!@#!@", JSON.parse(roomjson_Redis));
+
             io.sockets.in(socket.room).emit('onGameStart',roomJson);
         });
         
@@ -781,6 +911,103 @@ module.exports = (io) => {
         return now_date;
     };
 
+
+    function InitGame(room_key, blackUsersID, whiteUsersID){
+
+        /*
+            var blackUsers = [ user1ID, user2ID, user3ID ];
+        */
+
+        // RoomTotalJson 생성 및 return 
+        var userCompanyStatus = new UserCompanyStatus({
+            warnCnt    : 0,
+            detectCnt : 0
+        });
+
+
+        var blackUsers = {};
+        var whiteUsers = {};
+
+        for (const user of blackUsersID){
+            blackUsers[user] = new BlackUsers({
+                userId   : user,
+                IsBlocked   : false,
+                currentLocation : 0,
+                companyA    : userCompanyStatus,
+                companyB    : userCompanyStatus,
+                companyC    : userCompanyStatus,
+                companyD    : userCompanyStatus,
+                companyE    : userCompanyStatus,
+            });
+        }
+
+        for (const user of whiteUsersID){
+            whiteUsers[user] =  new WhiteUsers({
+                userId   :"abc123",
+                IsBlocked   : false,
+                currentLocation : 0,
+            })
+        }
+
+    
+        var progress = new Progress({
+            progress  : [],
+            last  : -1
+        })
+
+        var initCompany = new Company({
+            abandonStatus : false,
+            penetrationTestingLV : [1,1,1,1,1,1,1,1,1,1,1,1,1],
+            attackLV : [0,0,0,0,0,0,0,0,0,0,0,0,0],
+            sections : [
+                new Section({
+                destroyStatus  : false ,
+                level  : 0,
+                attack : progress,
+                response : progress,
+                }),
+
+                new Section({
+                    destroyStatus  : false ,
+                    level  : 0,
+                    attack : progress,
+                    response : progress,
+                }),
+
+                new Section({
+                    destroyStatus  : false ,
+                    level  : 0,
+                    attack : progress,
+                    response : progress,
+                }),
+            ]
+        });
+
+
+        var RoomTotalJson  = {
+            roomPin : room_key,
+            server_start  : new Date(),
+            server_end  :  new Date(),
+            blackTeam  : new BlackTeam({ 
+                total_pita : 500,
+                users : blackUsers
+            }),
+            whiteTeam  : new WhiteTeam({ 
+                total_pita : 500,
+                users : whiteUsers
+            }),
+            companyA    : initCompany,
+            companyB    : initCompany,
+            companyC    : initCompany,
+            companyD    : initCompany,
+            companyE    : initCompany,
+        };
+        // console.log("whiteUsers ", whiteUsers);
+        // console.log("blackUsers ", blackUsers);
+        // console.log("companyA ", initCompany);
+        // console.log("ROOMJSON RoomTotalJson", RoomTotalJson);
+        return RoomTotalJson
+    }
     
 }
 

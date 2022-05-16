@@ -34,7 +34,36 @@ func.InsertGameJson = function(roomData){
             console.log(error);
         }else{
             console.log('New Room Total Saved!');
+
+            // return new Promise((resolve)=>{
+            //     RoomTotalSchema.find({roomPin: roomData.roomPin}, function(error, roomTotalInfo){
+            //         console.log('--- Read Room Total Info ---');
+            //         if(error){
+            //             console.log(error);
+            //         }else{
+            //             console.log("roomTotalInfo load result : ", roomTotalInfo);
+            //             resolve(roomTotalInfo);
+            //         }
+            //     });
+            // });
         }
+    });
+}
+
+// attack List 상태 불러오기
+func.loadRoomTotalInfo = function(roomPin){
+    console.log('[db_func] loadRoomTotalInfo 함수 호출, settings : ', roomPin);
+ 
+    return new Promise((resolve)=>{
+        RoomTotalSchema.find({roomPin: roomPin}, function(error, roomTotalInfo){
+            console.log('--- Read Room Total Info ---');
+            if(error){
+                console.log(error);
+            }else{
+                console.log("roomTotalInfo load result : ", roomTotalInfo);
+                resolve(roomTotalInfo);
+            }
+        });
     });
 }
 

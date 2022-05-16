@@ -28,7 +28,6 @@ const Company = require("./schemas/roomTotal/Company");
 const Section = require("./schemas/roomTotal/Section");
 const Progress = require("./schemas/roomTotal/Progress");
 
-
 module.exports = (io) => {
     
     var gameserver = io.of("blacknwhite");
@@ -649,8 +648,7 @@ module.exports = (io) => {
             };
             var roomJson = JSON.stringify(room_data);
 
-            console.log('check : ', roomJson);
-
+            // console.log('check : ', roomJson);
 
             // 게임 관련 Json 생성 (new)
             var blackUsersID = ['black1ID', 'black2ID', 'black3ID', 'black4ID'];
@@ -811,6 +809,28 @@ module.exports = (io) => {
         });
 
 
+        // 회사 몰락 여부 확인 (현제 test로 하드코딩 하여 추후 json에서 가져와 수정해야 함)
+        socket.on('On Main Map', function() {
+            // let comapny_abandonStatus = {companyA: true, companyB: false, companyC: false, companyD: false, companyE: false};
+            let comapny_abandonStatus = [true, false, false, false, false];
+            // var companyStatusJson = JSON.stringify(comapny_abandonStatus);
+            console.log("jsonStringify : ", comapny_abandonStatus.toString());
+            socket.emit('Company Status', comapny_abandonStatus);
+
+
+        })
+        
+        // 회사 차단 인원 확인 (현제 test로 하드코딩 하여 추후 json에서 가져와 수정해야 함)
+        socket.on('On Monitoring', function() {
+            // let comapny_abandonStatus = {companyA: true, companyB: false, companyC: false, companyD: false, companyE: false};
+            let company_blockedNum = 2;
+            // var companyStatusJson = JSON.stringify(comapny_abandonStatus);
+            socket.emit('Blocked Num', company_blockedNum);
+
+
+        })
+
+
 // ===================================================================================================================
         // ## [Section] 영역 클릭 시 
         socket.on('Section_Name', (data) => {
@@ -869,6 +889,22 @@ module.exports = (io) => {
                 socket.emit('Area_Vuln', data.area, data.vuln);
             });
         });
+
+        // Section Destroy TEST
+        socket.on('Get_Section_Destroy_State', () => {
+            testData = { "sections": [{"destroyStatus": true, "level": 5}, {"destroyStatus": false, "level": 3}, {"destroyStatus": false, "level": 1}]}
+            //testData = JSON.parse(testData);
+            console.log('Get_Section_Destroy_State CALLED  : ', testData);
+            socket.emit('Section_Destroy_State', JSON.stringify(testData));
+        });
+
+        // Section Attacked Name TEST
+        socket.on('Get_Section_Attacked_Name', () => {
+            testData = { "sections": [{"attack": {"progress": [5,4,1,2,3], "last": 12}}, {"attack": {"progress": [5,4,1,2,3], "last": 10}}, {"attack": {"progress": [5,4,1,2,3], "last": -1}}]}
+            //testData = JSON.parse(testData);
+            console.log('Get_Section_Attacked_Name CALLED  : ', testData);
+            socket.emit('Section_Attacked_Name', JSON.stringify(testData));
+        });
 // ===================================================================================================================
         
         socket.on('disconnect', function() {
@@ -910,7 +946,6 @@ module.exports = (io) => {
         var now_date = dateString + " " + timeString;
         return now_date;
     };
-
 
     function InitGame(room_key, blackUsersID, whiteUsersID){
 

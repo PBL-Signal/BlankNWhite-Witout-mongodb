@@ -487,71 +487,32 @@ module.exports = (io) => {
 
         // 게임 시작시 해당 룸의 사용자 정보 넘김
         socket.on('Game Start',  () =>{
-            let dbTest = {
-                roomPin : socket.room,
-                team : true,
-                attackCard : [
-                    { attackNum : 0, activity : false, level : 0 },
-                    { attackNum : 1, activity : false, level : 0 },
-                    { attackNum : 2, activity : false, level : 0 },
-                    { attackNum : 3, activity : false, level : 0 },
-                    { attackNum : 4, activity : false, level : 0 },
-                    { attackNum : 5, activity : false, level : 0 },
-                    { attackNum : 6, activity : false, level : 0 },
-                    { attackNum : 7, activity : false, level : 0 },
-                    { attackNum : 8, activity : false, level : 0 },
-                    { attackNum : 9, activity : false, level : 0 },
-                    { attackNum : 10, activity : false, level : 0 },
-                    { attackNum : 11, activity : false, level : 0 },
-                    { attackNum : 12, activity : false, level : 0 }
-                ]
-            };
-            func.SaveAttackList(dbTest);
+            // // 영역 관련 DB 생성
+            // var sectionDB = {
+            //     roomPin : socket.room,
+            //     sectionInfo : []
+            // }
+            // func.InsertSection(sectionDB);
 
-            dbTest = {
-                roomPin : socket.room,
-                team : false,
-                attackCard : [
-                    { attackNum : 0, activity : false, level : 0 },
-                    { attackNum : 1, activity : false, level : 0 },
-                    { attackNum : 2, activity : false, level : 0 },
-                    { attackNum : 3, activity : false, level : 0 },
-                    { attackNum : 4, activity : false, level : 0 },
-                    { attackNum : 5, activity : false, level : 0 },
-                    { attackNum : 6, activity : false, level : 0 },
-                    { attackNum : 7, activity : false, level : 0 },
-                    { attackNum : 8, activity : false, level : 0 },
-                    { attackNum : 9, activity : false, level : 0 },
-                    { attackNum : 10, activity : false, level : 0 },
-                    { attackNum : 11, activity : false, level : 0 },
-                    { attackNum : 12, activity : false, level : 0 }
-                ]
-            };
-            func.SaveAttackList(dbTest);
+            // var room_data = { 
+            //     room : socket.room,
+            //     users : rooms[socket.room].users
+            // };
+            // var roomJson = JSON.stringify(room_data);
 
-            // 영역 관련 DB 생성
-            var sectionDB = {
-                roomPin : socket.room,
-                sectionInfo : []
-            }
-            func.InsertSection(sectionDB);
-
-            var room_data = { 
-                room : socket.room,
-                users : rooms[socket.room].users
-            };
-            var roomJson = JSON.stringify(room_data);
-
-            console.log('check : ', roomJson);
+            // console.log('check : ', roomJson);
 
             // 게임 관련 Json 생성 (new)
             var blackUsersID = ['black1ID', 'black2ID', 'black3ID', 'black4ID'];
             var whiteUsersID = ['white1ID', 'white2ID', 'white3ID', 'white4ID'];
             var roomTotalJson = InitGame(socket.room, blackUsersID, whiteUsersID);
             console.log("main json 받은 것 ", roomTotalJson);
-            func.InsertGameJson( new RoomTotalSchema(roomTotalJson));
+            var data = func.InsertGameJson( new RoomTotalSchema(roomTotalJson));
 
-            io.sockets.in(socket.room).emit('onGameStart',roomJson);
+            // var data = func.loadRoomTotalInfo(socket.room);
+            // console.log("loadRoomTotal data : ", data);
+
+            // io.sockets.in(socket.room).emit('onGameStart',roomJson);
         });
         
         // 무력화 test

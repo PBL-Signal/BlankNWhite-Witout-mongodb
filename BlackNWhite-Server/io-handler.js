@@ -548,6 +548,7 @@ module.exports = (io) => {
             var blackUsersID = ['black1ID', 'black2ID', 'black3ID', 'black4ID'];
             var whiteUsersID = ['white1ID', 'white2ID', 'white3ID', 'white4ID'];
             var roomTotalJson = InitGame(socket.room, blackUsersID, whiteUsersID);
+            console.log("main json 받은 것 ", roomTotalJson);
             func.InsertGameJson( new RoomTotalSchema(roomTotalJson));
 
             io.sockets.in(socket.room).emit('onGameStart',roomJson);
@@ -926,8 +927,10 @@ module.exports = (io) => {
             companyD    : companyA,
             companyE    : companyA,
         };
-
-
+        console.log("whiteUsers ", whiteUsers);
+        console.log("blackUsers ", blackUsers);
+        console.log("companyA ", companyA);
+        console.log("ROOMJSON RoomTotalJson", RoomTotalJson);
         return RoomTotalJson
     }
     

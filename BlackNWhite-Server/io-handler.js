@@ -12,6 +12,16 @@ const sessionStore = new RedisSessionStore(redisClient);
 const crypto = require("crypto");
 const randomId = () => crypto.randomBytes(8).toString("hex");
 
+const RoomTotalSchema = require("./schemas/roomTotal/RoomTotalSchema");
+const BlackTeam = require("./schemas/roomTotal/BlackTeam");
+const WhiteTeam = require("./schemas/roomTotal/WhiteTeam");
+const BlackUsers = require("./schemas/roomTotal/BlackUsers");
+const UserCompanyStatus = require("./schemas/roomTotal/UserCompanyStatus");
+const WhiteUsers = require("./schemas/roomTotal/WhiteUsers");
+const Company = require("./schemas/roomTotal/Company");
+const Section = require("./schemas/roomTotal/Section");
+const Progress = require("./schemas/roomTotal/Progress");
+
 module.exports = (io) => {
     
     var gameserver = io.of("blacknwhite");
@@ -533,6 +543,13 @@ module.exports = (io) => {
             var roomJson = JSON.stringify(room_data);
 
             console.log('check : ', roomJson);
+
+            // 게임 관련 Json 생성 (new)
+            var blackUsersID = ['black1ID', 'black2ID', 'black3ID', 'black4ID'];
+            var whiteUsersID = ['white1ID', 'white2ID', 'white3ID', 'white4ID'];
+            var roomTotalJson = InitGame(socket.room, blackUsersID, whiteUsersID);
+            func.InsertGameJson( new RoomTotalSchema(roomTotalJson));
+
             io.sockets.in(socket.room).emit('onGameStart',roomJson);
         });
         
@@ -819,6 +836,100 @@ module.exports = (io) => {
         return now_date;
     };
 
+     function InitGame(room_key, blackUsersID, whiteUsersID){
+
+        /*
+            var blackUsers = [ user1ID, user2ID, user3ID ];
+        */
+
+        // RoomTotalJson 생성 및 return 
+        var userCompanyStatus = new UserCompanyStatus({
+            warnCnt    : 0,
+            detectCnt : 0
+        });
+
+
+        var blackUsers = {};
+        var whiteUsers = {};
+
+        for (const user of blackUsersID){
+            blackUsers[user] = new BlackUsers({
+                userId   : user,
+                IsBlocked   : false,
+                currentLocation : 0,
+                companyA    : userCompanyStatus,
+                companyB    : userCompanyStatus,
+                companyC    : userCompanyStatus,
+                companyD    : userCompanyStatus,
+                companyE    : userCompanyStatus,
+            });
+        }
+
+        for (const user of whiteUsersID){
+            whiteUsers[user] =  new WhiteUsers({
+                userId   :"abc123",
+                IsBlocked   : false,
+                currentLocation : 0,
+            })
+        }
+
+    
+        var progress = new Progress({
+            progress  : [],
+            last  : -1
+        })
+
+        var companyA = new Company({
+            abandonStatus : false,
+            penetrationTestingLV : [1,2,3,4],
+            attackLV : [1,2,3,4],
+            sections : [
+                new Section({
+                destroyStatus  : false ,
+                level  : 0,
+                attack : progress,
+                response : progress,
+                }),
+
+                new Section({
+                    destroyStatus  : false ,
+                    level  : 0,
+                    attack : progress,
+                    response : progress,
+                }),
+
+                new Section({
+                    destroyStatus  : false ,
+                    level  : 0,
+                    attack : progress,
+                    response : progress,
+                }),
+            ]
+        });
+
+
+        var RoomTotalJson  = {
+            room_key : room_key,
+            server_start  : new Date(),
+            server_end  :  new Date(),
+            blackTeam  : new BlackTeam({ 
+                total_pita : 500,
+                users : blackUsers
+            }),
+            whiteTeam  : new WhiteTeam({ 
+                total_pita : 500,
+                users : whiteUsers
+            }),
+            companyA    : companyA,
+            companyB    : companyA,
+            companyC    : companyA,
+            companyD    : companyA,
+            companyE    : companyA,
+        };
+
+
+        return RoomTotalJson
+    }
     
 }
 

@@ -910,7 +910,7 @@ module.exports = (io) => {
 
 
         var RoomTotalJson  = {
-            room_key : room_key,
+            roomPin : room_key,
             server_start  : new Date(),
             server_end  :  new Date(),
             blackTeam  : new BlackTeam({ 

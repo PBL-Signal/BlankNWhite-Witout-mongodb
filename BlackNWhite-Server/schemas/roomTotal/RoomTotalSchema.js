@@ -9,6 +9,7 @@ const BlackTeam = require("./BlackTeam").schema;
 
 
 const RoomTotalSchema = new Schema({
+    roomPin    : { type : String, required : true },
     server_start  : { type : Date, required : true },
     server_end  : { type : Date, required : true },
     blackTeam  : { type : BlackTeam, required : true },

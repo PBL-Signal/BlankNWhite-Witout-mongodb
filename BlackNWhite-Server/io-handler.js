@@ -837,7 +837,7 @@ module.exports = (io) => {
         return now_date;
     };
 
-     function InitGame(room_key, blackUsersID, whiteUsersID){
+    function InitGame(room_key, blackUsersID, whiteUsersID){
 
         /*
             var blackUsers = [ user1ID, user2ID, user3ID ];
@@ -880,10 +880,10 @@ module.exports = (io) => {
             last  : -1
         })
 
-        var companyA = new Company({
+        var initCompany = new Company({
             abandonStatus : false,
-            penetrationTestingLV : [1,2,3,4],
-            attackLV : [1,2,3,4],
+            penetrationTestingLV : [1,1,1,1,1,1,1,1,1,1,1,1,1],
+            attackLV : [0,0,0,0,0,0,0,0,0,0,0,0,0],
             sections : [
                 new Section({
                 destroyStatus  : false ,
@@ -921,16 +921,16 @@ module.exports = (io) => {
                 total_pita : 500,
                 users : whiteUsers
             }),
-            companyA    : companyA,
-            companyB    : companyA,
-            companyC    : companyA,
-            companyD    : companyA,
-            companyE    : companyA,
+            companyA    : initCompany,
+            companyB    : initCompany,
+            companyC    : initCompany,
+            companyD    : initCompany,
+            companyE    : initCompany,
         };
-        console.log("whiteUsers ", whiteUsers);
-        console.log("blackUsers ", blackUsers);
-        console.log("companyA ", companyA);
-        console.log("ROOMJSON RoomTotalJson", RoomTotalJson);
+        // console.log("whiteUsers ", whiteUsers);
+        // console.log("blackUsers ", blackUsers);
+        // console.log("companyA ", initCompany);
+        // console.log("ROOMJSON RoomTotalJson", RoomTotalJson);
         return RoomTotalJson
     }
     

@@ -47,7 +47,7 @@ module.exports = (io) => {
     io.use(async (socket, next) => {
         console.log("io.use");
 
-        const sessionID = socket.handshake.auth.sessionID 
+        const sessionID = socket.handshake.auth.sessionID;
         // 가장 먼저 CONNECTION들어가기 전에 SESSIONID 있는;지 확인
         //finding existing session
         const session = await sessionStore.findSession(sessionID);
@@ -1007,7 +1007,6 @@ module.exports = (io) => {
                     break;
             }
 
-            console.log("@@@@@@@@@@@@@@@@@ COnfigure file test @@@@@@@@@@@@@@@@@@ ", config.TOTAL_PITA);
             socket.emit('Area_Vuln', areaName, roomTotalJson[0][corpName].sections[sectionIdx].vuln);
 
 
@@ -1021,19 +1020,111 @@ module.exports = (io) => {
         });
 
         // Section Destroy TEST
-        socket.on('Get_Section_Destroy_State', () => {
-            testData = { "sections": [{"destroyStatus": true, "level": 5}, {"destroyStatus": false, "level": 3}, {"destroyStatus": false, "level": 1}]}
+        socket.on('Get_Section_Destroy_State', async(corp) => {
+            //testData = { "sections": [{"destroyStatus": true, "level": 5}, {"destroyStatus": false, "level": 3}, {"destroyStatus": false, "level": 1}]}
             //testData = JSON.parse(testData);
-            console.log('Get_Section_Destroy_State CALLED  : ', testData);
-            socket.emit('Section_Destroy_State', JSON.stringify(testData));
+            console.log('Get_Section_Destroy_State CALLED  : ', corp);
+            
+            const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+
+            switch(corp)
+            {
+                case "회사A":
+                    var corpName = "companyA"
+                    break;
+                case "회사B":
+                    var corpName = "companyB"
+                    break;
+                case "회사C":
+                    var corpName = "companyC"
+                    break;
+                case "회사D":
+                    var corpName = "companyD"
+                    break;
+                case "회사E":
+                    var corpName = "companyE"
+                    break;
+            }
+
+            console.log("@@@@@@@@ Destroy State @@@@@@@ ",  roomTotalJson[0][corpName].sections);
+            var sections = {sections: roomTotalJson[0][corpName].sections}
+            socket.emit('Section_Destroy_State', JSON.stringify(sections));
+            
+
+            // socket.emit('Section_Destroy_State', JSON.stringify(testData));
         });
 
         // Section Attacked Name TEST
-        socket.on('Get_Section_Attacked_Name', () => {
-            testData = { "sections": [{"attack": {"progress": [5,4,1,2,3], "last": 12}}, {"attack": {"progress": [5,4,1,2,3], "last": 10}}, {"attack": {"progress": [5,4,1,2,3], "last": -1}}]}
+        socket.on('Get_Section_Attacked_Name', async(corp) => {
+            const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+
+            switch(corp)
+            {
+                case "회사A":
+                    var corpName = "companyA"
+                    break;
+                case "회사B":
+                    var corpName = "companyB"
+                    break;
+                case "회사C":
+                    var corpName = "companyC"
+                    break;
+                case "회사D":
+                    var corpName = "companyD"
+                    break;
+                case "회사E":
+                    var corpName = "companyE"
+                    break;
+            }
+
+            console.log("@@@@@@@@ Destroy State @@@@@@@ ",  roomTotalJson[0][corpName].sections);
+            var sections = {sections: roomTotalJson[0][corpName].sections}
+            //testData = { "sections": [{"attack": {"progress": [5,4,1,2,3], "last": 12}}, {"attack": {"progress": [5,4,1,2,3], "last": 10}}, {"attack": {"progress": [5,4,1,2,3], "last": -1}}]}
             //testData = JSON.parse(testData);
-            console.log('Get_Section_Attacked_Name CALLED  : ', testData);
-            socket.emit('Section_Attacked_Name', JSON.stringify(testData));
+            //console.log('Get_Section_Attacked_Name CALLED  : ', testData);
+            socket.emit('Section_Attacked_Name', JSON.stringify(sections));
+
+            //socket.emit('Section_Attacked_Name', JSON.stringify(testData));
+        });
+
+        // [Monitoring] 관제 issue Count
+        socket.on('Get_Issue_Count', async(corp) => {            
+            const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+
+            switch(corp)
+            {
+                case "회사A":
+                    var corpName = "companyA"
+                    break;
+                case "회사B":
+                    var corpName = "companyB"
+                    break;
+                case "회사C":
+                    var corpName = "companyC"
+                    break;
+                case "회사D":
+                    var corpName = "companyD"
+                    break;
+                case "회사E":
+                    var corpName = "companyE"
+                    break;
+            }
+            var cntArr = [];
+            for(i=0; i<3; i++)
+            {
+                var sectionData = roomTotalJson[0][corpName].sections[i].attack.progress.length;
+                cntArr[i] = sectionData;
+            }
+
+            console.log("############# issue cOUNT############## : ", cntArr);
+            socket.emit('Issue_Count', cntArr);
+            //roomTotalJson[0][corpName].sections[sectionIdx].level
+
+            // console.log("#############load card list roomTotalJson############## : ", roomTotalJson[0][corpName]);
+            // console.log("############# Before Level ############## : ", roomTotalJson[0][corpName].sections[sectionIdx].level);
+            //roomTotalJson[0][corpName].sections[sectionIdx].level += 1;
+            //console.log("############# After Level ############## : ", roomTotalJson[0][corpName].sections[sectionIdx]);
+
         });
 // ===================================================================================================================
         

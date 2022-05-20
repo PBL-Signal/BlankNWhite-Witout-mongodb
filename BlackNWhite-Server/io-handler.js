@@ -58,6 +58,7 @@ module.exports = (io) => {
             console.log("io.use 세션 있음", session.userID, sessionID);
             return next();
         }
+
         // 처음 연결되는 경우 즉, SESSIONID 없으면 
         const username = socket.handshake.auth.username;
 
@@ -90,15 +91,6 @@ module.exports = (io) => {
         console.log("session 설정 확인 - userID", socket.userID);
         console.log("session 설정 확인 - username", socket.nickname);
 
-        // try{
-        //     await sessionStore.saveSession(socket.sessionID, {
-        //         userID: socket.userID,
-        //         username: socket.username,
-        //         connected: true,
-        //     });
-        // }catch(error){
-        //     console.log("ERROR! ", error);
-        // }
         try{
             await sessionStore.saveSession(socket.sessionID, {
                 userID: socket.userID,
@@ -293,6 +285,7 @@ module.exports = (io) => {
        
             // 2. blackUsers/whiteUsers에 저장 (playerInfo 저장)
             var team = SetTeam();
+            socket.team = team;
             let playerInfo = { socket: socket.id, nickname: socket.nickname, team: team, status: 0, color: rand_Color, place : PlaceUser(team) };
             console.log("PlayersInfo : ", playerInfo);
 
@@ -457,6 +450,7 @@ module.exports = (io) => {
                     // playerInfo.team = false;
                     console.log("[case1] PlayersInfo : ", playerInfo);
                     rooms[socket.room].users[socket.id].team = !prevTeam;
+                    socket.team = !prevTeam;;
                     rooms[socket.room].users[socket.id].status = 0; 
 
                     // UI 위치 할당
@@ -656,6 +650,9 @@ module.exports = (io) => {
             var roomTotalJson = InitGame(socket.room, blackUsersID, whiteUsersID);
             //func.InsertRoomTotal( new RoomTotalSchema(roomTotalJson));
 
+            // test (현재 내 팀 확인)
+            console.log("내 팀 : ", socket.team);
+
             // redis에 저징
             jsonStore.storejson(roomTotalJson, socket.room);
             const roomjson_Redis = await jsonStore.getjson(socket.room);
@@ -675,6 +672,7 @@ module.exports = (io) => {
             var testJson = JSON.stringify(test);
             socket.emit('OnNeutralization', testJson);
         });
+
 
         ////////////////////////////////////////////////////////////////////////////////////
         // PlayerEnter
@@ -743,6 +741,7 @@ module.exports = (io) => {
             console.log("jsonStringify : ", PlayersJson.toString());
             socket.emit('PlayersData', PlayersJson);
         });
+
 
         // 게임 카드 리스트 보내기
         socket.on("Load Attack List", function(teamName){

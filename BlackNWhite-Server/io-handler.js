@@ -28,7 +28,7 @@ const WhiteUsers = require("./schemas/roomTotal/WhiteUsers");
 const Company = require("./schemas/roomTotal/Company");
 const Section = require("./schemas/roomTotal/Section");
 const Progress = require("./schemas/roomTotal/Progress");
-const config = require('./configure');
+
 
 module.exports = (io) => {
     
@@ -644,6 +644,23 @@ module.exports = (io) => {
             };
             var testJson = JSON.stringify(test);
             socket.emit('OnNeutralization', testJson);
+        });
+
+
+        // 무력화 해결 시도 시
+        socket.on('Try Non-neutralization', async(room)=> {
+            console.log("[On] Solve Neutralization");
+          
+            //  json 불러와서 해당 영역 회사 경고 초기화 함 
+            var roomTotalJson = await jsonStore.getjson(socket.room);
+            console.log("JSON!!!", JSON.parse(roomTotalJson));
+            
+
+            // 성공시 
+            //socket.emit('Solved Neutralization');
+
+            // 실패시
+            //socket.emit('Failed Neutralization');
         });
 
         ////////////////////////////////////////////////////////////////////////////////////

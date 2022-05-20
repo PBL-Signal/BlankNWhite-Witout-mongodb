@@ -645,6 +645,40 @@ module.exports = (io) => {
             socket.emit('OnNeutralization', testJson);
         });
 
+
+        // 무력화 해결 시도 시
+        socket.on('Try Non-neutralization', async(room)=> {
+            console.log("[On] Solve Neutralization");
+          
+            //  json 불러와서 해당 영역 회사 경고 초기화 함 
+            var roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+            console.log("JSON!!!",roomTotalJson);
+            
+            var black_total_pita = roomTotalJson[0].blackTeam.total_pita;
+            console.log("blackTeam.total_pita!!!", black_total_pita );
+
+            // 가격화 
+            if (black_total_pita - config.UNBLOCK_INFO.pita < 0){
+                // 실패시
+                console.log("failed");
+                socket.emit('Failed Neutralization');
+            }
+            else{
+                console.log("solved");
+                // json 변경
+                roomTotalJson[0].blackTeam.total_pita = black_total_pita - 100;
+                await jsonStore.updatejson(roomTotalJson, socket.room);
+
+                // 확인
+                var roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+                console.log("UPDATE 후에 JSON!!!",roomTotalJson);
+                
+                // 성공시 
+                socket.emit('Solved Neutralization');
+            }
+
+        });
+
         ////////////////////////////////////////////////////////////////////////////////////
         // PlayerEnter
         socket.on('PlayerEnter', function() {

@@ -3,6 +3,7 @@ const async = require('async');
 const func = require('./server_functions/db_func');
 const { Socket } = require('dgram');
 const { stringify } = require('querystring');
+const config = require('./configure');
 
 const REDIS_PORT = 6380;
 const Redis = require("ioredis"); 
@@ -650,15 +651,32 @@ module.exports = (io) => {
             console.log("[On] Solve Neutralization");
           
             //  json 불러와서 해당 영역 회사 경고 초기화 함 
-            var roomTotalJson = await jsonStore.getjson(socket.room);
-            console.log("JSON!!!", JSON.parse(roomTotalJson));
+            var roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+            console.log("JSON!!!",roomTotalJson);
             
+            var black_total_pita = roomTotalJson[0].blackTeam.total_pita;
+            console.log("blackTeam.total_pita!!!", black_total_pita );
 
-            // 성공시 
-            //socket.emit('Solved Neutralization');
+            // 가격화 
+            if (black_total_pita - config.UNBLOCK_INFO.pita < 0){
+                // 실패시
+                console.log("failed");
+                socket.emit('Failed Neutralization');
+            }
+            else{
+                console.log("solved");
+                // json 변경
+                roomTotalJson[0].blackTeam.total_pita = black_total_pita - 100;
+                await jsonStore.updatejson(roomTotalJson, socket.room);
 
-            // 실패시
-            //socket.emit('Failed Neutralization');
+                // 확인
+                var roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+                console.log("UPDATE 후에 JSON!!!",roomTotalJson);
+                
+                // 성공시 
+                socket.emit('Solved Neutralization');
+            }
+
         });
 
         ////////////////////////////////////////////////////////////////////////////////////

@@ -3,6 +3,7 @@ const async = require('async');
 const func = require('./server_functions/db_func');
 const { Socket } = require('dgram');
 const { stringify } = require('querystring');
+const config = require('./configure');
 
 const REDIS_PORT = 6380;
 const Redis = require("ioredis"); 
@@ -27,7 +28,6 @@ const WhiteUsers = require("./schemas/roomTotal/WhiteUsers");
 const Company = require("./schemas/roomTotal/Company");
 const Section = require("./schemas/roomTotal/Section");
 const Progress = require("./schemas/roomTotal/Progress");
-const config = require('./configure');
 
 module.exports = (io) => {
     
@@ -39,6 +39,7 @@ module.exports = (io) => {
     let gamePlayer = {};
     let evenNumPlayer = false;
     let numPlayer = 1;
+    let companyNameList = ["companyA", "companyB", "companyC", "companyD", "companyE"]
 
     
     // func.SaveAttackList(dbTest);
@@ -774,12 +775,15 @@ module.exports = (io) => {
             console.log("Update card list roomTotalJson : ", roomTotalJson);
             console.log("Update card list upgradeAttackInfo : ", upgradeAttackInfo);
 
+            var cardLv;
             if (upgradeAttackInfo.teamName == true) {
+                cardLv = roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"][upgradeAttackInfo.attackIndex];
                 roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"][upgradeAttackInfo.attackIndex] += 1;
+                eval("roomTotalJson[0]['whiteTeam']['total_pita'] -= config.ATTACK_" + (upgradeAttackInfo.attackIndex + 1) + "['pita'][" + cardLv + "];");
             } else {
+                cardLv = roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"][upgradeAttackInfo.attackIndex];
                 roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"][upgradeAttackInfo.attackIndex] += 1;
-                // returnValue = roomTotalJson[0]['companyA'];
-                // console.log("update card list : ", returnValue);
+                eval("roomTotalJson[0]['blackTeam']['total_pita'] -= config.RESEARCH_" + (upgradeAttackInfo.attackIndex + 1) + "['pita'][" + cardLv + "];");
             }
 
             console.log("Update card list roomTotalJson : ", roomTotalJson[0][upgradeAttackInfo.companyName]);
@@ -798,6 +802,9 @@ module.exports = (io) => {
             console.log("Update Card List Return Value : ", returnValue);
             socket.to(socket.room).emit("Card List", returnValue);
             socket.emit("Card List", returnValue);
+
+            socket.to(socket.room).emit("Load Pita Num", returnValue);
+            socket.emit("Pita Num", returnValue);
 
             // console.log('[socket-loadAttackList] upgrade Attack Info : ', upgradeAttackInfo);
             // let attackIndex = upgradeAttackInfo["AttackIndex"];
@@ -841,19 +848,31 @@ module.exports = (io) => {
         });
 
 
-        // 회사 몰락 여부 확인 (현제 test로 하드코딩 하여 추후 json에서 가져와 수정해야 함)
-        socket.on('On Main Map', function() {
-            // let comapny_abandonStatus = {companyA: true, companyB: false, companyC: false, companyD: false, companyE: false};
-            let comapny_abandonStatus = [true, false, false, false, false];
-            // var companyStatusJson = JSON.stringify(comapny_abandonStatus);
-            console.log("jsonStringify : ", comapny_abandonStatus.toString());
-            socket.to(socket.room).emit("Company Status", comapny_abandonStatus);
-            socket.emit('Company Status', comapny_abandonStatus);
+        // 회사 몰락 여부 확인
+        socket.on('On Main Map', async() => {
+            var roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+            console.log("On Main Map roomTotalJson : ", roomTotalJson);
+
+            var abandonStatusList = [];
+            for(var company of companyNameList){
+                abandonStatusList.push(roomTotalJson[0][company]["abandonStatus"]);
+            }
+
+            console.log("On Main Map abandonStatusList : ", abandonStatusList);
+            socket.emit('Company Status', abandonStatusList);
+
+            // // let comapny_abandonStatus = {companyA: true, companyB: false, companyC: false, companyD: false, companyE: false};
+            // let comapny_abandonStatus = [true, false, false, false, false];
+            // // var companyStatusJson = JSON.stringify(comapny_abandonStatus);
+            // console.log("jsonStringify : ", comapny_abandonStatus.toString());
+            // socket.to(socket.room).emit("Company Status", comapny_abandonStatus);
+            // socket.emit('Company Status', comapny_abandonStatus);
 
 
         })
         
         // 회사 차단 인원 확인 (현제 test로 하드코딩 하여 추후 json에서 가져와 수정해야 함)
+        // 다음주에 해야 됨
         socket.on('On Monitoring', function() {
             // let comapny_abandonStatus = {companyA: true, companyB: false, companyC: false, companyD: false, companyE: false};
             let company_blockedNum = 2;

@@ -22,9 +22,10 @@ const server = http.createServer(app);
 const io = socketio(server,{
     cors: {
         // origin: 'http://localhost:7000',
-        origin: ['http://localhost:8080/blacknwhite/'],
-        // methods: ["GET", "POST"]
+        origin: ['http://localhost:58529'],
+        methods: ["GET", "POST"]
     },
+   
     transport: ["websocket"]
 });
 

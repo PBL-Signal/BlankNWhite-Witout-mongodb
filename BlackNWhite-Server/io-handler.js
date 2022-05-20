@@ -3,7 +3,6 @@ const async = require('async');
 const func = require('./server_functions/db_func');
 const { Socket } = require('dgram');
 const { stringify } = require('querystring');
-const config = require('./configure');
 
 const REDIS_PORT = 6380;
 const Redis = require("ioredis"); 
@@ -622,15 +621,14 @@ module.exports = (io) => {
                 pitaNum = roomTotalJson["blackTeam"]["total_pita"];
             }
 
-            // var room_data = { 
-            //     room : socket.room,
-            //     users : rooms[socket.room].users,
-            //     pita : pitaNum
-            // };
-            // var roomJson = JSON.stringify(room_data);
+            var room_data = { 
+                teamName : socket.team,
+                pita : pitaNum
+            };
+            var roomJson = JSON.stringify(room_data);
 
-            socket.to(socket.room).emit("onGameStart", pitaNum);
-            socket.emit("onGameStart", pitaNum);
+            socket.to(socket.room).emit("onGameStart", roomJson);
+            socket.emit("onGameStart", roomJson);
             // io.sockets.in(socket.room).emit('onGameStart',roomJson);
         });
         

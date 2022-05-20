@@ -27,6 +27,7 @@ const WhiteUsers = require("./schemas/roomTotal/WhiteUsers");
 const Company = require("./schemas/roomTotal/Company");
 const Section = require("./schemas/roomTotal/Section");
 const Progress = require("./schemas/roomTotal/Progress");
+const config = require('./configure');
 
 module.exports = (io) => {
     
@@ -58,7 +59,6 @@ module.exports = (io) => {
             console.log("io.use 세션 있음", session.userID, sessionID);
             return next();
         }
-
         // 처음 연결되는 경우 즉, SESSIONID 없으면 
         const username = socket.handshake.auth.username;
 
@@ -91,6 +91,15 @@ module.exports = (io) => {
         console.log("session 설정 확인 - userID", socket.userID);
         console.log("session 설정 확인 - username", socket.nickname);
 
+        // try{
+        //     await sessionStore.saveSession(socket.sessionID, {
+        //         userID: socket.userID,
+        //         username: socket.username,
+        //         connected: true,
+        //     });
+        // }catch(error){
+        //     console.log("ERROR! ", error);
+        // }
         try{
             await sessionStore.saveSession(socket.sessionID, {
                 userID: socket.userID,
@@ -586,61 +595,11 @@ module.exports = (io) => {
 
         // 게임 시작시 해당 룸의 사용자 정보 넘김
         socket.on('Game Start',  async() =>{
-
-            let dbTest = {
-                roomPin : socket.room,
-                team : true,
-                attackCard : [
-                    { attackNum : 0, activity : false, level : 0 },
-                    { attackNum : 1, activity : false, level : 0 },
-                    { attackNum : 2, activity : false, level : 0 },
-                    { attackNum : 3, activity : false, level : 0 },
-                    { attackNum : 4, activity : false, level : 0 },
-                    { attackNum : 5, activity : false, level : 0 },
-                    { attackNum : 6, activity : false, level : 0 },
-                    { attackNum : 7, activity : false, level : 0 },
-                    { attackNum : 8, activity : false, level : 0 },
-                    { attackNum : 9, activity : false, level : 0 },
-                    { attackNum : 10, activity : false, level : 0 },
-                    { attackNum : 11, activity : false, level : 0 },
-                    { attackNum : 12, activity : false, level : 0 }
-                ]
-            };
-            func.SaveAttackList(dbTest);
-
-            dbTest = {
-                roomPin : socket.room,
-                team : false,
-                attackCard : [
-                    { attackNum : 0, activity : false, level : 0 },
-                    { attackNum : 1, activity : false, level : 0 },
-                    { attackNum : 2, activity : false, level : 0 },
-                    { attackNum : 3, activity : false, level : 0 },
-                    { attackNum : 4, activity : false, level : 0 },
-                    { attackNum : 5, activity : false, level : 0 },
-                    { attackNum : 6, activity : false, level : 0 },
-                    { attackNum : 7, activity : false, level : 0 },
-                    { attackNum : 8, activity : false, level : 0 },
-                    { attackNum : 9, activity : false, level : 0 },
-                    { attackNum : 10, activity : false, level : 0 },
-                    { attackNum : 11, activity : false, level : 0 },
-                    { attackNum : 12, activity : false, level : 0 }
-                ]
-            };
-            func.SaveAttackList(dbTest);
-
-            // 영역 관련 DB 생성
             var sectionDB = {
                 roomPin : socket.room,
                 sectionInfo : []
             }
             func.InsertSection(sectionDB);
-
-            var room_data = { 
-                room : socket.room,
-                users : rooms[socket.room].users
-            };
-            var roomJson = JSON.stringify(room_data);
 
             // console.log('check : ', roomJson);
 
@@ -648,17 +607,30 @@ module.exports = (io) => {
             var blackUsersID = ['black1ID', 'black2ID', 'black3ID', 'black4ID'];
             var whiteUsersID = ['white1ID', 'white2ID', 'white3ID', 'white4ID'];
             var roomTotalJson = InitGame(socket.room, blackUsersID, whiteUsersID);
-            //func.InsertRoomTotal( new RoomTotalSchema(roomTotalJson));
-
-            // test (현재 내 팀 확인)
-            console.log("내 팀 : ", socket.team);
+            // func.InsertRoomTotal(roomTotalJson);
 
             // redis에 저징
             jsonStore.storejson(roomTotalJson, socket.room);
             const roomjson_Redis = await jsonStore.getjson(socket.room);
             console.log("!@#!@#!@", JSON.parse(roomjson_Redis));
 
-            io.sockets.in(socket.room).emit('onGameStart',roomJson);
+            var pitaNum;
+            if (socket.team == true){
+                pitaNum = roomTotalJson["whiteTeam"]["total_pita"];
+            } else {
+                pitaNum = roomTotalJson["blackTeam"]["total_pita"];
+            }
+
+            // var room_data = { 
+            //     room : socket.room,
+            //     users : rooms[socket.room].users,
+            //     pita : pitaNum
+            // };
+            // var roomJson = JSON.stringify(room_data);
+
+            socket.to(socket.room).emit("onGameStart", pitaNum);
+            socket.emit("onGameStart", pitaNum);
+            // io.sockets.in(socket.room).emit('onGameStart',roomJson);
         });
         
         // 무력화 test
@@ -672,7 +644,6 @@ module.exports = (io) => {
             var testJson = JSON.stringify(test);
             socket.emit('OnNeutralization', testJson);
         });
-
 
         ////////////////////////////////////////////////////////////////////////////////////
         // PlayerEnter
@@ -742,65 +713,128 @@ module.exports = (io) => {
             socket.emit('PlayersData', PlayersJson);
         });
 
-
         // 게임 카드 리스트 보내기
-        socket.on("Load Attack List", function(teamName){
-            var loadInfo = {roomPin : socket.room, teamName : teamName};
-            console.log("loadInfo json : ", loadInfo);
+        socket.on("Load Card List", async(teamData) => {
+            // var loadInfo = {roomPin : socket.room, teamName : teamName, company : "companyA"};
+            // console.log("loadInfo json : ", loadInfo);
+            
+            let teamDataJson = JSON.parse(teamData);
 
-            // 나중에 실제 입력한 pin 번호로 바꾸기!
-            func.loadAttackList(loadInfo).then(function (attackList){
-                console.log('[socket-loadAttackList] attak list[0] : ', attackList);
+            const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+            console.log("load card list roomTotalJson : ", roomTotalJson);
+            console.log("Load card list teamData : ", teamDataJson);
+            var returnValue;
+
+            if (teamDataJson.teamName == true) {
+                returnValue = roomTotalJson[0][teamDataJson.companyName]["penetrationTestingLV"];
+            } else {
+                returnValue = roomTotalJson[0][teamDataJson.companyName]["attackLV"];
+            }
+
+            console.log("Load Card List Return Value : ", returnValue);
+            socket.to(socket.room).emit("Card List", returnValue);
+            socket.emit("Card List", returnValue);
+
+            // // 나중에 실제 입력한 pin 번호로 바꾸기! (mongodb 버전)
+            // func.loadCardList(loadInfo).then(function (attackList){
+            //     console.log('[socket-loadCardList] attak list[0] : ', attackList);
                 
-                var AttackTableJson = JSON.stringify(attackList);
+            //     var AttackTableJson = JSON.stringify(attackList);
 
-                console.log('[socket-loadAttackList] attak list : ', AttackTableJson);
-                socket.emit("Attack List", AttackTableJson);
-            });
+            //     console.log('[socket-loadCardList] attak list : ', AttackTableJson);
+            //     socket.to(socket.room).emit("Attack List", AttackTableJson);
+            //     // socket.emit("Attack List", AttackTableJson);
+            // });
         });
 
-        socket.on("Click Response", function(data){
+        socket.on("Click Response", async(data) => {    // 다음주 할 일 (공격 누르면 섹션 띄워 선택하기)
             console.log("Click Response jsonStr : ", data);
+
+            // let responseJson = JSON.parse(data);
+
+            // const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+            // console.log("Click Response roomTotalJson : ", roomTotalJson);
+            // console.log("Click Response responseJson : ", responseJson);
+
+            // if (responseJson.teamName == true) {
+            //     roomTotalJson[0][responseJson.companyName]["sections"];
+            // } else {
+            //     returnValue = roomTotalJson[0][responseJson.companyName]["attackLV"];
+            // }
+
+
+
+            // var returnValue;
         });
 
 
-        socket.on("Click Upgrade Attack", function(jsonStr){
-            console.log("Click Upgrade Attacke jsonStr : ", jsonStr);
+        socket.on("Click Upgrade Attack", async(jsonStr) => {
             let upgradeAttackInfo = JSON.parse(jsonStr);
-            console.log('[socket-loadAttackList] upgrade Attack Info : ', upgradeAttackInfo);
-            let attackIndex = upgradeAttackInfo["AttackIndex"];
-            let roomPin = socket.room;
-            let team = upgradeAttackInfo["team"];
-            var loadInfo = {roomPin : roomPin, teamName : team};
 
-            func.loadAttackList(loadInfo).then(function (attackList){
-                var attackActivity = attackList["attackCard"][attackIndex]["activity"];
-                var attackLevel = attackList["attackCard"][attackIndex]["level"];
-                console.log('[socket-loadAttackList] attackList["attackCard"][AttackIndex]["level"] : ', attackLevel);
+            var roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+            console.log("Update card list roomTotalJson : ", roomTotalJson);
+            console.log("Update card list upgradeAttackInfo : ", upgradeAttackInfo);
 
-                var beforeAttackLevel = { attackNum: attackIndex, activity: attackActivity, level: attackLevel };
-                var newAttackLevel = { attackNum: attackIndex, activity: true, level: attackLevel+1 };
-                var upgradeDataJson = { roomPin : roomPin, teamName: team, beforeAttackLevel : beforeAttackLevel, newAttackLevel : newAttackLevel };
+            if (upgradeAttackInfo.teamName == true) {
+                roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"][upgradeAttackInfo.attackIndex] += 1;
+            } else {
+                roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"][upgradeAttackInfo.attackIndex] += 1;
+                // returnValue = roomTotalJson[0]['companyA'];
+                // console.log("update card list : ", returnValue);
+            }
+
+            console.log("Update card list roomTotalJson : ", roomTotalJson[0][upgradeAttackInfo.companyName]);
+
+            await jsonStore.updatejson(roomTotalJson[0], socket.room);
+            roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+            console.log("Update card list update roomTotalJson : ", roomTotalJson);
+            var returnValue;
+
+            if (upgradeAttackInfo.teamName == true) {
+                returnValue = roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"];
+            } else {
+                returnValue = roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"];
+            }
+
+            console.log("Update Card List Return Value : ", returnValue);
+            socket.to(socket.room).emit("Card List", returnValue);
+            socket.emit("Card List", returnValue);
+
+            // console.log('[socket-loadAttackList] upgrade Attack Info : ', upgradeAttackInfo);
+            // let attackIndex = upgradeAttackInfo["AttackIndex"];
+            // let roomPin = socket.room;
+            // let team = upgradeAttackInfo["team"];
+            // var loadInfo = {roomPin : roomPin, teamName : team};
+
+            // func.loadAttackList(loadInfo).then(function (attackList){
+            //     var attackActivity = attackList["attackCard"][attackIndex]["activity"];
+            //     var attackLevel = attackList["attackCard"][attackIndex]["level"];
+            //     console.log('[socket-loadAttackList] attackList["attackCard"][AttackIndex]["level"] : ', attackLevel);
+
+            //     var beforeAttackLevel = { attackNum: attackIndex, activity: attackActivity, level: attackLevel };
+            //     var newAttackLevel = { attackNum: attackIndex, activity: true, level: attackLevel+1 };
+            //     var upgradeDataJson = { roomPin : roomPin, teamName: team, beforeAttackLevel : beforeAttackLevel, newAttackLevel : newAttackLevel };
                 
-                func.upgradeAttackLevel(upgradeDataJson).then(function(updateDBInfo){
-                    console.log('[socket-loadAttackList] attackList : ', updateDBInfo);
+            //     func.upgradeAttackLevel(upgradeDataJson).then(function(updateDBInfo){
+            //         console.log('[socket-loadAttackList] attackList : ', updateDBInfo);
 
-                    if (updateDBInfo["acknowledged"]){
-                        func.loadAttackList(loadInfo).then(function (attackList){
-                            console.log('[socket-loadAttackList] attak list[0] : ', attackList);
+            //         if (updateDBInfo["acknowledged"]){
+            //             func.loadAttackList(loadInfo).then(function (attackList){
+            //                 console.log('[socket-loadAttackList] attak list[0] : ', attackList);
                             
-                            var AttackTableJson = JSON.stringify(attackList);
+            //                 var AttackTableJson = JSON.stringify(attackList);
 
-                            console.log('[socket-loadAttackList] attak list : ', AttackTableJson);
-                            socket.emit("Attack List", AttackTableJson);
-                        });
-                    } else {
-                        console.log('upgradeAttackLevel Failed');
-                    }
-                });
+            //                 console.log('[socket-loadAttackList] attak list : ', AttackTableJson);
+            //                 socket.to(socket.room).emit("Attack List", AttackTableJson);
+            //                 socket.emit("Attack List", AttackTableJson);
+            //             });
+            //         } else {
+            //             console.log('upgradeAttackLevel Failed');
+            //         }
+            //     });
 
                 // socket.emit("Attack List", AttackTableJson);
-            });
+            // });
 
             // roompin이랑 attack index 번호를 json 형식으로 보낼 것 { roomPin : roomPin, attackIndex : attackIndex }
             
@@ -814,6 +848,7 @@ module.exports = (io) => {
             let comapny_abandonStatus = [true, false, false, false, false];
             // var companyStatusJson = JSON.stringify(comapny_abandonStatus);
             console.log("jsonStringify : ", comapny_abandonStatus.toString());
+            socket.to(socket.room).emit("Company Status", comapny_abandonStatus);
             socket.emit('Company Status', comapny_abandonStatus);
 
 
@@ -824,6 +859,7 @@ module.exports = (io) => {
             // let comapny_abandonStatus = {companyA: true, companyB: false, companyC: false, companyD: false, companyE: false};
             let company_blockedNum = 2;
             // var companyStatusJson = JSON.stringify(comapny_abandonStatus);
+            socket.to(socket.room).emit("Blocked Num", company_blockedNum);
             socket.emit('Blocked Num', company_blockedNum);
 
 

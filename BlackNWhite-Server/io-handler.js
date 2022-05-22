@@ -976,6 +976,7 @@ module.exports = (io) => {
             console.log("================= After UPDATE ================= : ", NewRoomTotalJson[0][corpName].sections[sectionIdx]);
 
             var area_level = areaName + "-" + (roomTotalJson[0][corpName].sections[sectionIdx].level);
+            socket.to(socket.room).emit("New_Level", area_level.toString());
             socket.emit('New_Level', area_level.toString());
 
 
@@ -1029,6 +1030,7 @@ module.exports = (io) => {
                 var areaName = ['Area_DMZ', 'Area_Interal', 'Area_Sec'];
                 var sectionInfo = { Corp: corpName, area: areaName[i], level: roomTotalJson[0][corpName].sections[i].level, vuln: roomTotalJson[0][corpName].sections[i].vuln}
                 console.log("[Section] sectionInfo-detail", sectionInfo);
+                socket.to(socket.room).emit("Area_Start_Emit", JSON.stringify(sectionInfo));
                 socket.emit('Area_Start_Emit', JSON.stringify(sectionInfo));
                 /*
                 [Section] sectionInfo-detail { Corp: '회사B', area: 'Area_DMZ', level: 0, vuln: 3 }
@@ -1094,6 +1096,7 @@ module.exports = (io) => {
                     break;
             }
 
+            socket.to(socket.room).emit("Area_Vuln", areaName, roomTotalJson[0][corpName].sections[sectionIdx].vuln);
             socket.emit('Area_Vuln', areaName, roomTotalJson[0][corpName].sections[sectionIdx].vuln);
 
 
@@ -1134,7 +1137,8 @@ module.exports = (io) => {
             }
 
             console.log("@@@@@@@@ Destroy State @@@@@@@ ",  roomTotalJson[0][corpName].sections);
-            var sections = {sections: roomTotalJson[0][corpName].sections}
+            var sections = {sections: roomTotalJson[0][corpName].sections};
+            socket.to(socket.room).emit("Section_Destroy_State", JSON.stringify(sections));
             socket.emit('Section_Destroy_State', JSON.stringify(sections));
             
 
@@ -1169,6 +1173,8 @@ module.exports = (io) => {
             //testData = { "sections": [{"attack": {"progress": [5,4,1,2,3], "last": 12}}, {"attack": {"progress": [5,4,1,2,3], "last": 10}}, {"attack": {"progress": [5,4,1,2,3], "last": -1}}]}
             //testData = JSON.parse(testData);
             //console.log('Get_Section_Attacked_Name CALLED  : ', testData);
+
+            socket.to(socket.room).emit("Section_Attacked_Name", JSON.stringify(sections));
             socket.emit('Section_Attacked_Name', JSON.stringify(sections));
 
             //socket.emit('Section_Attacked_Name', JSON.stringify(testData));
@@ -1204,6 +1210,7 @@ module.exports = (io) => {
             }
 
             console.log("############# issue cOUNT############## : ", cntArr);
+            socket.to(socket.room).emit("Issue_Count", cntArr);
             socket.emit('Issue_Count', cntArr);
             //roomTotalJson[0][corpName].sections[sectionIdx].level
 

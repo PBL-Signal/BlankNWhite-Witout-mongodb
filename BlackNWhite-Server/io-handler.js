@@ -628,6 +628,8 @@ module.exports = (io) => {
             };
             var roomJson = JSON.stringify(room_data);
 
+
+            console.log("Team 정보 :", socket.team);
             socket.to(socket.room).emit("onGameStart", roomJson);
             socket.emit("onGameStart", roomJson);
             // io.sockets.in(socket.room).emit('onGameStart',roomJson);
@@ -667,7 +669,7 @@ module.exports = (io) => {
                 console.log("solved");
                 // json 변경
                 roomTotalJson[0].blackTeam.total_pita = black_total_pita - 100;
-                await jsonStore.updatejson(roomTotalJson, socket.room);
+                await jsonStore.updatejson(roomTotalJson[0], socket.room);
 
                 // 확인
                 var roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
@@ -964,37 +966,62 @@ module.exports = (io) => {
                     break;
             }
 
-            // console.log("#############load card list roomTotalJson############## : ", roomTotalJson[0][corpName]);
-            // console.log("############# Before Level ############## : ", roomTotalJson[0][corpName].sections[sectionIdx].level);
-            roomTotalJson[0][corpName].sections[sectionIdx].level += 1;
-            //console.log("############# After Level ############## : ", roomTotalJson[0][corpName].sections[sectionIdx]);
+            var white_total_pita = roomTotalJson[0].whiteTeam.total_pita;
+            console.log("Before White total_pita!!!", white_total_pita );
+            // MAINTENANCE_SECTION_INFO : { pita : [5, 6, 7, 8, 9], time : [5, 4, 3, 2, 1] },
+            
 
-            await jsonStore.updatejson(roomTotalJson[0], socket.room);
+            if(white_total_pita - config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level] < 0)
+            {
+                console.log("피타 부족");
+            } else {
+                // json 변경
+                roomTotalJson[0].whiteTeam.total_pita = white_total_pita - config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level];
+                await jsonStore.updatejson(roomTotalJson[0], socket.room);
 
-            // 새 RoomTotal 확인
-            const NewRoomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-            console.log("================= After UPDATE ================= : ", NewRoomTotalJson[0][corpName].sections[sectionIdx]);
+                // 확인
+                var roomTotalJsonA = JSON.parse(await jsonStore.getjson(socket.room));
+                console.log("UPDATE 후에 JSON!!!",roomTotalJsonA[0]);
 
-            var area_level = areaName + "-" + (roomTotalJson[0][corpName].sections[sectionIdx].level);
-            socket.to(socket.room).emit("New_Level", area_level.toString());
-            socket.emit('New_Level', area_level.toString());
+                console.log("After White total_pita!!!", white_total_pita - config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level] );
+
+                // console.log("#############load card list roomTotalJson############## : ", roomTotalJson[0][corpName]);
+                // console.log("############# Before Level ############## : ", roomTotalJson[0][corpName].sections[sectionIdx].level);
+                roomTotalJson[0][corpName].sections[sectionIdx].level += 1;
+                //console.log("############# After Level ############## : ", roomTotalJson[0][corpName].sections[sectionIdx]);
+
+                await jsonStore.updatejson(roomTotalJson[0], socket.room);
+
+                // 새 RoomTotal 확인
+                const NewRoomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+                console.log("================= After UPDATE ================= : ", NewRoomTotalJson[0][corpName].sections[sectionIdx]);
+
+                
+
+                var area_level = areaName + "-" + (roomTotalJson[0][corpName].sections[sectionIdx].level);
+                socket.to(socket.room).emit("New_Level", area_level.toString());
+                socket.emit('New_Level', area_level.toString());
 
 
-            // // 해당 영역의 레벨을 DB에서 read
-            // func.SelectSectionLevel(PIN, corp, areaName).then(function (arr){
-            //     var specific = arr[0];
-            //     var index = arr[1];
-            //     console.log("[SelectSectionLevel] before level >> ", specific[0].sectionInfo[index]);
-            //     var selectedSectionInfo = specific[0].sectionInfo[index];
-            //     //selectedSectionInfo = JSON.parse(selectedSectionInfo);
-            //     var newLevel = {Corp: selectedSectionInfo.Corp, area: selectedSectionInfo.area, level: selectedSectionInfo.level+1, vuln: selectedSectionInfo.vuln};
-            //     console.log("[SelectSectionLevel] after level >> ", newLevel);
+                // // 해당 영역의 레벨을 DB에서 read
+                // func.SelectSectionLevel(PIN, corp, areaName).then(function (arr){
+                //     var specific = arr[0];
+                //     var index = arr[1];
+                //     console.log("[SelectSectionLevel] before level >> ", specific[0].sectionInfo[index]);
+                //     var selectedSectionInfo = specific[0].sectionInfo[index];
+                //     //selectedSectionInfo = JSON.parse(selectedSectionInfo);
+                //     var newLevel = {Corp: selectedSectionInfo.Corp, area: selectedSectionInfo.area, level: selectedSectionInfo.level+1, vuln: selectedSectionInfo.vuln};
+                //     console.log("[SelectSectionLevel] after level >> ", newLevel);
 
-            //     // 레벨 수정(1증가)
-            //     func.UpdateSection(PIN, corp, areaName, selectedSectionInfo, newLevel);   
-            //     var area_level = areaName + "-" + (selectedSectionInfo.level+1);
-            //     socket.emit('New_Level', area_level.toString());
-            // });
+                //     // 레벨 수정(1증가)
+                //     func.UpdateSection(PIN, corp, areaName, selectedSectionInfo, newLevel);   
+                //     var area_level = areaName + "-" + (selectedSectionInfo.level+1);
+                //     socket.emit('New_Level', area_level.toString());
+                // });
+            }
+
+
+            
         });
 
         // ## [Section] 구조도 페이지 시작 시
@@ -1096,9 +1123,28 @@ module.exports = (io) => {
                     break;
             }
 
-            socket.to(socket.room).emit("Area_Vuln", areaName, roomTotalJson[0][corpName].sections[sectionIdx].vuln);
-            socket.emit('Area_Vuln', areaName, roomTotalJson[0][corpName].sections[sectionIdx].vuln);
+            var black_total_pita = roomTotalJson[0].blackTeam.total_pita;
+            console.log("Before black_total_pita!!!", black_total_pita );
 
+            if(black_total_pita - config.EXPLORE_INFO.pita < 0)
+            {
+                console.log("피타 부족");
+            } else {
+                // json 변경
+                roomTotalJson[0].blackTeam.total_pita = black_total_pita - config.EXPLORE_INFO.pita;
+                await jsonStore.updatejson(roomTotalJson[0], socket.room);
+
+                // 확인
+                var roomTotalJsonA = JSON.parse(await jsonStore.getjson(socket.room));
+                console.log("UPDATE 후에 JSON!!!",roomTotalJsonA[0]);
+
+                console.log("After black_total_pita!!!", black_total_pita - config.EXPLORE_INFO.pita);
+                socket.to(socket.room).emit("Area_Vuln", areaName, roomTotalJson[0][corpName].sections[sectionIdx].vuln);
+                socket.emit('Area_Vuln', areaName, roomTotalJson[0][corpName].sections[sectionIdx].vuln);
+
+            }
+
+            
 
 
 

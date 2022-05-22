@@ -671,7 +671,7 @@ module.exports = (io) => {
 
                 // 확인
                 var roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-                console.log("UPDATE 후에 JSON!!!",roomTotalJson);
+                console.log("UPDATE 후에 JSON!!!",roomTotalJson[0]);
                 
                 // 성공시 
                 socket.emit('Solved Neutralization');

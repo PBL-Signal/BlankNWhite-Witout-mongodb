@@ -166,25 +166,25 @@ module.exports = (io) => {
         socket.on("isValidRoom", (room) => {
             console.log('[socket-isValidRoom] room:',room);
 
-            func.IsValidRoom(room).then(function (data){
-                console.log('[socket-IsValidRoom-Then] permission:',data, room);
+            // func.IsValidRoom(room).then(function (data){
+            //     console.log('[socket-IsValidRoom-Then] permission:',data, room);
 
-                var room_data = { 
-                    permission: data.permission.toString(),
-                    manager : data.manager.toString(),
-                    room: room
-                };
+            //     var room_data = { 
+            //         permission: data.permission.toString(),
+            //         manager : data.manager.toString(),
+            //         room: room
+            //     };
 
-                if (data.permission) {
-                    console.log("permission True");
-                    socket.room = room;
-                    console.log("socket.room : ", socket.room);
-                }
+            //     if (data.permission) {
+            //         console.log("permission True");
+            //         socket.room = room;
+            //         console.log("socket.room : ", socket.room);
+            //     }
 
-                var roomJson = JSON.stringify(room_data);
-                console.log('check : ', roomJson);
-                socket.emit('room permission',roomJson);
-            });  
+            //     var roomJson = JSON.stringify(room_data);
+            //     console.log('check : ', roomJson);
+            //     socket.emit('room permission',roomJson);
+            // });  
 
 
         });
@@ -199,7 +199,7 @@ module.exports = (io) => {
             room['roomPin'] = randomN();
             
             console.log('수정 후 room INFO ', room);
-            func.InsertRoom(room);
+            // func.InsertRoom(room);
 
             rooms[room.roomPin] = { 
                 numTotalUsers : 0,
@@ -600,7 +600,7 @@ module.exports = (io) => {
                 roomPin : socket.room,
                 sectionInfo : []
             }
-            func.InsertSection(sectionDB);
+            //func.InsertSection(sectionDB);
 
             // console.log('check : ', roomJson);
 

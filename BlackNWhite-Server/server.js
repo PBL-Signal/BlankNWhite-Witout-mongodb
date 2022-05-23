@@ -4,7 +4,7 @@ const cors = require("cors");
 const bodyPaser = require('body-parser');
 const REDIS_PORT = 6380;
 
-const mongoose = require('mongoose');
+// const mongoose = require('mongoose');
 const socketio = require("socket.io");
 const Redis = require("ioredis"); 
 const socketredis = require("socket.io-redis");

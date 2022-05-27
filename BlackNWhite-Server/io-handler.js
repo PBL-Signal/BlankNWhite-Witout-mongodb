@@ -1,6 +1,6 @@
 const url = require('url');
 const async = require('async');
-const func = require('./server_functions/db_func');
+//const func = require('./server_functions/db_func');
 const { Socket } = require('dgram');
 const { stringify } = require('querystring');
 const config = require('./configure');
@@ -934,35 +934,37 @@ module.exports = (io) => {
 
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
 
-            switch(corp)
-            {
-                case "회사A":
-                    var corpName = "companyA"
-                    break;
-                case "회사B":
-                    var corpName = "companyB"
-                    break;
-                case "회사C":
-                    var corpName = "companyC"
-                    break;
-                case "회사D":
-                    var corpName = "companyD"
-                    break;
-                case "회사E":
-                    var corpName = "companyE"
-                    break;
-            }
+            var corpName = corp;
+            // switch(corp)
+            // {
+            //     case "회사A":
+            //         corpName = "companyA"
+            //         break;
+            //     case "회사B":
+            //         corpName = "companyB"
+            //         break;
+            //     case "회사C":
+            //         corpName = "companyC"
+            //         break;
+            //     case "회사D":
+            //         corpName = "companyD"
+            //         break;
+            //     case "회사E":
+            //         corpName = "companyE"
+            //         break;
+            // }
 
+            sectionIdx = -1;
             switch(areaName)
             {
                 case "Area_DMZ":
-                    var sectionIdx = 0;
+                    sectionIdx = 0;
                     break;
                 case "Area_Interal":
-                    var sectionIdx = 1;
+                    sectionIdx = 1;
                     break;
                 case "Area_Sec":
-                    var sectionIdx = 2;
+                    sectionIdx = 2;
                     break;
             }
 
@@ -1030,26 +1032,33 @@ module.exports = (io) => {
             // var PIN = socket.room;
             // console.log("[Section] PIN : ", PIN);
 
+            console.log("Section_Start CALLED >> ");
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+            console.log("WHTWHYWYHWYHWYHWYH 1 >> ", roomTotalJson[0]);
 
-            switch(corp)
-            {
-                case "회사A":
-                    var corpName = "companyA"
-                    break;
-                case "회사B":
-                    var corpName = "companyB"
-                    break;
-                case "회사C":
-                    var corpName = "companyC"
-                    break;
-                case "회사D":
-                    var corpName = "companyD"
-                    break;
-                case "회사E":
-                    var corpName = "companyE"
-                    break;
-            }
+            var corpName = corp;
+            // switch(corp)
+            // {
+            //     case "회사A":
+            //         corpName = "companyA"
+            //         break;
+            //     case "회사B":
+            //         corpName = "companyB"
+            //         break;
+            //     case "회사C":
+            //         corpName = "companyC"
+            //         break;
+            //     case "회사D":
+            //         corpName = "companyD"
+            //         break;
+            //     case "회사E":
+            //         corpName = "companyE"
+            //         break;
+            // }
+            console.log("WHTWHYWYHWYHWYHWYH CP NAME >> ", corp);
+            console.log("WHTWHYWYHWYHWYHWYH CP NAME >> ", corpName);
+
+            console.log("WHTWHYWYHWYHWYHWYH >> ", roomTotalJson[0][corpName]);
             var sectionsArr = roomTotalJson[0][corpName].sections;
             console.log("### LENGTH ### >> ", sectionsArr.length);
 
@@ -1091,35 +1100,37 @@ module.exports = (io) => {
 
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
 
-            switch(corp)
-            {
-                case "회사A":
-                    var corpName = "companyA"
-                    break;
-                case "회사B":
-                    var corpName = "companyB"
-                    break;
-                case "회사C":
-                    var corpName = "companyC"
-                    break;
-                case "회사D":
-                    var corpName = "companyD"
-                    break;
-                case "회사E":
-                    var corpName = "companyE"
-                    break;
-            }
+            var corpName = corp;
+            // switch(corp)
+            // {
+            //     case "회사A":
+            //         corpName = "companyA"
+            //         break;
+            //     case "회사B":
+            //         corpName = "companyB"
+            //         break;
+            //     case "회사C":
+            //         corpName = "companyC"
+            //         break;
+            //     case "회사D":
+            //         corpName = "companyD"
+            //         break;
+            //     case "회사E":
+            //         corpName = "companyE"
+            //         break;
+            // }
 
+            sectionIdx = -1;
             switch(areaName)
             {
                 case "Area_DMZ":
-                    var sectionIdx = 0;
+                    sectionIdx = 0;
                     break;
                 case "Area_Interal":
-                    var sectionIdx = 1;
+                    sectionIdx = 1;
                     break;
                 case "Area_Sec":
-                    var sectionIdx = 2;
+                    sectionIdx = 2;
                     break;
             }
 
@@ -1162,25 +1173,25 @@ module.exports = (io) => {
             console.log('Get_Section_Destroy_State CALLED  : ', corp);
             
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-
-            switch(corp)
-            {
-                case "회사A":
-                    var corpName = "companyA"
-                    break;
-                case "회사B":
-                    var corpName = "companyB"
-                    break;
-                case "회사C":
-                    var corpName = "companyC"
-                    break;
-                case "회사D":
-                    var corpName = "companyD"
-                    break;
-                case "회사E":
-                    var corpName = "companyE"
-                    break;
-            }
+            var corpName = corp;
+            // switch(corp)
+            // {
+            //     case "회사A":
+            //         var corpName = "companyA"
+            //         break;
+            //     case "회사B":
+            //         var corpName = "companyB"
+            //         break;
+            //     case "회사C":
+            //         var corpName = "companyC"
+            //         break;
+            //     case "회사D":
+            //         var corpName = "companyD"
+            //         break;
+            //     case "회사E":
+            //         var corpName = "companyE"
+            //         break;
+            // }
 
             console.log("@@@@@@@@ Destroy State @@@@@@@ ",  roomTotalJson[0][corpName].sections);
             var sections = {sections: roomTotalJson[0][corpName].sections};
@@ -1194,25 +1205,26 @@ module.exports = (io) => {
         // Section Attacked Name TEST
         socket.on('Get_Section_Attacked_Name', async(corp) => {
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-
-            switch(corp)
-            {
-                case "회사A":
-                    var corpName = "companyA"
-                    break;
-                case "회사B":
-                    var corpName = "companyB"
-                    break;
-                case "회사C":
-                    var corpName = "companyC"
-                    break;
-                case "회사D":
-                    var corpName = "companyD"
-                    break;
-                case "회사E":
-                    var corpName = "companyE"
-                    break;
-            }
+            
+            var corpName = corp;
+            // switch(corp)
+            // {
+            //     case "회사A":
+            //         var corpName = "companyA"
+            //         break;
+            //     case "회사B":
+            //         var corpName = "companyB"
+            //         break;
+            //     case "회사C":
+            //         var corpName = "companyC"
+            //         break;
+            //     case "회사D":
+            //         var corpName = "companyD"
+            //         break;
+            //     case "회사E":
+            //         var corpName = "companyE"
+            //         break;
+            // }
 
             console.log("@@@@@@@@ Destroy State @@@@@@@ ",  roomTotalJson[0][corpName].sections);
             var sections = {sections: roomTotalJson[0][corpName].sections}
@@ -1230,24 +1242,25 @@ module.exports = (io) => {
         socket.on('Get_Issue_Count', async(corp) => {            
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
 
-            switch(corp)
-            {
-                case "회사A":
-                    var corpName = "companyA"
-                    break;
-                case "회사B":
-                    var corpName = "companyB"
-                    break;
-                case "회사C":
-                    var corpName = "companyC"
-                    break;
-                case "회사D":
-                    var corpName = "companyD"
-                    break;
-                case "회사E":
-                    var corpName = "companyE"
-                    break;
-            }
+            var corpName = corp;
+            // switch(corp)
+            // {
+            //     case "회사A":
+            //         var corpName = "companyA"
+            //         break;
+            //     case "회사B":
+            //         var corpName = "companyB"
+            //         break;
+            //     case "회사C":
+            //         var corpName = "companyC"
+            //         break;
+            //     case "회사D":
+            //         var corpName = "companyD"
+            //         break;
+            //     case "회사E":
+            //         var corpName = "companyE"
+            //         break;
+            // }
             var cntArr = [];
             for(i=0; i<3; i++)
             {

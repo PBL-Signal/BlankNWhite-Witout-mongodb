@@ -156,8 +156,15 @@
         return await this.redisClient.hlen(`room:${roomid}`) - 1;
     }
 
-    async RoomMembers(roomid){
-        return await this.redisClient.hkeys(`room:${roomid}`);
+    async RoomMembers(roomid){ //Info 빼주기
+        let mem = await this.redisClient.hkeys(`room:${roomid}`);
+        for(let i = 0; i <mem.length; i++){
+            if(mem[i] === 'Info'){
+                mem.splice(i, 1);
+                i--;
+            }
+        }
+        return mem
     }
 
     RoomInfo(roomid, info_json){ //업데이트 저장 다 포함

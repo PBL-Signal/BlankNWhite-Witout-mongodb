@@ -321,9 +321,8 @@ module.exports = (io) => {
             var RoomMembersList =  await redis_room.RoomMembers(socket.room);
             var RoomMembersDict = {}
             for (const member of RoomMembersList){
-                if (member !== 'Info'){
-                    RoomMembersDict[member] = await redis_room.getMember(room, member);
-            }   }
+                RoomMembersDict[member] = await redis_room.getMember(room, member);
+            }   
 
             console.log('!!!~~RoomMembersDict', RoomMembersDict);
      
@@ -603,11 +602,28 @@ module.exports = (io) => {
 
             // console.log('check : ', roomJson);
 
+            // 사용자 정보 팀 별로 불러오기
+            var blackUsersID = []; 
+            var whiteUsersID = [];
+            
+            var RoomMembersList =  await redis_room.RoomMembers(socket.room);
+            for (const member of RoomMembersList){
+                    var playerInfo = await redis_room.getMember(socket.room, member);
+                    if (playerInfo.team == false) {
+                        blackUsersID.push(playerInfo.userID);
+                    }
+                    else {
+                        whiteUsersID.push(playerInfo.userID);
+                    }
+          }
+          console.log("whiteUsersID 배열 : ", whiteUsersID);
+          console.log("blackUsersID 배열 : ", blackUsersID);
+            // var blackUsersID = ['black1ID', 'black2ID', 'black3ID', 'black4ID'];
+            // var whiteUsersID = ['white1ID', 'white2ID', 'white3ID', 'white4ID'];
+            
             // 게임 관련 Json 생성 (new)
-            var blackUsersID = ['black1ID', 'black2ID', 'black3ID', 'black4ID'];
-            var whiteUsersID = ['white1ID', 'white2ID', 'white3ID', 'white4ID'];
             var roomTotalJson = InitGame(socket.room, blackUsersID, whiteUsersID);
-            // func.InsertRoomTotal(roomTotalJson);
+ 
 
             // redis에 저징
             jsonStore.storejson(roomTotalJson, socket.room);
@@ -1337,7 +1353,7 @@ module.exports = (io) => {
     };
 
     function InitGame(room_key, blackUsersID, whiteUsersID){
-        
+        console.log("INIT GAME 호출됨------! blackUsersID", blackUsersID);
         /*
             var blackUsers = [ user1ID, user2ID, user3ID ];
         */

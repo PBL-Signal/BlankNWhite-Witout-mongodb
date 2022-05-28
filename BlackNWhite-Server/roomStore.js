@@ -5,6 +5,9 @@
     findRoomPlayers(room) {} // 해당 방의 플레이어 리스트 반환
     deletePlayer(room, playerID, name) {} // 해당 플레이어가 특정 방을 나감
     deleteRoom(room) {} // 방 자체를 없앰
+
+    createRoom(id, info) {}
+    deleteRooms(){}
   }
   
   class InMemoryRoomStore extends RoomStore {
@@ -12,6 +15,7 @@
         super();
         this.rooms = new Map();
     }
+
 
     checkRooms(room) {
         if (this.rooms.get(room) == null) {
@@ -80,108 +84,91 @@
   }
   
 //   const SESSION_TTL = 24 * 60 * 60;
-//   const mapSession = ([userID, username, connected]) =>
-//     userID ? { userID, username, connected: connected === "true" } : undefined;
   
   class RedisRoomStore extends RoomStore {
     constructor(redisClient) {
       super();
       this.redisClient = redisClient;
     }
-
-    deletePlayer(room, playerID, name) {
-        this.redisClient.lrem(`room:${room}`, 0, name);
-        this.redisClient.lrem(`room:${room}`, 0, playerID);
+//새로 만든 함수
+    async createRoom(id, info) { //id는 문자열, info는 JSON
+        // room hashtable 생성 
+        console.log("createRoom");
+        this.redisClient
+        .multi()
+        .hset(
+          `room:${id}`,
+          "Info",
+          JSON.stringify(info),
+        )
+        .exec();
+        //room 리스트 추가
+        //console.log("room_s:", await this.redisClient.exists("room_Server"));
+        this.redisClient.lpush("room_Server", id);
+        //있으면 1, 없으면 0
     }
 
-    saveRoomPlayer(room, playerID, name) { 
-        this.redisClient.lpush(`room:${room}`, [playerID, name]);
+    deleteRooms(id){ //해당 룸에 대한 해시테이블 전체 삭제 및 룸 리스트에서 삭제
+        console.log("deleteRooms");
+        this.redisClient.del(`room:${id}`);
+        this.redisClient.lrem("room_Server", 0, id);
+    }
+
+    async addMember(roomid, userid, user_json) {
+        const check_m = await this.redisClient.hsetnx(`room:${roomid}`, userid, JSON.stringify(user_json));
+        // 0 이면 실패
+        if (check_m == 0){
+            console.log("이미 있음");
+            return false
+        } else {
+            return true
+        }
 
     }
 
-    async findRoomPlayers(room) { // 해당 방의 플레이어 리스트 반환
-        var check = await this.redisClient.exists(`room:${room}`);
-        console.log("findRoomPlayers : ", check, `room:${room}`);
-        if (check === 1){
-            var plist = []
-            var tmp = await this.redisClient.lrange(`room:${room}`, 0, -1);
+    delMember(roomid, userid) {
+        this.redisClient.hdel(`room:${roomid}`, userid);
+    }
 
-            for(var i=0; i<tmp.length; i+=2){
-                plist.push([tmp[i], tmp[i+1]]);
-            }
-            console.log("findRoomPlayers : ", tmp, plist);
-            return plist;
-        //}// 만약에 찾고자 하는 방이 없으면 []을 리턴
-        } else{// 만약에 찾고자 하는 방이 없으면 1을 리턴
-            console.log("findRoomPlayers : 방 없어서 1 리턴");
-            return 1;
+    async getMember(roomid, userid){
+        const getm = await this.redisClient.hmget(`room:${roomid}`, userid);
+        //const j = JSON.parse(getm[0])
+        return JSON.parse(getm[0]);
+    }
+
+    async updateMember(roomid, userid, user_json){ //단, 기존 멤버가 있는지 확인 후 업데이트
+        
+        const arr = await this.redisClient.hkeys(`room:${roomid}`);
+        if (arr.includes(userid)){
+            this.redisClient.hset(`room:${roomid}`, userid, JSON.stringify(user_json));
+            return true;
+        } else {
+            console.log("updateMember: 없는 이름입니다")
+            return false;
         }
     }
 
-    async deleteRoom(room) {
-        var check = await this.redisClient.exists(`room:${room}`);
-        if (check == 1){
-            this.redisClient.del(`room:${room}`);
-        }
+    async viewRoomList(){
+        return await this.redisClient.lrange("room_Server", 0, -1);
     }
-  
-    // findSession(id) {
-    //   return this.redisClient
-    //     .hmget(`session:${id}`, "userID", "username", "connected")
-    //     .then(mapSession);
-    // }
-  
-    // saveSession(id, { userID, username, connected }) {
-    //   this.redisClient
-    //     .multi()
-    //     .hset(
-    //       `session:${id}`,
-    //       "userID",
-    //       userID,
-    //       "username",
-    //       username,
-    //       "connected",
-    //       connected
-    //     )
-    //     .expire(`session:${id}`, SESSION_TTL)
-    //     .exec();
-    // }
 
-    // async deleteSession(id) {
-    //     let check = await this.redisClient.exists(`session:${id}`);
-    //     console.log(check);
-    //     if (check == 1){
-    //         this.redisClient.hdel(`session:${id}`, "userID", "username", "connected");
-    //     }
-    // }
-  
-    // async findAllSessions() {
-    //   const keys = new Set();
-    //   let nextIndex = 0;
-    //   do {
-    //     const [nextIndexAsStr, results] = await this.redisClient.scan(
-    //       nextIndex,
-    //       "MATCH",
-    //       "session:*",
-    //       "COUNT",
-    //       "100"
-    //     );
-    //     nextIndex = parseInt(nextIndexAsStr, 10);
-    //     results.forEach((s) => keys.add(s));
-    //   } while (nextIndex !== 0);
-    //   const commands = [];
-    //   keys.forEach((key) => {
-    //     commands.push(["hmget", key, "userID", "username", "connected"]);
-    //   });
-    //   return this.redisClient
-    //     .multi(commands)
-    //     .exec()
-    //     .then((results) => {
-    //       return results
-    //         .map(([err, session]) => (err ? undefined : mapSession(session)))
-    //         .filter((v) => !!v);
-    //     });
-    // }
+    async RoomMembers_num(roomid){
+        return await this.redisClient.hlen(`room:${roomid}`) - 1;
+    }
+
+    async RoomMembers(roomid){
+        return await this.redisClient.hkeys(`room:${roomid}`);
+    }
+
+    RoomInfo(roomid, info_json){ //업데이트 저장 다 포함
+        this.redisClient.hset(`room:${roomid}`, "Info", JSON.stringify(info_json));
+    }
+    //Info불러오는 함수
+    async getRoomInfo(roomid){
+        return await this.redisClient.hmget(`room:${roomid}`, "Info");
+    }
+
+
   }
   module.exports = {
     InMemoryRoomStore,

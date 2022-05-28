@@ -14,7 +14,8 @@ const sessionStore = new RedisSessionStore(redisClient);
 
 const { RedisJsonStore } = require("./redisJsonStore");
 const jsonStore = new RedisJsonStore(redisClient);
-
+const { RedisRoomStore, InMemoryRoomStore } = require("./roomStore");
+const redis_room = new RedisRoomStore(redisClient);
 
 const crypto = require("crypto");
 const randomId = () => crypto.randomBytes(8).toString("hex");
@@ -92,15 +93,7 @@ module.exports = (io) => {
         console.log("session 설정 확인 - userID", socket.userID);
         console.log("session 설정 확인 - username", socket.nickname);
 
-        // try{
-        //     await sessionStore.saveSession(socket.sessionID, {
-        //         userID: socket.userID,
-        //         username: socket.username,
-        //         connected: true,
-        //     });
-        // }catch(error){
-        //     console.log("ERROR! ", error);
-        // }
+    
         try{
             await sessionStore.saveSession(socket.sessionID, {
                 userID: socket.userID,
@@ -119,21 +112,6 @@ module.exports = (io) => {
 
 
 
-
-
-        // var session = { 
-        //     sessionID: socket.sessionID,
-        //     userID: socket.userID,
-        //     username: socket.username,
-        // };
-
-        // var sessionJSON= JSON.stringify(session);
-        // socket.emit("session", sessionJSON);
-
-
-
-
-
          // [StartMain] 
          socket.on('check session', () => {
             var session = { 
@@ -147,19 +125,6 @@ module.exports = (io) => {
         });
 
 
-
-        // [StartMain] 닉네임 입력 시 
-        socket.on('join', (data) => {
-            console.log('[join] data.nickname  : ', data.nickname);
-            socket.nickname = data.nickname;
-
-            // sessionStore.saveSession("socket.sessionID", {
-            //     userID: "random123",
-            //     username: "socket.username",
-            //     connected: true
-            // });
-              
-        });
 
 
         // [MainHome] pin 번호 입력받아 현재 활성화된 방인지 검증함
@@ -185,47 +150,69 @@ module.exports = (io) => {
             //     console.log('check : ', roomJson);
             //     socket.emit('room permission',roomJson);
             // });  
-
-
         });
         
 
         // [CreateRoom] 새 방을 만듦
-        socket.on("createRoom", (room) =>{
+        socket.on("createRoom", async(room) =>{
             console.log('[socket-createRoom] 호출됨, 받은 room 정보 (maxPlayer): ', room);
 
-            room['manager'] = socket.nickname;
-            room['creationDate'] = nowDate();
-            room['roomPin'] = randomN();
+               
+            var roomPin = await createRoom();
             
+
+            // room['manager'] = socket.nickname;
+            // room['creationDate'] = nowDate();
+            // room['roomPin'] = roomPin;
+            
+
+            // redis_room.createRoom(room['roomPin'], {'creationDate' :nowDate() });
+            // redis_room.addMember(room['roomPin'],socket.userID, {'userInfo ': "test1", "user2" : "test2"});
+            
+            // redis_room.RoomInfo(room['roomPin'], {'update': 'completed'});
+            // console.log(await redis_room.RoomMembers_num(room['roomPin']));
+            // console.log('!!!룸정보', await redis_room.getRoomInfo(room['roomPin']));
+
             console.log('수정 후 room INFO ', room);
+            
+
+            
             // func.InsertRoom(room);
 
-            rooms[room.roomPin] = { 
-                numTotalUsers : 0,
-                numBlackUsers : 0,
-                numWhiteUsers : 0,
-                users : {},  //{socket.id : { socket: socket.id, nickname: socket.nickname, team: evenNumPlayer, status: 0, color: rand_Color}}
-                manager :  room.manager,
-            }
 
-            userPlacement[room.roomPin] ={
+
+            // rooms[room.roomPin] = { 
+            //     numTotalUsers : 0,
+            //     numBlackUsers : 0,
+            //     numWhiteUsers : 0,
+            //     users : {},  //{socket.id : { socket: socket.id, nickname: socket.nickname, team: evenNumPlayer, status: 0, color: rand_Color}}
+            //     manager :  room.manager,
+            // }
+
+            var userPlacement = {
                 blackPlacement : [4,3,2,1], // Unity 자리 위치 할당 관리 큐
                 whitePlacement : [4,3,2,1],
                 toBlackUsers : [], // teamChange 대기 큐(사용자 고유 id 저장)
                 toWhiteUsers:  []
             }
 
-            console.log("[createRoom] rooms 딕셔너리 : " , rooms);
-            console.log("[createRoom] userPlacement Info : " , userPlacement);
-            console.log("succesCreateRoom room.roomPin.toString() : " , room.roomPin.toString());
+            // redis에 저징
+            jsonStore.storejson(userPlacement, roomPin);
+            const userPlacement_Redis = await jsonStore.getjson(roomPin);
+            console.log("!@#!@#!@", JSON.parse(userPlacement_Redis));
 
-            socket.room = room.roomPin;
+
+
+            // console.log("[createRoom] rooms 딕셔너리 : " , rooms);
+            // console.log("[createRoom] userPlacement Info : " , userPlacement);
+            console.log("succesCreateRoom roomPin: " , roomPin);
+
+            socket.room = roomPin;
             console.log("socket.room : ", socket.room);
 
 
             socket.emit('succesCreateRoom', {
-                roomPin: room.roomPin.toString()
+                roomPin: roomPin.toString()
             });
         
         });
@@ -236,45 +223,58 @@ module.exports = (io) => {
         let addedUser = false; // added 유저 경우 
 
         // [WaitingRoom] UI player 대응 컴포넌트 idx 할당
-        function PlaceUser(team){
-            // ++rooms[socket.room].numTotalUsers; // 여기서 쓰면 안될 것 같음
-            
+        async function PlaceUser(team){
+            var userPlacement = JSON.parse(await jsonStore.getjson(socket.room))[0];
+            console.log("!!!~~userPlacement : ", userPlacement);
+
             if(!team){ //false(0)면 black  
                 // ++rooms[socket.room].numBlackUsers  ;
-                console.log("userPlacement blackPlacement.length" , userPlacement[socket.room].blackPlacement);
-                return userPlacement[socket.room].blackPlacement.pop();
+                console.log("userPlacement blackPlacement" , userPlacement.blackPlacement);
+                var place = userPlacement.blackPlacement.pop();
             }else{
                 // ++rooms[socket.room].numWhiteUsers ;
-                console.log("userPlacement whitePlacement.length" , userPlacement[socket.room].whitePlacement);
-                return userPlacement[socket.room].whitePlacement.pop();
+                console.log("userPlacement whitePlacement" , userPlacement.whitePlacement);
+                var place =  userPlacement.whitePlacement.pop();
             }
+
+            console.log("[PlaceUser] 반환 team : ", team, " place : ", place); 
+            await jsonStore.storejson(userPlacement, socket.room);
+            return place
+
         }
 
         // [WaitingRoom] UI player 대응 컴포넌트 idx 제거
-        function DeplaceUser(prevTeam, idx){
+        async function DeplaceUser(prevTeam, idx){
+            var userPlacement = JSON.parse(await jsonStore.getjson(socket.room))[0];
+            console.log("!!!~~userPlacement : ", userPlacement);
             console.log("DeplaceUser idx ! : " ,idx , "team : " , prevTeam);
 
             if(!prevTeam){ // false(0) 면 black팀
                 // blackPlayerIdx.Enqueue(idx);
-                userPlacement[socket.room].blackPlacement.push(idx);
-                console.log("$$DeplaceUser blackPlacement.length" ,userPlacement[socket.room].blackPlacement);
+                userPlacement.blackPlacement.push(idx);
+                console.log("$$DeplaceUser blackPlacement.length" ,userPlacement.blackPlacement);
             }else{
                 // whitePlayerIdx.Enqueue(idx);
                 userPlacement[socket.room].whitePlacement.push(idx);
-                console.log("$$DeplaceUser whitePlacement.length" , userPlacement[socket.room].whitePlacement);
+                console.log("$$DeplaceUser whitePlacement.length" , userPlacement.whitePlacement);
             }
+
+            await jsonStore.storejson(userPlacement, socket.room);
         }
 
         // [WaitingRoom] 팀 배정
-        function SetTeam(){
-            console.log("SetTeam room: " ,socket.room, rooms[socket.room].numBlackUsers, rooms[socket.room].numWhiteUsers);
+        async function SetTeam(roomInfoJson){
+
+            console.log("SetTeam room: " ,socket.room, roomInfoJson.numBlackUsers, roomInfoJson.numWhiteUsers);
             
-            ++rooms[socket.room].numTotalUsers;
-            if (rooms[socket.room].numBlackUsers > rooms[socket.room].numWhiteUsers){
-                ++rooms[socket.room].numWhiteUsers ;
+            ++roomInfoJson.numTotalUsers;
+            if (roomInfoJson.numBlackUsers > roomInfoJson.numWhiteUsers){
+                ++roomInfoJson.numWhiteUsers ;
+                redis_room.RoomInfo(socket.room,roomInfoJson);
                 return true
             }else{
-                ++rooms[socket.room].numBlackUsers  ;
+                ++roomInfoJson.numBlackUsers  ;
+                redis_room.RoomInfo(socket.room,roomInfoJson);
                 return false
             }
             
@@ -282,7 +282,7 @@ module.exports = (io) => {
 
 
         // [WaitingRoom] 사용자 첫 입장 시 'add user' emit 
-        socket.on('add user', () => {
+        socket.on('add user', async() => {
         
             console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', socket.nickname, 'room : ', socket.room );
 
@@ -293,92 +293,72 @@ module.exports = (io) => {
             // 1. users에 저장(닉네임 : 팀 정보)
             const rand_Color = Math.floor(Math.random() * 12);
        
+            // 1-2. redis에서 room 정보 불러오기
+            var roomInfoJson =  JSON.parse(await redis_room.getRoomInfo(socket.room));
+            console.log('!!!~~룸정보', roomInfoJson);
+            console.log('!!!~~룸정보[numBlackUsers] : ', roomInfoJson.numBlackUsers);
+
+            // var userPlacement = JSON.parse(await jsonStore.getjson(socket.room));
+            // console.log("!!!~~userPlacement : ", userPlacement);
+
+
             // 2. blackUsers/whiteUsers에 저장 (playerInfo 저장)
-            var team = SetTeam();
+            var team = await SetTeam(roomInfoJson);
             socket.team = team;
-            let playerInfo = { socket: socket.id, nickname: socket.nickname, team: team, status: 0, color: rand_Color, place : PlaceUser(team) };
+            let playerInfo = { 'userID': socket.userID, 'nickname': socket.nickname, 'team': team, 'status': 0, 'color': rand_Color, 'place' : await PlaceUser(team) };
             console.log("PlayersInfo : ", playerInfo);
 
-            rooms[room].users[socket.id] = playerInfo;     // evenNumPlayer는 팀 정보
-
-            // if (team){
-            //     // 1(true)이면 white팀 팀 
-            //     ++rooms[room].numWhiteUsers ;
-            // }else{
-            //     // 0(false) 이면 black 팀 
-            //     ++rooms[room].numBlackUsers  ;
-            // }
-            // ++rooms[room].numTotalUsers;
-
-            console.log("[add user *] rooms[room].users : ", rooms[room].users);
-            console.log("[add user *] rooms[room].numBlackUsers : ", rooms[room].numBlackUsers);
-            console.log("[add user *] rooms[room].numWhiteUsers : ", rooms[room].numWhiteUsers);
-            // console.log("[add user *]  blackUsers: " + rooms[room].blackUsers + " whiteUsers : " + rooms[room].whiteUsers);
-
-            console.log("#### blackPlacement" , userPlacement[socket.room].blackPlacement);
-            console.log("#### whitePlacement" , userPlacement[socket.room].whitePlacement);
+            redis_room.addMember(socket.room, socket.userID, playerInfo);
+            // rooms[room].users[socket.id] = playerInfo;     // evenNumPlayer는 팀 정보
 
 
-
-        //    // 다음 플레이어 black과 white 팀 입장 구분을 위해 둠
-        //     if (evenNumPlayer == false){
-        //         evenNumPlayer = true;
-        //     } else {
-        //         evenNumPlayer = false;
-        //     }
-
+            // 3. socket.join
             socket.join(room);
             addedUser = true;
 
-           // Room 정보 전달 
-        //    func.loadRoom(socket.room).then(function (room){
-        //         console.log('[socket-loadRoom] room:',room);
-        //         socket.emit('loadRoom',room);
-        //         console.log('룸 정보 전송 완료');
-        //     });
 
-            // 사용자 로그인 알림 (모든 사용자의 정보를 push함) 
+            // 4. 사용자 로그인 알림 (모든 사용자의 정보를 push함) 
+            var RoomMembersList =  await redis_room.RoomMembers(socket.room);
+            var RoomMembersDict = {}
+            for (const member of RoomMembersList){
+                if (member !== 'Info'){
+                    RoomMembersDict[member] = await redis_room.getMember(room, member);
+            }   }
+
+            console.log('!!!~~RoomMembersDict', RoomMembersDict);
+     
+
             var room_data = { 
                 room : room,
-                users : rooms[room].users
+                clientUserID : socket.userID,
+                users : RoomMembersDict
             };
             var roomJson = JSON.stringify(room_data);
 
             console.log('check roomJson : ', roomJson);
             io.sockets.in(room).emit('login',roomJson);
 
-        //    io.sockets.in(room).emit('login', {
-           
-        //        room : room,
-        //         blackUsers : rooms[room].blackUsers,
-        //         whiteUsers : rooms[room].whiteUsers,
-        //    }); 
-
-            
-            // 새 사용자가 입장하였음을 다른 사용자들에게 알림 (새로 온 사용자 정보만 push함) 
-        //     io.sockets.in(room).emit('user joined', {
-        //        nickname: socket.nickname,
-        //        numUsers: rooms[room].numUsers,
-        //        users : rooms[room].users
-        //    });
-            var playerJson = JSON.stringify(playerInfo);
-        //    io.sockets.in(room).emit('user joined', playerJson);
-           socket.broadcast.to(room).emit('user joined', playerJson);
+     
+            // var playerJson = JSON.stringify(playerInfo);
+        //    io.sockets.in(room).emit('user joined', playerInfo);
+           socket.broadcast.to(room).emit('user joined', playerInfo);
 
         });
         
 
     
         // [WaitingRoom] status 변경 시 
-        socket.on('changeReadyStatus',  (newStatus) =>{
+        socket.on('changeReadyStatus',  async(newStatus) =>{
             console.log('changeReadyStatus status : ', newStatus);
             
             // 1. 사용자 정보 수정 
-            var playerInfo = rooms[socket.room].users[socket.id]; 
+            // var playerInfo = rooms[socket.room].users[socket.id]; 
+            var playerInfo = await redis_room.getMember(socket.room, socket.userID);
             playerInfo.status = newStatus;
             //console.log("PlayersInfo : ", playerInfo);
 
-            rooms[socket.room].users[socket.id] = playerInfo;     // evenNumPlayer는 팀 정보
+            await redis_room.updateMember(socket.room, socket.userID, playerInfo);
+            // rooms[socket.room].users[socket.id] = playerInfo;     // evenNumPlayer는 팀 정보
             //console.log("수정후! : ",  rooms[socket.room].users[socket.id]);
 
             // 2. 수정한 내용 client들에게 뿌리기
@@ -391,16 +371,18 @@ module.exports = (io) => {
 
 
         // [WaitingRoom] profile 변경 시 
-        socket.on('changeProfileColor',  (colorIndex) =>{
+        socket.on('changeProfileColor',  async(colorIndex) =>{
             console.log('changeProfileColor colorIndex : ', colorIndex);
             
             // 1. 사용자 정보 수정 
-            var playerInfo = rooms[socket.room].users[socket.id]; 
+            var playerInfo = await redis_room.getMember(socket.room, socket.userID);
             playerInfo.color = colorIndex;
             console.log("PlayersInfo : ", playerInfo);
 
-            rooms[socket.room].users[socket.id] = playerInfo;     // evenNumPlayer는 팀 정보
-            console.log("수정후! : ",  rooms[socket.room].users[socket.id]);
+            await redis_room.updateMember(socket.room, socket.userID, playerInfo);
+            console.log("수정 저장완료");
+            // rooms[socket.room].users[socket.id] = playerInfo;     // evenNumPlayer는 팀 정보
+            // console.log("수정후! : ",  rooms[socket.room].users[socket.id]);
 
             // 2. 수정한 내용 client들에게 뿌리기
             var playerJson = JSON.stringify(playerInfo);
@@ -414,20 +396,22 @@ module.exports = (io) => {
 
 
         // [WaitingRoom] teamChange 변경 시 
-        socket.on('changeTeamStatus',  (changeStatus) =>{
+        socket.on('changeTeamStatus',  async(changeStatus) =>{
+            console.log("_____________________________________________________________________");
             console.log('!!!!changeTeamStatus changeStatus : ', changeStatus);
 
              // 1. 사용자 정보 수정 
-             var playerInfo = rooms[socket.room].users[socket.id]; 
+             var playerInfo = await redis_room.getMember(socket.room, socket.userID);
              playerInfo.status = changeStatus;
              console.log("PlayersInfo : ", playerInfo);
  
-             rooms[socket.room].users[socket.id] = playerInfo;     // evenNumPlayer는 팀 정보
-             console.log("수정후! : ",  rooms[socket.room].users[socket.id]);
+             await redis_room.updateMember(socket.room, socket.userID, playerInfo);// evenNumPlayer는 팀 정보
+            //  console.log("수정후! : ",  rooms[socket.room].users[socket.id]);
             
 
             var prevTeam = playerInfo.team; // 팀 바꾸기 전 현재 사용자 팀 정보
             var prevPlace = playerInfo.place;
+            console.log("## prevTeam : ", prevTeam, "  prevPlace : ", prevPlace );
 
             // 2. status 상황에 따라 행동 다르게
             // 0이면 teamChange Off
@@ -447,11 +431,17 @@ module.exports = (io) => {
                     - 입장 시 random시 evenNumPlayer 따른 팀 자동 선택 변수 제어해야 될 듯
                 */
 
-                // 경우 1-1 : 현재 white 팀 -> black 가능한지 확인
-                console.log("@rooms[socket.room].numBlackUsers : ", rooms[socket.room].numBlackUsers);
-                console.log("@rooms[socket.room].numWhiteUsers : ", rooms[socket.room].numWhiteUsers);
+                // 0. redis에서 room 정보 불러오기
+                var roomInfoJson =  JSON.parse(await redis_room.getRoomInfo(socket.room));
+                console.log('!!!~~룸정보', roomInfoJson);
 
-                if ((prevTeam == true && rooms[socket.room].numBlackUsers <4) || (prevTeam == false && rooms[socket.room].numWhiteUsers <4))
+
+
+                // 경우 1-1 : 현재 white 팀 -> black 가능한지 확인
+                console.log("@roomInfoJson.numBlackUsers : ", roomInfoJson.numBlackUsers);
+                console.log("@roomInfoJson.numWhiteUsers : ", roomInfoJson.numWhiteUsers);
+
+                if ((prevTeam == true && roomInfoJson.numBlackUsers <4) || (prevTeam == false && roomInfoJson.numWhiteUsers <4))
                 {
 
         
@@ -459,32 +449,39 @@ module.exports = (io) => {
                     // 1. room의 사용자 team 정보 바꾸기
                     // playerInfo.team = false;
                     console.log("[case1] PlayersInfo : ", playerInfo);
-                    rooms[socket.room].users[socket.id].team = !prevTeam;
+                    playerInfo.team = !prevTeam;
                     socket.team = !prevTeam;;
-                    rooms[socket.room].users[socket.id].status = 0; 
+                    playerInfo.status = 0; 
 
                     // UI 위치 할당
-                    DeplaceUser(prevTeam, prevPlace);
-                    rooms[socket.room].users[socket.id].place = PlaceUser(!prevTeam);
+                    await DeplaceUser(prevTeam, prevPlace);
+                    playerInfo.place = await PlaceUser(!prevTeam);
+
                  
                     if(prevTeam){ // white팀이면
-                        -- rooms[socket.room].numWhiteUsers ; 
-                        ++ rooms[socket.room].numBlackUsers ; 
+                        -- roomInfoJson.numWhiteUsers ; 
+                        ++ roomInfoJson.numBlackUsers ; 
                     }else{
                         // black팀이면
-                        ++ rooms[socket.room].numWhiteUsers ; 
-                        -- rooms[socket.room].numBlackUsers ; 
+                        ++ roomInfoJson.numWhiteUsers ; 
+                        -- roomInfoJson.numBlackUsers ; 
                     }
 
+                    // 수정사항 REDIS 저장
+                    await redis_room.RoomInfo(socket.room, roomInfoJson);
+                    console.log("[찐최종 저장 ] playerInfo : ", playerInfo);
+                    await redis_room.updateMember(socket.room, socket.userID, playerInfo);
+                    // console.log("####!! blackPlacement" , userPlacement[socket.room].blackPlacement);
+                    // console.log("####!! whitePlacement" , userPlacement[socket.room].whitePlacement);
 
-                    console.log("####!! blackPlacement" , userPlacement[socket.room].blackPlacement);
-                    console.log("####!! whitePlacement" , userPlacement[socket.room].whitePlacement);
+
 
                     // 2. 바뀐 정보 클라쪽에 보내기
                     var changeInfo = { 
                         type : 1,
                         // player1 : playerInfo, // 이전 
-                        player1 : rooms[socket.room].users[socket.id]  // 수정 후
+                        // player1 : rooms[socket.room].users[socket.id]  // 수정 후
+                        player1 : await redis_room.getMember(socket.room, socket.userID)
                     };
 
                     var teamChangeInfo = JSON.stringify(changeInfo);
@@ -536,21 +533,23 @@ module.exports = (io) => {
 
                 // 경우 2 : full 상태라 1:1로 팀 change를 해야되는 상황 
                 // 과정 1 : 대기열 큐에 ADD
-                else if (rooms[socket.room].numWhiteUsers >= 4 || rooms[socket.room].numBlackUsers >= 4) // 꽉 찬 상황이면 queue에 저장 (조정 : if문 걍 없애도 될듯)
+                //// <<<수정 필요>>
+                else if (roomInfoJson.numWhiteUsers >= 4 ||roomInfoJson.numBlackUsers >= 4) // 꽉 찬 상황이면 queue에 저장 (조정 : if문 걍 없애도 될듯)
                 {
 
+                    var userPlacement = JSON.parse(await jsonStore.getjson(socket.room))[0];
                      // 1. 대기열에 저장 
                     if (prevTeam == false){ // 현재 black이니까 white 팀으로 변경하고자 함
-                        userPlacement[socket.room].toWhiteUsers.push(socket.id);
+                        userPlacement.toWhiteUsers.push(socket.id);
                     }
                     else{ // 현재 white이니까 black 팀으로 변경하고자 함
-                        userPlacement[socket.room].toBlackUsers.push(socket.id);
+                        userPlacement.toBlackUsers.push(socket.id);
                     }
 
                     // 2. 매칭 하기
-                    if (userPlacement[socket.room].toBlackUsers.length > 0 && userPlacement[socket.room].toWhiteUsers.length > 0 ){
-                        var matchPlayer1Id = userPlacement[socket.room].toBlackUsers.shift();
-                        var matchPlayer2Id = userPlacement[socket.room].toWhiteUsers.shift();
+                    if (userPlacementuserPlacement.toBlackUsers.length > 0 && userPlacement.toWhiteUsers.length > 0 ){
+                        var matchPlayer1Id = userPlacement.toBlackUsers.shift();
+                        var matchPlayer2Id = userPlacement.toWhiteUsers.shift();
                         // var matchPlayerId = userPlacement[room.roomPin].toWhiteUsers.Dequeue();
 
                         var matchPlayer1 = rooms[socket.room].users[matchPlayer1Id];
@@ -613,7 +612,7 @@ module.exports = (io) => {
             // redis에 저징
             jsonStore.storejson(roomTotalJson, socket.room);
             const roomjson_Redis = await jsonStore.getjson(socket.room);
-            console.log("!@#!@#!@", JSON.parse(roomjson_Redis));
+            console.log("roomjson_Redis : ", JSON.parse(roomjson_Redis));
 
             var pitaNum;
             if (socket.team == true){
@@ -1308,8 +1307,24 @@ module.exports = (io) => {
         return now_date;
     };
 
-    function InitGame(room_key, blackUsersID, whiteUsersID){
 
+    async function createRoom(){
+
+        var roomPin = randomN();
+
+        var room_info = {
+            'creationDate' : nowDate(),
+            'numBlackUsers' : 0,
+            'numWhiteUsers' : 0,
+        };
+
+        await redis_room.createRoom(roomPin, room_info);
+
+        return roomPin
+    };
+
+    function InitGame(room_key, blackUsersID, whiteUsersID){
+        
         /*
             var blackUsers = [ user1ID, user2ID, user3ID ];
         */

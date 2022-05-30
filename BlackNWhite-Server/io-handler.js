@@ -128,8 +128,33 @@ module.exports = (io) => {
 
 
         // [MainHome] pin 번호 입력받아 현재 활성화된 방인지 검증함
-        socket.on("isValidRoom", (room) => {
+        socket.on("isValidRoom", async(room) => {
             console.log('[socket-isValidRoom] room:',room);
+
+
+            // const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+            // console.log("!!!roomTotalJson : ", roomTotalJson);
+            
+            
+            // var roomList =  await redis_room.viewRoomList();
+            // console.log('!!!~~룸정보', roomList);
+
+            var room_data = { 
+                permission: false
+            };
+
+
+            if (await redis_room.IsValidRoom(room)) {
+                console.log("permission True");
+                socket.room = room;
+                room_data.permission = true;
+                console.log("room_data.permission : ", room_data.permission );
+            }
+
+            var roomJson = JSON.stringify(room_data);
+            console.log('!!check roomJson : ', roomJson);
+            socket.emit('room permission',roomJson);
+
 
             // func.IsValidRoom(room).then(function (data){
             //     console.log('[socket-IsValidRoom-Then] permission:',data, room);
@@ -150,6 +175,9 @@ module.exports = (io) => {
             //     console.log('check : ', roomJson);
             //     socket.emit('room permission',roomJson);
             // });  
+
+
+
         });
         
 
@@ -255,7 +283,7 @@ module.exports = (io) => {
                 console.log("$$DeplaceUser blackPlacement.length" ,userPlacement.blackPlacement);
             }else{
                 // whitePlayerIdx.Enqueue(idx);
-                userPlacement[socket.room].whitePlacement.push(idx);
+                userPlacement.whitePlacement.push(idx);
                 console.log("$$DeplaceUser whitePlacement.length" , userPlacement.whitePlacement);
             }
 
@@ -340,7 +368,7 @@ module.exports = (io) => {
      
             // var playerJson = JSON.stringify(playerInfo);
         //    io.sockets.in(room).emit('user joined', playerInfo);
-           socket.broadcast.to(room).emit('user joined', playerInfo);
+            socket.broadcast.to(room).emit('user joined', playerInfo);
 
         });
         
@@ -353,8 +381,8 @@ module.exports = (io) => {
             // 1. 사용자 정보 수정 
             // var playerInfo = rooms[socket.room].users[socket.id]; 
             var playerInfo = await redis_room.getMember(socket.room, socket.userID);
+            console.log("!PlayersInfo : ", playerInfo);
             playerInfo.status = newStatus;
-            //console.log("PlayersInfo : ", playerInfo);
 
             await redis_room.updateMember(socket.room, socket.userID, playerInfo);
             // rooms[socket.room].users[socket.id] = playerInfo;     // evenNumPlayer는 팀 정보
@@ -645,8 +673,10 @@ module.exports = (io) => {
 
 
             console.log("Team 정보 :", socket.team);
-            socket.to(socket.room).emit("onGameStart", roomJson);
-            socket.emit("onGameStart", roomJson);
+            // socket.to(socket.room).emit("onGameStart", roomJson);
+            // socket.emit("onGameStart", roomJson);
+            // io.sockets.in(socket.room).emit("onGameStart", roomJson);
+            socket.broadcast.to(socket.room).emit('onGameStart', roomJson);
             // io.sockets.in(socket.room).emit('onGameStart',roomJson);
         });
         

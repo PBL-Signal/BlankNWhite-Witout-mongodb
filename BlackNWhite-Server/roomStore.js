@@ -90,7 +90,19 @@
       super();
       this.redisClient = redisClient;
     }
-//새로 만든 함수
+
+    // 방 존재 여부 확인 함수
+    async IsValidRoom(id){
+        var check = await this.redisClient.lrange("room_Server", 0, -1)
+        if (check.includes(id)){
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+
+    //새로 만든 함수
     async createRoom(id, info) { //id는 문자열, info는 JSON
         // room hashtable 생성 
         console.log("createRoom");

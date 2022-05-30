@@ -676,8 +676,8 @@ module.exports = (io) => {
             // socket.to(socket.room).emit("onGameStart", roomJson);
             // socket.emit("onGameStart", roomJson);
             // io.sockets.in(socket.room).emit("onGameStart", roomJson);
-            socket.broadcast.to(socket.room).emit('onGameStart', roomJson);
-            // io.sockets.in(socket.room).emit('onGameStart',roomJson);
+            // socket.broadcast.to(socket.room).emit('onGameStart', roomJson);
+            io.sockets.in(socket.room).emit('onGameStart',roomJson);
         });
         
         // 무력화 test

@@ -11,6 +11,8 @@ const redisClient = new Redis(REDIS_PORT);
 const { RedisSessionStore } = require("./sessionStore");
 const sessionStore = new RedisSessionStore(redisClient);
 
+const { redisHashTableStore } = require("./redisHashTableStore");
+const hashtableStore = new redisHashTableStore(redisClient);
 
 const { RedisJsonStore } = require("./redisJsonStore");
 const jsonStore = new RedisJsonStore(redisClient);
@@ -156,28 +158,6 @@ module.exports = (io) => {
             socket.emit('room permission',roomJson);
 
 
-            // func.IsValidRoom(room).then(function (data){
-            //     console.log('[socket-IsValidRoom-Then] permission:',data, room);
-
-            //     var room_data = { 
-            //         permission: data.permission.toString(),
-            //         manager : data.manager.toString(),
-            //         room: room
-            //     };
-
-            //     if (data.permission) {
-            //         console.log("permission True");
-            //         socket.room = room;
-            //         console.log("socket.room : ", socket.room);
-            //     }
-
-            //     var roomJson = JSON.stringify(room_data);
-            //     console.log('check : ', roomJson);
-            //     socket.emit('room permission',roomJson);
-            // });  
-
-
-
         });
         
 
@@ -185,30 +165,12 @@ module.exports = (io) => {
         socket.on("createRoom", async(room) =>{
             console.log('[socket-createRoom] 호출됨, 받은 room 정보 (maxPlayer): ', room);
 
+            // hashtableStore.storeHashTable("key", {"a":"f", 1:2}, 1, 2);
+
+
                
             var roomPin = await createRoom();
-            
-
-            // room['manager'] = socket.nickname;
-            // room['creationDate'] = nowDate();
-            // room['roomPin'] = roomPin;
-            
-
-            // redis_room.createRoom(room['roomPin'], {'creationDate' :nowDate() });
-            // redis_room.addMember(room['roomPin'],socket.userID, {'userInfo ': "test1", "user2" : "test2"});
-            
-            // redis_room.RoomInfo(room['roomPin'], {'update': 'completed'});
-            // console.log(await redis_room.RoomMembers_num(room['roomPin']));
-            // console.log('!!!룸정보', await redis_room.getRoomInfo(room['roomPin']));
-
-            console.log('수정 후 room INFO ', room);
-            
-
-            
-            // func.InsertRoom(room);
-
-
-
+            await initRoom(roomPin);
             // rooms[room.roomPin] = { 
             //     numTotalUsers : 0,
             //     numBlackUsers : 0,
@@ -217,26 +179,25 @@ module.exports = (io) => {
             //     manager :  room.manager,
             // }
 
-            var userPlacement = {
-                blackPlacement : [4,3,2,1], // Unity 자리 위치 할당 관리 큐
-                whitePlacement : [4,3,2,1],
-                toBlackUsers : [], // teamChange 대기 큐(사용자 고유 id 저장)
-                toWhiteUsers:  []
-            }
+            // var userPlacement = {
+            //     blackPlacement : [4,3,2,1], // Unity 자리 위치 할당 관리 큐
+            //     whitePlacement : [4,3,2,1],
+            //     toBlackUsers : [], // teamChange 대기 큐(사용자 고유 id 저장)
+            //     toWhiteUsers:  []
+            // }
 
-            // redis에 저징
-            jsonStore.storejson(userPlacement, roomPin);
-            const userPlacement_Redis = await jsonStore.getjson(roomPin);
-            console.log("!@#!@#!@", JSON.parse(userPlacement_Redis));
+            // // redis에 저장
+            // jsonStore.storejson(userPlacement, roomPin);
+            // const userPlacement_Redis = await jsonStore.getjson(roomPin);
+            // console.log("!@#!@#!@", JSON.parse(userPlacement_Redis));
 
 
 
             // console.log("[createRoom] rooms 딕셔너리 : " , rooms);
             // console.log("[createRoom] userPlacement Info : " , userPlacement);
             console.log("succesCreateRoom roomPin: " , roomPin);
-
             socket.room = roomPin;
-            console.log("socket.room : ", socket.room);
+            // console.log("socket.room : ", socket.room);
 
 
             socket.emit('succesCreateRoom', {
@@ -469,10 +430,7 @@ module.exports = (io) => {
                 console.log("@roomInfoJson.numWhiteUsers : ", roomInfoJson.numWhiteUsers);
 
                 if ((prevTeam == true && roomInfoJson.numBlackUsers <4) || (prevTeam == false && roomInfoJson.numWhiteUsers <4))
-                {
-
-        
-                    
+                {                
                     // 1. room의 사용자 team 정보 바꾸기
                     // playerInfo.team = false;
                     console.log("[case1] PlayersInfo : ", playerInfo);
@@ -620,8 +578,15 @@ module.exports = (io) => {
             
         });  
 
-        // 게임 시작시 해당 룸의 사용자 정보 넘김
-        socket.on('Game Start',  async() =>{
+        // [WaitingRoom] 게임 스타트 누를 시에 모든 유저에게 전달
+        socket.on('Game Start',  () =>{
+            io.sockets.in(socket.room).emit('onGameStart');
+        });
+
+
+
+        // [MainGame] 게임 시작시 해당 룸의 사용자 정보 넘김
+        socket.on('InitGame',  async() =>{
             var sectionDB = {
                 roomPin : socket.room,
                 sectionInfo : []
@@ -651,7 +616,7 @@ module.exports = (io) => {
             
             // 게임 관련 Json 생성 (new)
             var roomTotalJson = InitGame(socket.room, blackUsersID, whiteUsersID);
- 
+          
 
             // redis에 저징
             jsonStore.storejson(roomTotalJson, socket.room);
@@ -673,13 +638,19 @@ module.exports = (io) => {
 
 
             console.log("Team 정보 :", socket.team);
-            // socket.to(socket.room).emit("onGameStart", roomJson);
+            console.log("room 정보 :", socket.room);
+            console.log("roomJson!! :",roomJson);
+            // socket.to(socket.room).emit("onGameStart", /roomJson);
             // socket.emit("onGameStart", roomJson);
             // io.sockets.in(socket.room).emit("onGameStart", roomJson);
             // socket.broadcast.to(socket.room).emit('onGameStart', roomJson);
-            io.sockets.in(socket.room).emit('onGameStart',roomJson);
+            io.sockets.in(socket.room).emit('MainGameStart',roomJson);
         });
         
+
+
+
+
         // 무력화 test
         socket.on('TestNeutralization', function() {
             console.log("[On] TestNeutralization");
@@ -728,33 +699,33 @@ module.exports = (io) => {
 
         ////////////////////////////////////////////////////////////////////////////////////
         // PlayerEnter
-        socket.on('PlayerEnter', function() {
-            console.log("Players >> ");
-            const rand_Color = Math.floor(Math.random() * 12);
-            // eval("Players.player" + numPlayer + " = playerInfo")
-            let playerOrder = "player" + numPlayer;
-            let playerInfo = {playerOrder: playerOrder, socket: socket.id, nickname: socket.nickname, readyStatus: false, teamStatus: false, team: evenNumPlayer, color: rand_Color};
-            Players.push(playerInfo);
-            gamePlayer.player = Players;
-            // Players[Players.length]=playerInfo;
-            console.log("PlayersInfo", numPlayer, " >> ", playerInfo);
-            console.log("Players >> ", Players);
-            console.log("gamePlayer >> ", gamePlayer);
+        // socket.on('PlayerEnter', function() {
+        //     console.log("Players >> ");
+        //     const rand_Color = Math.floor(Math.random() * 12);
+        //     // eval("Players.player" + numPlayer + " = playerInfo")
+        //     let playerOrder = "player" + numPlayer;
+        //     let playerInfo = {playerOrder: playerOrder, socket: socket.id, nickname: socket.nickname, readyStatus: false, teamStatus: false, team: evenNumPlayer, color: rand_Color};
+        //     Players.push(playerInfo);
+        //     gamePlayer.player = Players;
+        //     // Players[Players.length]=playerInfo;
+        //     console.log("PlayersInfo", numPlayer, " >> ", playerInfo);
+        //     console.log("Players >> ", Players);
+        //     console.log("gamePlayer >> ", gamePlayer);
 
-            if (evenNumPlayer == false){
-                evenNumPlayer = true;
-            } else {
-                evenNumPlayer = false;
-            }
+        //     if (evenNumPlayer == false){
+        //         evenNumPlayer = true;
+        //     } else {
+        //         evenNumPlayer = false;
+        //     }
 
-            numPlayer = numPlayer + 1;
+        //     numPlayer = numPlayer + 1;
             
-            // JSON 형식으로 유니티에 데이터 보내기
+        //     // JSON 형식으로 유니티에 데이터 보내기
 
-            var PlayersJson = JSON.stringify(gamePlayer);
-            console.log("jsonStringify : ", PlayersJson.toString());
-            socket.emit('PlayersData', PlayersJson);
-        });
+        //     var PlayersJson = JSON.stringify(gamePlayer);
+        //     console.log("jsonStringify : ", PlayersJson.toString());
+        //     socket.emit('PlayersData', PlayersJson);
+        // });
         
         // socket.on('changeStatus', function(jsonStr) {
         //     let changePlayerInfo = JSON.parse(jsonStr);        
@@ -776,23 +747,23 @@ module.exports = (io) => {
         //     socket.emit('PlayersData', PlayersJson);
         // });
 
-        socket.on('changeColor', function(jsonStr) {
-            let changePlayerInfo = JSON.parse(jsonStr);
+        // socket.on('changeColor', function(jsonStr) {
+        //     let changePlayerInfo = JSON.parse(jsonStr);
 
-            console.log('new Player info Jsong string : ', jsonStr);
-            console.log('new Player info gamePlayer : ', changePlayerInfo);
+        //     console.log('new Player info Jsong string : ', jsonStr);
+        //     console.log('new Player info gamePlayer : ', changePlayerInfo);
 
-            let playerNum = changePlayerInfo["playerNum"];
-            let colorNum = changePlayerInfo["value"];
+        //     let playerNum = changePlayerInfo["playerNum"];
+        //     let colorNum = changePlayerInfo["value"];
 
-            gamePlayer.player[playerNum]["color"] = colorNum;
+        //     gamePlayer.player[playerNum]["color"] = colorNum;
 
-            console.log("new josn file : ", gamePlayer);
+        //     console.log("new josn file : ", gamePlayer);
 
-            var PlayersJson = JSON.stringify(gamePlayer);
-            console.log("jsonStringify : ", PlayersJson.toString());
-            socket.emit('PlayersData', PlayersJson);
-        });
+        //     var PlayersJson = JSON.stringify(gamePlayer);
+        //     console.log("jsonStringify : ", PlayersJson.toString());
+        //     socket.emit('PlayersData', PlayersJson);
+        // });
 
         // 게임 카드 리스트 보내기
         socket.on("Load Card List", async(teamData) => {
@@ -1368,7 +1339,6 @@ module.exports = (io) => {
 
 
     async function createRoom(){
-
         var roomPin = randomN();
 
         var room_info = {
@@ -1381,6 +1351,24 @@ module.exports = (io) => {
 
         return roomPin
     };
+
+
+    async function initRoom(roomPin){
+        var userPlacement = {
+            blackPlacement : [4,3,2,1], // Unity 자리 위치 할당 관리 큐
+            whitePlacement : [4,3,2,1],
+            toBlackUsers : [], // teamChange 대기 큐(사용자 고유 id 저장)
+            toWhiteUsers:  []
+        }
+
+        // redis에 저장
+        jsonStore.storejson(userPlacement, roomPin);
+        const userPlacement_Redis = await jsonStore.getjson(roomPin);
+        console.log("!@#!@#!@", JSON.parse(userPlacement_Redis));
+    };
+
+
+
 
     function InitGame(room_key, blackUsersID, whiteUsersID){
         console.log("INIT GAME 호출됨------! blackUsersID", blackUsersID);

@@ -673,11 +673,8 @@ module.exports = (io) => {
 
 
             console.log("Team 정보 :", socket.team);
-            // socket.to(socket.room).emit("onGameStart", roomJson);
-            // socket.emit("onGameStart", roomJson);
-            // io.sockets.in(socket.room).emit("onGameStart", roomJson);
-            socket.broadcast.to(socket.room).emit('onGameStart', roomJson);
-            // io.sockets.in(socket.room).emit('onGameStart',roomJson);
+            socket.to(socket.room).emit("onGameStart", roomJson);
+            io.sockets.in(socket.room).emit('onGameStart',roomJson);
         });
         
         // 무력화 test

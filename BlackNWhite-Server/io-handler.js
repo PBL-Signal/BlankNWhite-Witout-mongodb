@@ -608,9 +608,9 @@ module.exports = (io) => {
                     else {
                         whiteUsersID.push(playerInfo.userID);
                     }
-          }
-          console.log("whiteUsersID 배열 : ", whiteUsersID);
-          console.log("blackUsersID 배열 : ", blackUsersID);
+            }
+            console.log("whiteUsersID 배열 : ", whiteUsersID);
+            console.log("blackUsersID 배열 : ", blackUsersID);
             // var blackUsersID = ['black1ID', 'black2ID', 'black3ID', 'black4ID'];
             // var whiteUsersID = ['white1ID', 'white2ID', 'white3ID', 'white4ID'];
             
@@ -828,14 +828,17 @@ module.exports = (io) => {
             console.log("Update card list upgradeAttackInfo : ", upgradeAttackInfo);
 
             var cardLv;
+            var pitaNum;
             if (upgradeAttackInfo.teamName == true) {
                 cardLv = roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"][upgradeAttackInfo.attackIndex];
                 roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"][upgradeAttackInfo.attackIndex] += 1;
-                eval("roomTotalJson[0]['whiteTeam']['total_pita'] -= config.ATTACK_" + (upgradeAttackInfo.attackIndex + 1) + "['pita'][" + cardLv + "];");
+                eval("pitaNum = roomTotalJson[0]['whiteTeam']['total_pita'] - config.ATTACK_" + (upgradeAttackInfo.attackIndex + 1) + "['pita'][" + cardLv + "];");
+                roomTotalJson[0]['whiteTeam']['total_pita'] = pitaNum;
             } else {
                 cardLv = roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"][upgradeAttackInfo.attackIndex];
                 roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"][upgradeAttackInfo.attackIndex] += 1;
-                eval("roomTotalJson[0]['blackTeam']['total_pita'] -= config.RESEARCH_" + (upgradeAttackInfo.attackIndex + 1) + "['pita'][" + cardLv + "];");
+                eval("pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] - config.RESEARCH_" + (upgradeAttackInfo.attackIndex + 1) + "['pita'][" + cardLv + "];");
+                roomTotalJson[0]['whiteTeam']['total_pita'] = pitaNum;
             }
 
             console.log("Update card list roomTotalJson : ", roomTotalJson[0][upgradeAttackInfo.companyName]);
@@ -855,8 +858,8 @@ module.exports = (io) => {
             socket.to(socket.room).emit("Card List", returnValue);
             socket.emit("Card List", returnValue);
 
-            socket.to(socket.room).emit("Load Pita Num", returnValue);
-            socket.emit("Pita Num", returnValue);
+            socket.to(socket.room).emit("Load Pita Num", pitaNum);
+            socket.emit("Load Pita Num", pitaNum);
 
             // console.log('[socket-loadAttackList] upgrade Attack Info : ', upgradeAttackInfo);
             // let attackIndex = upgradeAttackInfo["AttackIndex"];

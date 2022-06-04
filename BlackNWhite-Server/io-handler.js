@@ -624,19 +624,13 @@ module.exports = (io) => {
 
         // [MainGame] 게임 시작시 해당 룸의 사용자 정보 넘김
         socket.on('InitGame',  async() =>{
-            // var sectionDB = {
-            //     roomPin : socket.room,
-            //     sectionInfo : []
-            // }
-
-            const roomjson_Redis = await jsonStore.getjson(socket.room);
-            console.log("roomjson_Redis : ", JSON.parse(roomjson_Redis));
+            const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
 
             var pitaNum;
             if (socket.team == true){
-                pitaNum = roomjson_Redis[0]["whiteTeam"]["total_pita"];
+                pitaNum = roomTotalJson[0]["whiteTeam"]["total_pita"];
             } else {
-                pitaNum = roomjson_Redis[0]["blackTeam"]["total_pita"];
+                pitaNum = roomTotalJson[0]["blackTeam"]["total_pita"];
             }
 
             var room_data = { 
@@ -831,14 +825,17 @@ module.exports = (io) => {
             console.log("Update card list upgradeAttackInfo : ", upgradeAttackInfo);
 
             var cardLv;
+            var pitaNum;
             if (upgradeAttackInfo.teamName == true) {
                 cardLv = roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"][upgradeAttackInfo.attackIndex];
                 roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"][upgradeAttackInfo.attackIndex] += 1;
-                eval("roomTotalJson[0]['whiteTeam']['total_pita'] -= config.ATTACK_" + (upgradeAttackInfo.attackIndex + 1) + "['pita'][" + cardLv + "];");
+                eval("pitaNum = roomTotalJson[0]['whiteTeam']['total_pita'] - config.ATTACK_" + (upgradeAttackInfo.attackIndex + 1) + "['pita'][" + cardLv + "];");
+                roomTotalJson[0]['whiteTeam']['total_pita'] = pitaNum;
             } else {
                 cardLv = roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"][upgradeAttackInfo.attackIndex];
                 roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"][upgradeAttackInfo.attackIndex] += 1;
-                eval("roomTotalJson[0]['blackTeam']['total_pita'] -= config.RESEARCH_" + (upgradeAttackInfo.attackIndex + 1) + "['pita'][" + cardLv + "];");
+                eval("pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] - config.RESEARCH_" + (upgradeAttackInfo.attackIndex + 1) + "['pita'][" + cardLv + "];");
+                roomTotalJson[0]['whiteTeam']['total_pita'] = pitaNum;
             }
 
             console.log("Update card list roomTotalJson : ", roomTotalJson[0][upgradeAttackInfo.companyName]);
@@ -858,8 +855,8 @@ module.exports = (io) => {
             socket.to(socket.room).emit("Card List", returnValue);
             socket.emit("Card List", returnValue);
 
-            socket.to(socket.room).emit("Load Pita Num", returnValue);
-            socket.emit("Pita Num", returnValue);
+            socket.to(socket.room).emit("Load Pita Num", pitaNum);
+            socket.emit("Load Pita Num", pitaNum);
 
             // console.log('[socket-loadAttackList] upgrade Attack Info : ', upgradeAttackInfo);
             // let attackIndex = upgradeAttackInfo["AttackIndex"];
@@ -945,280 +942,149 @@ module.exports = (io) => {
             console.log('[Section - Click Section] Click Area Info  : ', data);
             data = JSON.parse(data);
 
-            var PIN = socket.room;
-            console.log("[Section - Click Section] PIN : ", PIN);
-
-            var corp = data.Corp;
-            var areaName = data.area;
-
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-
-            var corpName = corp;
-            // switch(corp)
-            // {
-            //     case "회사A":
-            //         corpName = "companyA"
-            //         break;
-            //     case "회사B":
-            //         corpName = "companyB"
-            //         break;
-            //     case "회사C":
-            //         corpName = "companyC"
-            //         break;
-            //     case "회사D":
-            //         corpName = "companyD"
-            //         break;
-            //     case "회사E":
-            //         corpName = "companyE"
-            //         break;
-            // }
-
-            sectionIdx = -1;
-            switch(areaName)
-            {
-                case "Area_DMZ":
-                    sectionIdx = 0;
-                    break;
-                case "Area_Interal":
-                    sectionIdx = 1;
-                    break;
-                case "Area_Sec":
-                    sectionIdx = 2;
-                    break;
-            }
-
             var white_total_pita = roomTotalJson[0].whiteTeam.total_pita;
             console.log("Before White total_pita!!!", white_total_pita );
-            // MAINTENANCE_SECTION_INFO : { pita : [5, 6, 7, 8, 9], time : [5, 4, 3, 2, 1] },
-            
 
+            var corpName = data.Corp;
+            var sectionIdx = data.areaIdx;
+            
             if(white_total_pita - config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level] < 0)
             {
-                console.log("피타 부족");
+                console.log("[Maintainance] 피타 부족");
             } else {
-                // json 변경
-                roomTotalJson[0].whiteTeam.total_pita = white_total_pita - config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level];
+                // json 변경 - pita 감소
+                roomTotalJson[0].whiteTeam.total_pita = white_total_pita - config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level]; //pita 감소
+                roomTotalJson[0][corpName].sections[sectionIdx].level += 1; // 레벨 증가
                 await jsonStore.updatejson(roomTotalJson[0], socket.room);
 
-                // 확인
-                var roomTotalJsonA = JSON.parse(await jsonStore.getjson(socket.room));
-                console.log("UPDATE 후에 JSON!!!",roomTotalJsonA[0]);
-
+                // update 확인(추후 삭제)
+                var NewRoomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
                 console.log("After White total_pita!!!", white_total_pita - config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level] );
-
-                // console.log("#############load card list roomTotalJson############## : ", roomTotalJson[0][corpName]);
-                // console.log("############# Before Level ############## : ", roomTotalJson[0][corpName].sections[sectionIdx].level);
-                roomTotalJson[0][corpName].sections[sectionIdx].level += 1;
-                //console.log("############# After Level ############## : ", roomTotalJson[0][corpName].sections[sectionIdx]);
-
-                await jsonStore.updatejson(roomTotalJson[0], socket.room);
-
-                // 새 RoomTotal 확인
-                const NewRoomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
                 console.log("================= After UPDATE ================= : ", NewRoomTotalJson[0][corpName].sections[sectionIdx]);
 
-                
-
-                var area_level = areaName + "-" + (roomTotalJson[0][corpName].sections[sectionIdx].level);
+                var area_level = sectionIdx.toString() + "-" + (roomTotalJson[0][corpName].sections[sectionIdx].level);
                 socket.to(socket.room).emit("New_Level", area_level.toString());
                 socket.emit('New_Level', area_level.toString());
-
-
-                // // 해당 영역의 레벨을 DB에서 read
-                // func.SelectSectionLevel(PIN, corp, areaName).then(function (arr){
-                //     var specific = arr[0];
-                //     var index = arr[1];
-                //     console.log("[SelectSectionLevel] before level >> ", specific[0].sectionInfo[index]);
-                //     var selectedSectionInfo = specific[0].sectionInfo[index];
-                //     //selectedSectionInfo = JSON.parse(selectedSectionInfo);
-                //     var newLevel = {Corp: selectedSectionInfo.Corp, area: selectedSectionInfo.area, level: selectedSectionInfo.level+1, vuln: selectedSectionInfo.vuln};
-                //     console.log("[SelectSectionLevel] after level >> ", newLevel);
-
-                //     // 레벨 수정(1증가)
-                //     func.UpdateSection(PIN, corp, areaName, selectedSectionInfo, newLevel);   
-                //     var area_level = areaName + "-" + (selectedSectionInfo.level+1);
-                //     socket.emit('New_Level', area_level.toString());
-                // });
             }
-
-
-            
         });
 
         // ## [Section] 구조도 페이지 시작 시
         socket.on('Section_Start', async (corp) => {
-            // console.log('[Section] Corp_Name  : ', cropName);
-            // var PIN = socket.room;
-            // console.log("[Section] PIN : ", PIN);
-
             console.log("Section_Start CALLED >> ");
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-            console.log("WHTWHYWYHWYHWYHWYH 1 >> ", roomTotalJson[0]);
 
             var corpName = corp;
-            // switch(corp)
-            // {
-            //     case "회사A":
-            //         corpName = "companyA"
-            //         break;
-            //     case "회사B":
-            //         corpName = "companyB"
-            //         break;
-            //     case "회사C":
-            //         corpName = "companyC"
-            //         break;
-            //     case "회사D":
-            //         corpName = "companyD"
-            //         break;
-            //     case "회사E":
-            //         corpName = "companyE"
-            //         break;
-            // }
-            console.log("WHTWHYWYHWYHWYHWYH CP NAME >> ", corp);
-            console.log("WHTWHYWYHWYHWYHWYH CP NAME >> ", corpName);
-
-            console.log("WHTWHYWYHWYHWYHWYH >> ", roomTotalJson[0][corpName]);
             var sectionsArr = roomTotalJson[0][corpName].sections;
             console.log("### LENGTH ### >> ", sectionsArr.length);
 
             for(var i=0; i<sectionsArr.length; i++){
-                var areaName = ['Area_DMZ', 'Area_Interal', 'Area_Sec'];
-                var sectionInfo = { Corp: corpName, area: areaName[i], level: roomTotalJson[0][corpName].sections[i].level, vuln: roomTotalJson[0][corpName].sections[i].vuln}
+                var sectionInfo = { Corp: corpName, areaIdx: i, level: roomTotalJson[0][corpName].sections[i].level, vuln: roomTotalJson[0][corpName].sections[i].vuln}
                 console.log("[Section] sectionInfo-detail", sectionInfo);
                 socket.to(socket.room).emit("Area_Start_Emit", JSON.stringify(sectionInfo));
                 socket.emit('Area_Start_Emit', JSON.stringify(sectionInfo));
                 /*
-                [Section] sectionInfo-detail { Corp: '회사B', area: 'Area_DMZ', level: 0, vuln: 3 }
-                [Section] sectionInfo-detail { Corp: '회사B', area: 'Area_Interal', level: 0, vuln: 1 }
-                [Section] sectionInfo-detail { Corp: '회사B', area: 'Area_Sec', level: 0, vuln: 2 }
+                [Section] sectionInfo-detail { Corp: 'companyA', areaIdx: 0, level: 0, vuln: 3 }
+                [Section] sectionInfo-detail { Corp: 'companyA', areaIdx: 1, level: 0, vuln: 1 }
+                [Section] sectionInfo-detail { Corp: 'companyA', areaIdx: 2, level: 0, vuln: 2 }
                 */
             }
-
-            // func.SelectCrop(PIN, cropName).then(function (data){
-            //    // console.log("[Section] Corp data >> ", data);
-
-            //     for(var i=0; i<data.length; i++){
-            //         console.log("[Section] sectionInfo-detail", data[i]);
-            //         socket.emit('Area_Start_Emit', JSON.stringify(data[i]));
-            //         /*
-            //         [Section] sectionInfo-detail { Corp: '회사B', area: 'Area_DMZ', level: 0, vuln: 3 }
-            //         [Section] sectionInfo-detail { Corp: '회사B', area: 'Area_Interal', level: 0, vuln: 1 }
-            //         [Section] sectionInfo-detail { Corp: '회사B', area: 'Area_Sec', level: 0, vuln: 2 }
-            //         */
-            //     }
-            // });
         });
 
-        // ## [Vuln] 영역 클릭 시 
-        socket.on('Get_Vuln', async (data) => {
-            console.log('[Vuln] Click Area_Name  : ', data);
-            data = JSON.parse(data);
-            //var PIN = socket.room;
-            var corp = data.Corp;
-            var areaName = data.area;
-
+        // ## [PreDiscovery] 사전탐색 페이지 시작 시
+        socket.on('PreDiscovery_Start', async (corp) => {
+            console.log("PreDiscovery_Start CALLED >> ");
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
 
             var corpName = corp;
-            // switch(corp)
-            // {
-            //     case "회사A":
-            //         corpName = "companyA"
-            //         break;
-            //     case "회사B":
-            //         corpName = "companyB"
-            //         break;
-            //     case "회사C":
-            //         corpName = "companyC"
-            //         break;
-            //     case "회사D":
-            //         corpName = "companyD"
-            //         break;
-            //     case "회사E":
-            //         corpName = "companyE"
-            //         break;
-            // }
+            var sectionsArr = roomTotalJson[0][corpName].sections;
 
-            sectionIdx = -1;
-            switch(areaName)
-            {
-                case "Area_DMZ":
-                    sectionIdx = 0;
-                    break;
-                case "Area_Interal":
-                    sectionIdx = 1;
-                    break;
-                case "Area_Sec":
-                    sectionIdx = 2;
-                    break;
+            for(var i=0; i<sectionsArr.length; i++){
+                var sectionInfo = { Corp: corpName, areaIdx: i, level: roomTotalJson[0][corpName].sections[i].vuln, vuln: roomTotalJson[0][corpName].sections[i].vulnActive}
+                console.log("[PreDiscovery] sectionInfo-detail", sectionInfo);
+                socket.to(socket.room).emit("PreDiscovery_Start_Emit", JSON.stringify(sectionInfo));
+                socket.emit('PreDiscovery_Start_Emit', JSON.stringify(sectionInfo));
+                /*
+                [Section] sectionInfo-detail { Corp: 'companyA', areaIdx: 0, vuln: 3, vulnActive: false}
+                [Section] sectionInfo-detail { Corp: 'companyA', areaIdx: 1, vuln: 1, vulnActive: false}
+                [Section] sectionInfo-detail { Corp: 'companyA', areaIdx: 2, vuln: 2, vulnActive: false}
+                */
             }
+        });
 
+        // ## [Vuln] 영역 클릭 시 
+        socket.on('Get_VulnActive', async (data) => {
+            console.log('[Vuln] Click Area_Name IDX : ', data);
+            data = JSON.parse(data);
+
+            const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
             var black_total_pita = roomTotalJson[0].blackTeam.total_pita;
             console.log("Before black_total_pita!!!", black_total_pita );
+
+            var corpName = data.Corp;
+            var sectionIdx = data.areaIdx;
 
             if(black_total_pita - config.EXPLORE_INFO.pita < 0)
             {
                 console.log("피타 부족");
             } else {
                 // json 변경
-                roomTotalJson[0].blackTeam.total_pita = black_total_pita - config.EXPLORE_INFO.pita;
+                roomTotalJson[0].blackTeam.total_pita = black_total_pita - config.EXPLORE_INFO.pita; // pita 감소
+                roomTotalJson[0][corpName].sections[sectionIdx].vulnActive = true;  // vulnActive 변경
                 await jsonStore.updatejson(roomTotalJson[0], socket.room);
 
                 // 확인
                 var roomTotalJsonA = JSON.parse(await jsonStore.getjson(socket.room));
                 console.log("UPDATE 후에 JSON!!!",roomTotalJsonA[0]);
-
                 console.log("After black_total_pita!!!", black_total_pita - config.EXPLORE_INFO.pita);
-                socket.to(socket.room).emit("Area_Vuln", areaName, roomTotalJson[0][corpName].sections[sectionIdx].vuln);
-                socket.emit('Area_Vuln', areaName, roomTotalJson[0][corpName].sections[sectionIdx].vuln);
 
+                socket.to(socket.room).emit("Area_VulnActive", sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
+                socket.emit('Area_VulnActive', sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
             }
-
-            
-
-
-
-            // // 해당 영역의 취약점을 DB에서 read
-            // func.SelectSectionVuln(PIN, corp, area).then(function (data){
-            //     socket.emit('Area_Vuln', data.area, data.vuln);
-            // });
-
         });
 
-        // Section Destroy TEST
+        // // ## [Vuln] 영역 클릭 시  ====> vuln 전달하는 버전. 지금은 active 여부를 보냄(위 코드)
+        // socket.on('Get_Vuln', async (data) => {
+        //     console.log('[Vuln] Click Area_Name IDX : ', data);
+        //     data = JSON.parse(data);
+
+        //     const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+        //     var black_total_pita = roomTotalJson[0].blackTeam.total_pita;
+        //     console.log("Before black_total_pita!!!", black_total_pita );
+
+        //     var corpName = data.Corp;
+        //     var sectionIdx = data.areaIdx;
+
+        //     if(black_total_pita - config.EXPLORE_INFO.pita < 0)
+        //     {
+        //         console.log("피타 부족");
+        //     } else {
+        //         // json 변경
+        //         roomTotalJson[0].blackTeam.total_pita = black_total_pita - config.EXPLORE_INFO.pita; // pita 감소
+        //         roomTotalJson[0][corpName].sections[sectionIdx].vulnActive = true;  // vulnActive 변경
+        //         await jsonStore.updatejson(roomTotalJson[0], socket.room);
+
+        //         // 확인
+        //         var roomTotalJsonA = JSON.parse(await jsonStore.getjson(socket.room));
+        //         console.log("UPDATE 후에 JSON!!!",roomTotalJsonA[0]);
+        //         console.log("After black_total_pita!!!", black_total_pita - config.EXPLORE_INFO.pita);
+
+        //         socket.to(socket.room).emit("Area_Vuln", sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vuln, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
+        //         socket.emit('Area_Vuln', sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vuln, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
+        //     }
+        // });
+
+        // [SectionState] Section Destroy
         socket.on('Get_Section_Destroy_State', async(corp) => {
-            //testData = { "sections": [{"destroyStatus": true, "level": 5}, {"destroyStatus": false, "level": 3}, {"destroyStatus": false, "level": 1}]}
-            //testData = JSON.parse(testData);
             console.log('Get_Section_Destroy_State CALLED  : ', corp);
             
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
             var corpName = corp;
-            // switch(corp)
-            // {
-            //     case "회사A":
-            //         var corpName = "companyA"
-            //         break;
-            //     case "회사B":
-            //         var corpName = "companyB"
-            //         break;
-            //     case "회사C":
-            //         var corpName = "companyC"
-            //         break;
-            //     case "회사D":
-            //         var corpName = "companyD"
-            //         break;
-            //     case "회사E":
-            //         var corpName = "companyE"
-            //         break;
-            // }
 
             console.log("@@@@@@@@ Destroy State @@@@@@@ ",  roomTotalJson[0][corpName].sections);
             var sections = {sections: roomTotalJson[0][corpName].sections};
             socket.to(socket.room).emit("Section_Destroy_State", JSON.stringify(sections));
             socket.emit('Section_Destroy_State', JSON.stringify(sections));
-            
-
-            // socket.emit('Section_Destroy_State', JSON.stringify(testData));
         });
 
         // Section Attacked Name TEST
@@ -1226,35 +1092,13 @@ module.exports = (io) => {
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
             
             var corpName = corp;
-            // switch(corp)
-            // {
-            //     case "회사A":
-            //         var corpName = "companyA"
-            //         break;
-            //     case "회사B":
-            //         var corpName = "companyB"
-            //         break;
-            //     case "회사C":
-            //         var corpName = "companyC"
-            //         break;
-            //     case "회사D":
-            //         var corpName = "companyD"
-            //         break;
-            //     case "회사E":
-            //         var corpName = "companyE"
-            //         break;
-            // }
 
             console.log("@@@@@@@@ Destroy State @@@@@@@ ",  roomTotalJson[0][corpName].sections);
             var sections = {sections: roomTotalJson[0][corpName].sections}
-            //testData = { "sections": [{"attack": {"progress": [5,4,1,2,3], "last": 12}}, {"attack": {"progress": [5,4,1,2,3], "last": 10}}, {"attack": {"progress": [5,4,1,2,3], "last": -1}}]}
-            //testData = JSON.parse(testData);
-            //console.log('Get_Section_Attacked_Name CALLED  : ', testData);
+
 
             socket.to(socket.room).emit("Section_Attacked_Name", JSON.stringify(sections));
             socket.emit('Section_Attacked_Name', JSON.stringify(sections));
-
-            //socket.emit('Section_Attacked_Name', JSON.stringify(testData));
         });
 
         // [Monitoring] 관제 issue Count
@@ -1262,40 +1106,17 @@ module.exports = (io) => {
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
 
             var corpName = corp;
-            // switch(corp)
-            // {
-            //     case "회사A":
-            //         var corpName = "companyA"
-            //         break;
-            //     case "회사B":
-            //         var corpName = "companyB"
-            //         break;
-            //     case "회사C":
-            //         var corpName = "companyC"
-            //         break;
-            //     case "회사D":
-            //         var corpName = "companyD"
-            //         break;
-            //     case "회사E":
-            //         var corpName = "companyE"
-            //         break;
-            // }
+            var sectionsArr = roomTotalJson[0][corpName].sections;
+
             var cntArr = [];
-            for(i=0; i<3; i++)
+            for(i=0; i<sectionsArr.length; i++)
             {
                 var sectionData = roomTotalJson[0][corpName].sections[i].attack.progress.length;
                 cntArr[i] = sectionData;
             }
 
-            console.log("############# issue cOUNT############## : ", cntArr);
             socket.to(socket.room).emit("Issue_Count", cntArr);
             socket.emit('Issue_Count', cntArr);
-            //roomTotalJson[0][corpName].sections[sectionIdx].level
-
-            // console.log("#############load card list roomTotalJson############## : ", roomTotalJson[0][corpName]);
-            // console.log("############# Before Level ############## : ", roomTotalJson[0][corpName].sections[sectionIdx].level);
-            //roomTotalJson[0][corpName].sections[sectionIdx].level += 1;
-            //console.log("############# After Level ############## : ", roomTotalJson[0][corpName].sections[sectionIdx]);
 
         });
 // ===================================================================================================================
@@ -1469,9 +1290,10 @@ module.exports = (io) => {
             attackLV : [0,0,0,0,0,0,0,0,0,0,0,0,0],
             sections : [
                 new Section({
-                destroyStatus  : false ,
+                destroyStatus  : true ,
                 level  : 0,
                 vuln : 0,
+                vulnActive : false,
                 attack : progress,
                 response : progress,
                 }),
@@ -1480,14 +1302,16 @@ module.exports = (io) => {
                     destroyStatus  : false ,
                     level  : 0,
                     vuln : 1,
+                    vulnActive : false,
                     attack : progress,
                     response : progress,
                 }),
 
                 new Section({
-                    destroyStatus  : false ,
+                    destroyStatus  : true ,
                     level  : 0,
                     vuln : 2,
+                    vulnActive : false,
                     attack : progress,
                     response : progress,
                 }),

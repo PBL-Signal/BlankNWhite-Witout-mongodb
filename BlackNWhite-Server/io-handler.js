@@ -597,46 +597,13 @@ module.exports = (io) => {
 
         // [MainGame] 게임 시작시 해당 룸의 사용자 정보 넘김
         socket.on('InitGame',  async() =>{
-            // var sectionDB = {
-            //     roomPin : socket.room,
-            //     sectionInfo : []
-            // }
-
-            // console.log('check : ', roomJson);
-
-            // 사용자 정보 팀 별로 불러오기
-            var blackUsersID = []; 
-            var whiteUsersID = [];
-            
-            var RoomMembersList =  await redis_room.RoomMembers(socket.room);
-            for (const member of RoomMembersList){
-                    var playerInfo = await redis_room.getMember(socket.room, member);
-                    if (playerInfo.team == false) {
-                        blackUsersID.push(playerInfo.userID);
-                    }
-                    else {
-                        whiteUsersID.push(playerInfo.userID);
-                    }
-            }
-            console.log("whiteUsersID 배열 : ", whiteUsersID);
-            console.log("blackUsersID 배열 : ", blackUsersID);
-            // var blackUsersID = ['black1ID', 'black2ID', 'black3ID', 'black4ID'];
-            // var whiteUsersID = ['white1ID', 'white2ID', 'white3ID', 'white4ID'];
-            
-            // 게임 관련 Json 생성 (new)
-            var roomTotalJson = InitGame(socket.room, blackUsersID, whiteUsersID);
-          
-
-            // redis에 저징
-            jsonStore.storejson(roomTotalJson, socket.room);
-            const roomjson_Redis = await jsonStore.getjson(socket.room);
-            console.log("roomjson_Redis : ", JSON.parse(roomjson_Redis));
+            const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
 
             var pitaNum;
             if (socket.team == true){
-                pitaNum = roomjson_Redis[0]["whiteTeam"]["total_pita"];
+                pitaNum = roomTotalJson[0]["whiteTeam"]["total_pita"];
             } else {
-                pitaNum = roomjson_Redis[0]["blackTeam"]["total_pita"];
+                pitaNum = roomTotalJson[0]["blackTeam"]["total_pita"];
             }
 
             var room_data = { 

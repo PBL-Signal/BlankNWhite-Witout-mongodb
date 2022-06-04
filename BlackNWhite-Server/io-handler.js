@@ -93,6 +93,7 @@ module.exports = (io) => {
         console.log("session 설정 확인 - userID", socket.userID);
         console.log("session 설정 확인 - username", socket.nickname);
 
+
     
         try{
             await sessionStore.saveSession(socket.sessionID, {
@@ -128,15 +129,20 @@ module.exports = (io) => {
 
 
         // [MainHome] pin 번호 입력받아 현재 활성화된 방인지 검증함
+        // [MainHome] 오픈 방 클릭시 
         socket.on("isValidRoom", async(room) => {
             console.log('[socket-isValidRoom] room:',room);
-
+            /*
+                < 로직 > 
+                1. 해당 룸 핀이 있는지 확인
+                2. 해당 룸에 들어갈 수 있는지 (full상태 확인)
+                3. permission 주기 (socket.room 저장, 방 상태 update 및 cnt ++)
+            */
             var room_data = { 
                 permission: false
             };
 
-
-            if (await redis_room.IsValidRoom(room)) { // 바꿔야 함
+            if(await UpdatePermission(room)){
                 console.log("permission True");
                 socket.room = room;
                 room_data.permission = true;
@@ -147,44 +153,59 @@ module.exports = (io) => {
             console.log('!!check roomJson : ', roomJson);
             socket.emit('room permission',roomJson);
 
+            // 기존 코드 -----------
+            // if (await redis_room.IsValidRoom(room)) { 
+            //     console.log("permission True");
+            //     socket.room = room;
+            //     room_data.permission = true;
+            //     console.log("room_data.permission : ", room_data.permission );
+            // }
+
+            // var roomJson = JSON.stringify(room_data);
+            // console.log('!!check roomJson : ', roomJson);
+            // socket.emit('room permission',roomJson);
+            //----------------------
         });
-        
+
+        // [MainHome] 랜덤 게임 시작 버튼 클릭시
+        socket.on("randomGameStart", async() => {
+            console.log('[randomGameStart]');
+            var roomPin; 
+            /*
+             - 경우 1 : 공개방 O -> public이고 isnotfull인 방 키 return 
+             - 경우 2 : 공개방 X -> 새 공개방 만들고 입장하기 
+            */
+
+            // step 0. redis-publicWaitingRoom 상태 확인 
+            if(false){    // <코드 미정>
+                // 경우 1
+                   // <코드 미정>
+            }else {
+                // 경우 2
+                roomPin = await createRoom('public');
+                await initRoom(roomPin);
+
+                console.log("succesCreateRoom roomPin: " , roomPin);
+                
+            }    
+            socket.room = roomPin;
+            console.log("socket.room", socket.room);
+            socket.emit('enterPublicRoom');
+
+        });
+
 
         // [CreateRoom] 새 방을 만듦
         socket.on("createRoom", async(room) =>{
             console.log('[socket-createRoom] 호출됨, 받은 room 정보 (maxPlayer): ', room);
-
+            console.log('[socket-createRoom] room.roomType', room.roomType);
             // hashtableStore.storeHashTable("key", {"a":"f", 1:2}, 1, 2);
                
-            var roomPin = await createRoom('private');
+            var roomPin = await createRoom(room.roomType);
             await initRoom(roomPin);
-            // rooms[room.roomPin] = { 
-            //     numTotalUsers : 0,
-            //     numBlackUsers : 0,
-            //     numWhiteUsers : 0,
-            //     users : {},  //{socket.id : { socket: socket.id, nickname: socket.nickname, team: evenNumPlayer, status: 0, color: rand_Color}}
-            //     manager :  room.manager,
-            // }
 
-            // var userPlacement = {
-            //     blackPlacement : [4,3,2,1], // Unity 자리 위치 할당 관리 큐
-            //     whitePlacement : [4,3,2,1],
-            //     toBlackUsers : [], // teamChange 대기 큐(사용자 고유 id 저장)
-            //     toWhiteUsers:  []
-            // }
-
-            // // redis에 저장
-            // jsonStore.storejson(userPlacement, roomPin);
-            // const userPlacement_Redis = await jsonStore.getjson(roomPin);
-            // console.log("!@#!@#!@", JSON.parse(userPlacement_Redis));
-
-
-
-            // console.log("[createRoom] rooms 딕셔너리 : " , rooms);
-            // console.log("[createRoom] userPlacement Info : " , userPlacement);
             console.log("succesCreateRoom roomPin: " , roomPin);
             socket.room = roomPin;
-            // console.log("socket.room : ", socket.room);
 
 
             socket.emit('succesCreateRoom', {
@@ -262,38 +283,45 @@ module.exports = (io) => {
         
             console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', socket.nickname, 'room : ', socket.room );
 
+            /*
+                < 로직 > 
+                1. redis에서 room 정보 불러오기
+                2. new user를 white/black 배정 및 profile 색 지정 
+                3. 2번에서 만든 new user정보 저장(redis_room.addMember) 및 socket.join 
+                4. 사용자 로그인 알림 (new user에게 모든 사용자의 정보를 push함) 
+                5. new user외의 사용자들에게 new user정보보냄
+            */
             if (addedUser) return;
 
             var room = socket.room;
   
-            // 1. users에 저장(닉네임 : 팀 정보)
-            const rand_Color = Math.floor(Math.random() * 12);
-       
-            // 1-2. redis에서 room 정보 불러오기
+
+            
+            // 1. redis에서 room 정보 불러오기
             var roomInfoJson =  JSON.parse(await redis_room.getRoomInfo(socket.room));
             console.log('!!!~~룸정보', roomInfoJson);
             console.log('!!!~~룸정보[numBlackUsers] : ', roomInfoJson.numBlackUsers);
-
+            
             // var userPlacement = JSON.parse(await jsonStore.getjson(socket.room));
             // console.log("!!!~~userPlacement : ", userPlacement);
-
-
-            // 2. blackUsers/whiteUsers에 저장 (playerInfo 저장)
+            
+            
+            // 2. new user를 white/black 배정 및 profile 색 지정 v
             var team = await SetTeam(roomInfoJson);
-            socket.team = team;
+            const rand_Color = Math.floor(Math.random() * 12);
             let playerInfo = { 'userID': socket.userID, 'nickname': socket.nickname, 'team': team, 'status': 0, 'color': rand_Color, 'place' : await PlaceUser(team) };
             console.log("PlayersInfo : ", playerInfo);
 
+
+            // 3. 2번에서 만든 new user정보 저장(redis_room.addMember) 및 socket.join, socket.color
             redis_room.addMember(socket.room, socket.userID, playerInfo);
-            // rooms[room].users[socket.id] = playerInfo;     // evenNumPlayer는 팀 정보
-
-
-            // 3. socket.join
+            socket.team = team;
+            socket.color = rand_Color;
             socket.join(room);
             addedUser = true;
 
 
-            // 4. 사용자 로그인 알림 (모든 사용자의 정보를 push함) 
+            // 4. 사용자 로그인 알림 (new user에게 모든 사용자의 정보를 push함) 
             var RoomMembersList =  await redis_room.RoomMembers(socket.room);
             var RoomMembersDict = {}
             for (const member of RoomMembersList){
@@ -311,11 +339,10 @@ module.exports = (io) => {
             var roomJson = JSON.stringify(room_data);
 
             console.log('check roomJson : ', roomJson);
-            io.sockets.in(room).emit('login',roomJson);
+            io.sockets.in(room).emit('login',roomJson); 
 
      
-            // var playerJson = JSON.stringify(playerInfo);
-        //    io.sockets.in(room).emit('user joined', playerInfo);
+            // 5. new user외의 사용자들에게 new user정보 보냄
             socket.broadcast.to(room).emit('user joined', playerInfo);
 
         });
@@ -1094,16 +1121,31 @@ module.exports = (io) => {
 
 
     async function createRoom(roomType){
+        //  1. redis - room에 저장
         var roomPin = randomN();
+        var creationDate = nowDate();
 
         var room_info = {
-            'creationDate' : nowDate(),
+            'creationDate' : creationDate,
             'roomType' : roomType,
             'numBlackUsers' : 0,
             'numWhiteUsers' : 0,
         };
 
         await redis_room.createRoom(roomPin, room_info);
+
+        // 2. redis - roomManagement에 저장
+        var room_info = {
+            'roomType' : roomType,
+            'creationDate' : creationDate,
+            'userCnt' : 0
+        };
+
+        hashtableStore.storeHashTable(roomPin, room_info, 'roomManage', `${roomType}`);
+
+        // 3. 만약 공개방이면 'publicWaitingRoom'에 추가하기
+        // <코드 미정>
+
 
         return roomPin
     };
@@ -1123,7 +1165,38 @@ module.exports = (io) => {
         console.log("!@#!@#!@", JSON.parse(userPlacement_Redis));
     };
 
+    // 공개방/비공개 방 들어갈 수 있는지 확인 
+    // 검증 : 룸 존재 여부, 룸 full 여부
+    async function UpdatePermission(roomPin){
+         /*
+                < 로직 > 
+                1. 해당 룸 핀이 있는지 확인
+                2. 해당 룸에 들어갈 수 있는지 (full상태 확인)
+                3. permission 주기 (socket.room 저장, 방 상태 update 및 cnt ++)
+        */
 
+        // 1. 해당 룸 핀이 있는지 확인
+        if (! await redis_room.IsValidRoom(roomPin)) { 
+            console.log("permission False - no Room");
+            return false
+        }
+
+        // 2. 해당 룸에 들어갈 수 있는지 (full상태 확인)
+        console.log("room_member 수", await redis_room.RoomMembers_num(roomPin))
+        // 바꿔야 함 << 수정 필요 >> 여기가 아닌 roomManage/key 의 cnt ++
+        if (await redis_room.RoomMembers_num(roomPin) >= 8){
+            console.log("permission False - room Full");
+            return false
+        }
+
+        // 바꿔야 함 << 수정 필요 >>
+        // 3. permission 주기 (, 방 상태 update 및 cnt ++)
+        // roomManage/key 의 cnt ++
+        // socket.room 저장은 return 후 호출한 곳에서 해주자
+        
+        return true
+       
+    };
 
 
     function InitGame(room_key, blackUsersID, whiteUsersID){

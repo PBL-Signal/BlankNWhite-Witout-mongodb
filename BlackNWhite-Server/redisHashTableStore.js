@@ -5,10 +5,10 @@
     updateHashTableField(key, field, value, ...args){} // 필드 값 업데이트
     addHashTableField(key, field, value, ...args){}// 필드 추가(필드 값이 있는 경우에만 추가하는 옵션 추가 가능)
     isExistHashTableField(key, field, ...args){} // 필드의 존재 유무 확인(존재하면 true, 아니면 false)
-    getHashTableFieldValue(){}// 필드에 저장된 값 조회
-    getHashTableKeys(){} // Key에 저장된 모든 필드 명 조회
-    getHashTableValues(){} // Key에 저장된 모든 값 조회
-    getAllHashTable(){} // key에 저장된 모든 필드와 그 값들
+    getHashTableFieldValue(key, field_list, ...args){}// 필드에 저장된 값 조회
+    getHashTableFields(key, ...args){} // Key에 저장된 모든 필드 명 조회
+    getHashTableValues(key, ...args){} // Key에 저장된 모든 값 조회
+    getAllHashTable(key, ...args){} // key에 저장된 모든 필드와 그 값들
 }
 
 class redisHashTableStore extends HashTableStore {
@@ -95,21 +95,38 @@ class redisHashTableStore extends HashTableStore {
     } 
 
 
-    getHashTableFieldValue(){ // 필드에 저장된 값 조회
-
+    getHashTableFieldValue(key, field_list, ...args){ // 필드에 저장된 값 조회
+        var namespace = ":"
+        for(var i=0; i < args.length; i++){
+            namespace = namespace + String(args[i]) + ":"
+        }
+        return this.redisClient.hmget(`hashtable${namespace}${key}`, field_list);//[]리스트 형식으로 반환
     }
 
 
-    getHashTableKeys(){ // Key에 저장된 모든 필드 명 조회
-
+    getHashTableFields(key, ...args){ // Key에 저장된 모든 필드 명 조회
+        var namespace = ":"
+        for(var i=0; i < args.length; i++){
+            namespace = namespace + String(args[i]) + ":"
+        }
+        return this.redisClient.hkeys(`hashtable${namespace}${key}`);//[]리스트 형식으로 반환
     } 
  
-    getHashTableValues(){ // Key에 저장된 모든 값 조회
-
+    getHashTableValues(key, ...args){ // Key에 저장된 모든 값 조회
+        var namespace = ":"
+        for(var i=0; i < args.length; i++){
+            namespace = namespace + String(args[i]) + ":"
+        }
+        return this.redisClient.hvals(`hashtable${namespace}${key}`); //[]리스트 형식으로 반환
     } 
 
-    getAllHashTable(){ // key에 저장된 모든 필드와 그 값들
-
+    getAllHashTable(key, ...args){ // key에 저장된 모든 필드와 그 값들
+        var namespace = ":"
+        for(var i=0; i < args.length; i++){
+            namespace = namespace + String(args[i]) + ":"
+        }
+        return this.redisClient.hgetall(`hashtable${namespace}${key}`);
+        //{ 'email': 'mini@naver.com', 'id' : 'mini' } 처럼 { field : value, … } 형식으로 리턴됨.
     } 
 
 }

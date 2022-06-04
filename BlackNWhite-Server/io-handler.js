@@ -44,15 +44,13 @@ module.exports = (io) => {
     let numPlayer = 1;
     let companyNameList = ["companyA", "companyB", "companyC", "companyD", "companyE"]
 
-    
-    // func.SaveAttackList(dbTest);
-    // func.InsertArea();
+
     
     io.use(async (socket, next) => {
         console.log("io.use");
 
         const sessionID = socket.handshake.auth.sessionID;
-        // 가장 먼저 CONNECTION들어가기 전에 SESSIONID 있는;지 확인
+        // 가장 먼저 CONNECTION들어가기 전에 SESSIONID 있는지 확인
         //finding existing session
         const session = await sessionStore.findSession(sessionID);
 
@@ -115,7 +113,7 @@ module.exports = (io) => {
 
 
          // [StartMain] 
-         socket.on('check session', () => {
+        socket.on('check session', () => {
             var session = { 
                 sessionID: socket.sessionID,
                 userID: socket.userID,
@@ -133,20 +131,12 @@ module.exports = (io) => {
         socket.on("isValidRoom", async(room) => {
             console.log('[socket-isValidRoom] room:',room);
 
-
-            // const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-            // console.log("!!!roomTotalJson : ", roomTotalJson);
-            
-            
-            // var roomList =  await redis_room.viewRoomList();
-            // console.log('!!!~~룸정보', roomList);
-
             var room_data = { 
                 permission: false
             };
 
 
-            if (await redis_room.IsValidRoom(room)) {
+            if (await redis_room.IsValidRoom(room)) { // 바꿔야 함
                 console.log("permission True");
                 socket.room = room;
                 room_data.permission = true;
@@ -157,7 +147,6 @@ module.exports = (io) => {
             console.log('!!check roomJson : ', roomJson);
             socket.emit('room permission',roomJson);
 
-
         });
         
 
@@ -166,10 +155,8 @@ module.exports = (io) => {
             console.log('[socket-createRoom] 호출됨, 받은 room 정보 (maxPlayer): ', room);
 
             // hashtableStore.storeHashTable("key", {"a":"f", 1:2}, 1, 2);
-
-
                
-            var roomPin = await createRoom();
+            var roomPin = await createRoom('private');
             await initRoom(roomPin);
             // rooms[room.roomPin] = { 
             //     numTotalUsers : 0,
@@ -579,7 +566,30 @@ module.exports = (io) => {
         });  
 
         // [WaitingRoom] 게임 스타트 누를 시에 모든 유저에게 전달
-        socket.on('Game Start',  () =>{
+        socket.on('Game Start',  async() =>{
+            // 사용자 정보 팀 별로 불러오기
+            var blackUsersID = []; 
+            var whiteUsersID = [];
+            
+            var RoomMembersList =  await redis_room.RoomMembers(socket.room);
+            for (const member of RoomMembersList){
+                var playerInfo = await redis_room.getMember(socket.room, member);
+                if (playerInfo.team == false) {
+                    blackUsersID.push(playerInfo.userID);
+                }
+                else {
+                    whiteUsersID.push(playerInfo.userID);
+                }
+            }
+            console.log("whiteUsersID 배열 : ", whiteUsersID);
+            console.log("blackUsersID 배열 : ", blackUsersID);
+               
+            // 게임 관련 Json 생성 (new)
+            var roomTotalJson = InitGame(socket.room, blackUsersID, whiteUsersID);
+
+            // redis에 저징
+            jsonStore.storejson(roomTotalJson, socket.room);
+
             io.sockets.in(socket.room).emit('onGameStart');
         });
 
@@ -587,47 +597,13 @@ module.exports = (io) => {
 
         // [MainGame] 게임 시작시 해당 룸의 사용자 정보 넘김
         socket.on('InitGame',  async() =>{
-            var sectionDB = {
-                roomPin : socket.room,
-                sectionInfo : []
-            }
-            //func.InsertSection(sectionDB);
-
-            // console.log('check : ', roomJson);
-
-            // 사용자 정보 팀 별로 불러오기
-            var blackUsersID = []; 
-            var whiteUsersID = [];
-            
-            var RoomMembersList =  await redis_room.RoomMembers(socket.room);
-            for (const member of RoomMembersList){
-                    var playerInfo = await redis_room.getMember(socket.room, member);
-                    if (playerInfo.team == false) {
-                        blackUsersID.push(playerInfo.userID);
-                    }
-                    else {
-                        whiteUsersID.push(playerInfo.userID);
-                    }
-          }
-          console.log("whiteUsersID 배열 : ", whiteUsersID);
-          console.log("blackUsersID 배열 : ", blackUsersID);
-            // var blackUsersID = ['black1ID', 'black2ID', 'black3ID', 'black4ID'];
-            // var whiteUsersID = ['white1ID', 'white2ID', 'white3ID', 'white4ID'];
-            
-            // 게임 관련 Json 생성 (new)
-            var roomTotalJson = InitGame(socket.room, blackUsersID, whiteUsersID);
-          
-
-            // redis에 저징
-            jsonStore.storejson(roomTotalJson, socket.room);
-            const roomjson_Redis = await jsonStore.getjson(socket.room);
-            console.log("roomjson_Redis : ", JSON.parse(roomjson_Redis));
+            const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
 
             var pitaNum;
             if (socket.team == true){
-                pitaNum = roomTotalJson["whiteTeam"]["total_pita"];
+                pitaNum = roomTotalJson[0]["whiteTeam"]["total_pita"];
             } else {
-                pitaNum = roomTotalJson["blackTeam"]["total_pita"];
+                pitaNum = roomTotalJson[0]["blackTeam"]["total_pita"];
             }
 
             var room_data = { 
@@ -640,15 +616,9 @@ module.exports = (io) => {
             console.log("Team 정보 :", socket.team);
             console.log("room 정보 :", socket.room);
             console.log("roomJson!! :",roomJson);
-            // socket.to(socket.room).emit("onGameStart", /roomJson);
-            // socket.emit("onGameStart", roomJson);
-            // io.sockets.in(socket.room).emit("onGameStart", roomJson);
-            // socket.broadcast.to(socket.room).emit('onGameStart', roomJson);
             io.sockets.in(socket.room).emit('MainGameStart',roomJson);
         });
         
-
-
 
 
         // 무력화 test
@@ -828,14 +798,17 @@ module.exports = (io) => {
             console.log("Update card list upgradeAttackInfo : ", upgradeAttackInfo);
 
             var cardLv;
+            var pitaNum;
             if (upgradeAttackInfo.teamName == true) {
                 cardLv = roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"][upgradeAttackInfo.attackIndex];
                 roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"][upgradeAttackInfo.attackIndex] += 1;
-                eval("roomTotalJson[0]['whiteTeam']['total_pita'] -= config.ATTACK_" + (upgradeAttackInfo.attackIndex + 1) + "['pita'][" + cardLv + "];");
+                eval("pitaNum = roomTotalJson[0]['whiteTeam']['total_pita'] - config.ATTACK_" + (upgradeAttackInfo.attackIndex + 1) + "['pita'][" + cardLv + "];");
+                roomTotalJson[0]['whiteTeam']['total_pita'] = pitaNum;
             } else {
                 cardLv = roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"][upgradeAttackInfo.attackIndex];
                 roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"][upgradeAttackInfo.attackIndex] += 1;
-                eval("roomTotalJson[0]['blackTeam']['total_pita'] -= config.RESEARCH_" + (upgradeAttackInfo.attackIndex + 1) + "['pita'][" + cardLv + "];");
+                eval("pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] - config.RESEARCH_" + (upgradeAttackInfo.attackIndex + 1) + "['pita'][" + cardLv + "];");
+                roomTotalJson[0]['whiteTeam']['total_pita'] = pitaNum;
             }
 
             console.log("Update card list roomTotalJson : ", roomTotalJson[0][upgradeAttackInfo.companyName]);
@@ -855,8 +828,8 @@ module.exports = (io) => {
             socket.to(socket.room).emit("Card List", returnValue);
             socket.emit("Card List", returnValue);
 
-            socket.to(socket.room).emit("Load Pita Num", returnValue);
-            socket.emit("Pita Num", returnValue);
+            socket.to(socket.room).emit("Load Pita Num", pitaNum);
+            socket.emit("Load Pita Num", pitaNum);
 
             // console.log('[socket-loadAttackList] upgrade Attack Info : ', upgradeAttackInfo);
             // let attackIndex = upgradeAttackInfo["AttackIndex"];
@@ -1162,11 +1135,12 @@ module.exports = (io) => {
     };
 
 
-    async function createRoom(){
+    async function createRoom(roomType){
         var roomPin = randomN();
 
         var room_info = {
             'creationDate' : nowDate(),
+            'roomType' : roomType,
             'numBlackUsers' : 0,
             'numWhiteUsers' : 0,
         };

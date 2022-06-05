@@ -93,7 +93,7 @@ module.exports = (io) => {
         console.log("session 설정 확인 - userID", socket.userID);
         console.log("session 설정 확인 - username", socket.nickname);
 
-
+        
     
         try{
             await sessionStore.saveSession(socket.sessionID, {
@@ -194,6 +194,29 @@ module.exports = (io) => {
 
         });
 
+
+        // [MainHome] 룸 리스트 정보 반환 
+        socket.on("getPublcRooms", async() => {
+            console.log('[getPublcRooms]');
+            // <<코드 미정>> 코드 수정 필요
+            // 방 pin 번호, 방 인원수 
+            var roomslist = await redis_room.viewRoomList();
+            var publicRooms = []
+            for (const room of roomslist){
+                // publicRooms[room] = await redis_room.RoomMembers_num(room)
+                publicRooms.push({
+                    'roomPin' : room.toString(),
+                    'userCnt' : (await redis_room.RoomMembers_num(room)).toString()
+                });
+            }   
+
+            // var publicRoomsJson = JSON.stringify(publicRooms);
+            // console.log(">>> publicRoomsJson : ", publicRoomsJson);
+            // socket.emit('loadPublicRooms', publicRoomsJson);
+        
+            console.log(">>> publicRooms : ", publicRooms);
+            socket.emit('loadPublicRooms', publicRooms);
+        });
 
         // [CreateRoom] 새 방을 만듦
         socket.on("createRoom", async(room) =>{
@@ -302,10 +325,7 @@ module.exports = (io) => {
             console.log('!!!~~룸정보', roomInfoJson);
             console.log('!!!~~룸정보[numBlackUsers] : ', roomInfoJson.numBlackUsers);
             
-            // var userPlacement = JSON.parse(await jsonStore.getjson(socket.room));
-            // console.log("!!!~~userPlacement : ", userPlacement);
-            
-            
+
             // 2. new user를 white/black 배정 및 profile 색 지정 v
             var team = await SetTeam(roomInfoJson);
             const rand_Color = Math.floor(Math.random() * 12);
@@ -321,6 +341,7 @@ module.exports = (io) => {
             addedUser = true;
 
             // 4. 사용자 로그인 알림 (new user에게 모든 사용자의 정보를 push함) 
+            // 해당 룸의 모든 사용자 정보 가져와 new user 정보 추가 후 update
             var RoomMembersList =  await redis_room.RoomMembers(socket.room);
             var RoomMembersDict = {}
             for (const member of RoomMembersList){
@@ -329,7 +350,7 @@ module.exports = (io) => {
 
             console.log('!!!~~RoomMembersDict', RoomMembersDict);
      
-
+    
             var room_data = { 
                 room : room,
                 clientUserID : socket.userID,
@@ -353,7 +374,6 @@ module.exports = (io) => {
             console.log('changeReadyStatus status : ', newStatus);
             
             // 1. 사용자 정보 수정 
-            // var playerInfo = rooms[socket.room].users[socket.id]; 
             var playerInfo = await redis_room.getMember(socket.room, socket.userID);
             console.log("!PlayersInfo : ", playerInfo);
             playerInfo.status = newStatus;

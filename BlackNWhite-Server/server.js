@@ -22,7 +22,7 @@ const server = http.createServer(app);
 const io = socketio(server,{
     cors: {
         // origin: 'http://localhost:7000',
-        origin: ['http://localhost:13914'],
+        origin: ['http://localhost:5693'],
         methods: ["GET", "POST"]
     },
    

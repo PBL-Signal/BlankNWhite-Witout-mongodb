@@ -973,7 +973,7 @@ module.exports = (io) => {
             var sectionsArr = roomTotalJson[0][corpName].sections;
 
             for(var i=0; i<sectionsArr.length; i++){
-                var sectionInfo = { Corp: corpName, areaIdx: i, level: roomTotalJson[0][corpName].sections[i].vuln, vuln: roomTotalJson[0][corpName].sections[i].vulnActive}
+                var sectionInfo = { Corp: corpName, areaIdx: i, vuln: roomTotalJson[0][corpName].sections[i].vuln, vulnActive: roomTotalJson[0][corpName].sections[i].vulnActive}
                 console.log("[PreDiscovery] sectionInfo-detail", sectionInfo);
                 socket.to(socket.room).emit("PreDiscovery_Start_Emit", JSON.stringify(sectionInfo));
                 socket.emit('PreDiscovery_Start_Emit', JSON.stringify(sectionInfo));

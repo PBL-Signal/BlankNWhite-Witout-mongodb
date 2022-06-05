@@ -320,7 +320,6 @@ module.exports = (io) => {
             socket.join(room);
             addedUser = true;
 
-
             // 4. 사용자 로그인 알림 (new user에게 모든 사용자의 정보를 push함) 
             var RoomMembersList =  await redis_room.RoomMembers(socket.room);
             var RoomMembersDict = {}
@@ -595,24 +594,27 @@ module.exports = (io) => {
         // [WaitingRoom] 게임 스타트 누를 시에 모든 유저에게 전달
         socket.on('Game Start',  async() =>{
             // 사용자 정보 팀 별로 불러오기
-            var blackUsersID = []; 
-            var whiteUsersID = [];
+            var blackUsersInfo = []; 
+            var whiteUsersInfo = [];
+            let infoJson = {};
             
             var RoomMembersList =  await redis_room.RoomMembers(socket.room);
             for (const member of RoomMembersList){
                 var playerInfo = await redis_room.getMember(socket.room, member);
                 if (playerInfo.team == false) {
-                    blackUsersID.push(playerInfo.userID);
+                    infoJson = {UsersID : playerInfo.userID, UsersProfileColor : playerInfo.color}
+                    blackUsersInfo.push(infoJson);
                 }
                 else {
-                    whiteUsersID.push(playerInfo.userID);
+                    infoJson = {UsersID : playerInfo.userID, UsersProfileColor : playerInfo.color}
+                    whiteUsersInfo.push(infoJson);
                 }
             }
-            console.log("whiteUsersID 배열 : ", whiteUsersID);
-            console.log("blackUsersID 배열 : ", blackUsersID);
+            console.log("blackUsersInfo 배열 : ", blackUsersInfo);
+            console.log("whiteUsersInfo 배열 : ", whiteUsersInfo);
                
             // 게임 관련 Json 생성 (new)
-            var roomTotalJson = InitGame(socket.room, blackUsersID, whiteUsersID);
+            var roomTotalJson = InitGame(socket.room, blackUsersInfo, whiteUsersInfo);
 
             // redis에 저징
             jsonStore.storejson(roomTotalJson, socket.room);
@@ -624,18 +626,40 @@ module.exports = (io) => {
 
         // [MainGame] 게임 시작시 해당 룸의 사용자 정보 넘김
         socket.on('InitGame',  async() =>{
-            const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+            let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+            console.log("On Main Map roomTotalJson : ", roomTotalJson);
+
+            let abandonStatusList = [];
+            for(let company of companyNameList){
+                abandonStatusList.push(roomTotalJson[0][company]["abandonStatus"]);
+            }
 
             var pitaNum;
+            let teamProfileJson = {}
+            let userId = []
             if (socket.team == true){
                 pitaNum = roomTotalJson[0]["whiteTeam"]["total_pita"];
+                for (const userID in roomTotalJson[0]["whiteTeam"]["users"]){
+                    teamProfileJson[userID] = roomTotalJson[0]["whiteTeam"]["users"][userID]["profileColor"];
+                    userId.push(userID);
+                }
+
             } else {
                 pitaNum = roomTotalJson[0]["blackTeam"]["total_pita"];
+                for (const userID in roomTotalJson[0]["blackTeam"]["users"]){
+                    teamProfileJson[userID] = roomTotalJson[0]["blackTeam"]["users"][userID]["profileColor"];
+                    userId.push(userID);
+                }
             }
+
+            console.log("teamprofileColor 정보 :", teamProfileJson);
 
             var room_data = { 
                 teamName : socket.team,
-                pita : pitaNum
+                pita : pitaNum,
+                teamProfileColor : teamProfileJson,
+                userID : userId,
+                teamNum : userId.length
             };
             var roomJson = JSON.stringify(room_data);
 
@@ -643,7 +667,10 @@ module.exports = (io) => {
             console.log("Team 정보 :", socket.team);
             console.log("room 정보 :", socket.room);
             console.log("roomJson!! :",roomJson);
-            io.sockets.in(socket.room).emit('MainGameStart',roomJson);
+            io.sockets.in(socket.room).emit('MainGameStart', roomJson);
+            
+            console.log("On Main Map abandonStatusList : ", abandonStatusList);
+            io.sockets.in(socket.room).emit('Company Status', abandonStatusList);
         });
         
 
@@ -762,12 +789,73 @@ module.exports = (io) => {
         //     socket.emit('PlayersData', PlayersJson);
         // });
 
+
+        ////////////////////////////////////////////////////////////////////////////////////
+        // 회사 선택 후 사용자들에게 위치 알리기
+        socket.on("Select Company", async(CompanyName) => {
+            
+            let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+            console.log("Select Company CompanyIndex : ", CompanyName);
+
+            let teamLocations = {};
+
+            if (socket.team == true) {
+                roomTotalJson[0]["whiteTeam"]["users"][socket.userID]["currentLocation"] = CompanyName;
+                for (const userID in roomTotalJson[0]["whiteTeam"]["users"]){
+                    teamLocations[userID] = roomTotalJson[0]["whiteTeam"]["users"][userID]["currentLocation"];
+                }
+            } else {
+                roomTotalJson[0]["blackTeam"]["users"][socket.userID]["currentLocation"] = CompanyName;
+                for (const userID in roomTotalJson[0]["blackTeam"]["users"]){
+                    teamLocations[userID] = roomTotalJson[0]["blackTeam"]["users"][userID]["currentLocation"];
+                }
+            }
+
+
+            let teamLocationsJson = JSON.stringify(teamLocations);
+            console.log("teamLocationsJson : ", teamLocationsJson);
+            socket.to(socket.room).emit("Load User Location", teamLocationsJson);
+            socket.emit("Load User Location", teamLocationsJson);
+
+            await jsonStore.updatejson(roomTotalJson[0], socket.room);
+            roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+
+        });
+
+
+        socket.on("Back to MainMap", async() => {
+            let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+
+            let teamLocations = {};
+
+            if (socket.team == true) {
+                roomTotalJson[0]["whiteTeam"]["users"][socket.userID]["currentLocation"] = "";
+                for (const userID in roomTotalJson[0]["whiteTeam"]["users"]){
+                    teamLocations[userID] = roomTotalJson[0]["whiteTeam"]["users"][userID]["currentLocation"];
+                }
+            } else {
+                roomTotalJson[0]["blackTeam"]["users"][socket.userID]["currentLocation"] = "";
+                for (const userID in roomTotalJson[0]["blackTeam"]["users"]){
+                    teamLocations[userID] = roomTotalJson[0]["blackTeam"]["users"][userID]["currentLocation"];
+                }
+            }
+
+
+            let teamLocationsJson = JSON.stringify(teamLocations);
+            console.log("teamLocationsJson : ", teamLocationsJson);
+            socket.to(socket.room).emit("Load User Location", teamLocationsJson);
+            socket.emit("Load User Location", teamLocationsJson);
+
+            await jsonStore.updatejson(roomTotalJson[0], socket.room);
+            roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+        });
+
+
         // 게임 카드 리스트 보내기
         socket.on("Load Card List", async(teamData) => {            
             let teamDataJson = JSON.parse(teamData);
 
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-            console.log("load card list roomTotalJson : ", roomTotalJson);
             console.log("Load card list teamData : ", teamDataJson);
             let returnValue;
 
@@ -877,8 +965,6 @@ module.exports = (io) => {
 
             console.log("On Main Map abandonStatusList : ", abandonStatusList);
             socket.emit('Company Status', abandonStatusList);
-
-
         })
         
         // 회사 차단 인원 확인 (현제 test로 하드코딩 하여 추후 json에서 가져와 수정해야 함)
@@ -1199,8 +1285,8 @@ module.exports = (io) => {
     };
 
 
-    function InitGame(room_key, blackUsersID, whiteUsersID){
-        console.log("INIT GAME 호출됨------! blackUsersID", blackUsersID);
+    function InitGame(room_key, blackUsersInfo, whiteUsersInfo){
+        console.log("INIT GAME 호출됨------! blackUsersID", blackUsersInfo);
         /*
             var blackUsers = [ user1ID, user2ID, user3ID ];
         */
@@ -1215,11 +1301,12 @@ module.exports = (io) => {
         var blackUsers = {};
         var whiteUsers = {};
 
-        for (const user of blackUsersID){
-            blackUsers[user] = new BlackUsers({
-                userId   : user,
+        for (const user of blackUsersInfo){
+            blackUsers[user.UsersID] = new BlackUsers({
+                userId   : user.UsersID,
+                profileColor : user.UsersProfileColor,
                 IsBlocked   : false,
-                currentLocation : 0,
+                currentLocation : "",
                 companyA    : userCompanyStatus,
                 companyB    : userCompanyStatus,
                 companyC    : userCompanyStatus,
@@ -1228,14 +1315,14 @@ module.exports = (io) => {
             });
         }
 
-        for (const user of whiteUsersID){
-            whiteUsers[user] =  new WhiteUsers({
-                userId   :"abc123",
+        for (const user of whiteUsersInfo){
+            whiteUsers[user.UsersID] =  new WhiteUsers({
+                userId   : user.UsersID,
+                profileColor : user.UsersProfileColor,
                 IsBlocked   : false,
-                currentLocation : -1,
+                currentLocation : ""
             })
         }
-
     
         var progress = new Progress({
             progress  : [],

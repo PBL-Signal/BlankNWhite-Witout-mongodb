@@ -1355,7 +1355,7 @@ module.exports = (io) => {
             attackLV : [0,0,0,0,0,0,0,0,0,0,0,0,0],
             sections : [
                 new Section({
-                destroyStatus  : true ,
+                destroyStatus  : false ,
                 level  : 0,
                 vuln : 0,
                 vulnActive : false,
@@ -1373,7 +1373,7 @@ module.exports = (io) => {
                 }),
 
                 new Section({
-                    destroyStatus  : true ,
+                    destroyStatus  : false ,
                     level  : 0,
                     vuln : 2,
                     vulnActive : false,

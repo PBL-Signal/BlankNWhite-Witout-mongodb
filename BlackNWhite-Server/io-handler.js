@@ -113,16 +113,16 @@ module.exports = (io) => {
 
 
 
-         // [StartMain] 
-        socket.on('check session', () => {
+         // [MainHome] 사용자 정보(session) 확인 
+        socket.on('checkSession', () => {
             var session = { 
                 sessionID: socket.sessionID,
                 userID: socket.userID,
-                username: socket.nickname,
+                nickname: socket.nickname,  // 원래는 username임
             };
     
             var sessionJSON= JSON.stringify(session);
-            socket.emit("session", sessionJSON);
+            socket.emit("sessionInfo", sessionJSON);
         });
 
 
@@ -240,7 +240,7 @@ module.exports = (io) => {
 
 
         // [WaitingRoom] 
-        let addedUser = false; // added 유저 경우 
+        // let addedUser = false; // added 유저 경우 
 
         // [WaitingRoom] UI player 대응 컴포넌트 idx 할당
         async function PlaceUser(team){
@@ -304,8 +304,8 @@ module.exports = (io) => {
         // [WaitingRoom] 사용자 첫 입장 시 'add user' emit 
         socket.on('add user', async() => {
         
-            console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', socket.nickname, 'room : ', socket.room );
-
+            // console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', socket.nickname, 'room : ', socket.room );
+            console.log('[add user] add user 호출됨 user : ', socket.nickname, 'room : ', socket.room );
             /*
                 < 로직 > 
                 1. redis에서 room 정보 불러오기
@@ -314,7 +314,7 @@ module.exports = (io) => {
                 4. 사용자 로그인 알림 (new user에게 모든 사용자의 정보를 push함) 
                 5. new user외의 사용자들에게 new user정보보냄
             */
-            if (addedUser) return;
+            // if (addedUser) return;
 
             var room = socket.room;
   
@@ -338,7 +338,7 @@ module.exports = (io) => {
             socket.team = team;
             socket.color = rand_Color;
             socket.join(room);
-            addedUser = true;
+            // addedUser = true;
 
             // 4. 사용자 로그인 알림 (new user에게 모든 사용자의 정보를 push함) 
             // 해당 룸의 모든 사용자 정보 가져와 new user 정보 추가 후 update
@@ -610,6 +610,16 @@ module.exports = (io) => {
             }
             
         });  
+
+        // [WaitingRoom] WaitingRoom에서 나갈 시 (홈버튼 클릭)
+        socket.on('leaveRoom', async()=> {
+            console.log(">>>>> [leaveRoom]!");
+
+            var roomPin = socket.room;
+         
+            await leaveRoom(socket, roomPin);
+        });
+
 
         // [WaitingRoom] 게임 스타트 누를 시에 모든 유저에게 전달
         socket.on('Game Start',  async() =>{
@@ -1257,15 +1267,19 @@ module.exports = (io) => {
         });
 // ===================================================================================================================
         
-        socket.on('disconnect', function() {
-            console.log('A Player disconnected!!!');
+        socket.on('disconnect', async function() {
+            console.log('A Player disconnected!!! - socket.sessionID : ', socket.sessionID);
+
+            await leaveRoom(socket, socket.room);
+            await sessionStore.deleteSession(socket.sessionID);
         });
     })
 
+    // [room] 방 키 5자리 랜덤 
     function randomN(){
         var randomNum = {};
+
         //0~9까지의 난수
-    
         randomNum.random = function(n1, n2) {
             return parseInt(Math.random() * (n2 -n1 +1)) + n1;
         };
@@ -1274,11 +1288,12 @@ module.exports = (io) => {
         for(var i=0; i<5; i++){
             value += randomNum.random(0,9);
         }
+
         return value;
-        
     };
 
 
+    // 현재 날짜 문자열 생성
     function nowDate(){
         var today = new Date();
         var year = today.getFullYear();
@@ -1329,6 +1344,7 @@ module.exports = (io) => {
     };
 
 
+    // Init waitingroom   
     async function initRoom(roomPin){
         var userPlacement = {
             blackPlacement : [4,3,2,1], // Unity 자리 위치 할당 관리 큐
@@ -1343,8 +1359,8 @@ module.exports = (io) => {
         console.log("!@#!@#!@", JSON.parse(userPlacement_Redis));
     };
 
-    // 공개방/비공개 방 들어갈 수 있는지 확인 
-    // 검증 : 룸 존재 여부, 룸 full 여부
+
+    // 공개방/비공개 방 들어갈 수 있는지 확인 (검증 : 룸 존재 여부, 룸 full 여부)
     async function UpdatePermission(roomPin){
          /*
                 < 로직 > 
@@ -1376,7 +1392,33 @@ module.exports = (io) => {
        
     };
 
+    // 방 나가는  함수
+    async function leaveRoom(socket, roomPin){
 
+        // 1. 해당 인원이 나가면 room null인지 확인 (user 0명인 경우 룸 삭제)
+        if (await redis_room.RoomMembers_num(roomPin) <= 1){
+            // + << 수정필요 >> - 나중에는 private/public의 cnt도 수정해야 됨 + userPlacement도 수정
+            console.log("[룸 삭제]!");
+            redis_room.deleteRooms(roomPin);
+        }
+        else{
+            // 2.  Redis - room 인원에서 삭제
+            redis_room.delMember(roomPin, socket.userID);
+            // + << 수정필요 >> - 나중에는 private/public의 cnt도 수정해야 됨 + userPlacement도 수정
+        }
+        
+        // 3. 방에 emit하기 (나갈려고 하는 사용자에게 보냄)
+        io.sockets.in(roomPin).emit('logout'); 
+        // 3. 방에 emit하기 (그 외 다른 사용자들에게 나간 사람정보 보냄_
+        socket.broadcast.to(roomPin).emit('userLeaved',socket.userID);  
+    
+
+        // 4. (join삭제) socket.leave(room) 
+        socket.leave(roomPin);
+    };
+
+
+    // [GameStart] 게임시작을 위해 게임 스키마 초기화 
     function InitGame(room_key, blackUsersInfo, whiteUsersInfo){
         console.log("INIT GAME 호출됨------! blackUsersID", blackUsersInfo);
         /*
@@ -1474,10 +1516,8 @@ module.exports = (io) => {
             companyD    : initCompany,
             companyE    : initCompany,
         };
-        // console.log("whiteUsers ", whiteUsers);
-        // console.log("blackUsers ", blackUsers);
-        // console.log("companyA ", initCompany);
-        // console.log("ROOMJSON RoomTotalJson", RoomTotalJson);
+      
+
         return RoomTotalJson
     }
     

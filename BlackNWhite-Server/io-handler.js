@@ -691,6 +691,24 @@ module.exports = (io) => {
             
             console.log("On Main Map abandonStatusList : ", abandonStatusList);
             io.sockets.in(socket.room).emit('Company Status', abandonStatusList);
+
+            // Timer 시작
+            var time = 60; //600=10분
+            var min = "";
+            var sec = "";
+
+            io.sockets.in(socket.room).emit('Timer START');
+            let timerId = setInterval(function(){
+                min = parseInt(time/60);
+                sec = time%60;
+                console.log("TIME : " + min + "분 " + sec + "초");
+                time--;
+                if(time<=0) {
+                    console.log("시간종료!");
+                    io.sockets.in(socket.room).emit('Timer END');
+                    clearInterval(timerId)
+                }
+            }, 1000);
         });
         
 
@@ -1017,19 +1035,29 @@ module.exports = (io) => {
             {
                 console.log("[Maintainance] 피타 부족");
             } else {
-                // json 변경 - pita 감소
-                roomTotalJson[0].whiteTeam.total_pita = white_total_pita - config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level]; //pita 감소
-                roomTotalJson[0][corpName].sections[sectionIdx].level += 1; // 레벨 증가
-                await jsonStore.updatejson(roomTotalJson[0], socket.room);
+                // 최대 레벨 확인
+                if(roomTotalJson[0][corpName].sections[sectionIdx].level >= config.MAX_LEVEL){
+                    console.log("섹션 최대 레벨");
+                } else {
+                    // json 변경 - pita 감소
+                    var newTotalPita = white_total_pita - config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level]; //pita 감소
+                    roomTotalJson[0].whiteTeam.total_pita = newTotalPita;
+                    roomTotalJson[0][corpName].sections[sectionIdx].level += 1; // 레벨 증가
+                    await jsonStore.updatejson(roomTotalJson[0], socket.room);
 
-                // update 확인(추후 삭제)
-                var NewRoomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-                console.log("After White total_pita!!!", white_total_pita - config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level] );
-                console.log("================= After UPDATE ================= : ", NewRoomTotalJson[0][corpName].sections[sectionIdx]);
+                    // update 확인(추후 삭제)
+                    var NewRoomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+                    console.log("After White total_pita!!!", white_total_pita - config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level] );
+                    console.log("================= After UPDATE ================= : ", NewRoomTotalJson[0][corpName].sections[sectionIdx]);
 
-                var area_level = sectionIdx.toString() + "-" + (roomTotalJson[0][corpName].sections[sectionIdx].level);
-                socket.to(socket.room).emit("New_Level", area_level.toString());
-                socket.emit('New_Level', area_level.toString());
+                    var area_level = sectionIdx.toString() + "-" + (roomTotalJson[0][corpName].sections[sectionIdx].level);
+                    socket.to(socket.room).emit("New_Level", area_level.toString());
+                    socket.emit('New_Level', area_level.toString());
+
+                    socket.to(socket.room).emit("Load Pita Num", newTotalPita);
+                    socket.emit("Load Pita Num", newTotalPita);    
+
+                }
             }
         });
 
@@ -1088,12 +1116,17 @@ module.exports = (io) => {
             var corpName = data.Corp;
             var sectionIdx = data.areaIdx;
 
-            if(black_total_pita - config.EXPLORE_INFO.pita < 0)
+            
+            if( roomTotalJson[0][corpName].sections[sectionIdx].vulnActive == true){
+                console.log("이미 취약점확인됨" + roomTotalJson[0][corpName].sections[sectionIdx].vulnActive.toString());
+            }
+            else if(black_total_pita - config.EXPLORE_INFO.pita < 0)
             {
                 console.log("피타 부족");
             } else {
                 // json 변경
-                roomTotalJson[0].blackTeam.total_pita = black_total_pita - config.EXPLORE_INFO.pita; // pita 감소
+                var newTotalPita = black_total_pita - config.EXPLORE_INFO.pita; // pita 감소
+                roomTotalJson[0].blackTeam.total_pita = newTotalPita; // pita 감소
                 roomTotalJson[0][corpName].sections[sectionIdx].vulnActive = true;  // vulnActive 변경
                 await jsonStore.updatejson(roomTotalJson[0], socket.room);
 
@@ -1104,6 +1137,9 @@ module.exports = (io) => {
 
                 socket.to(socket.room).emit("Area_VulnActive", sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
                 socket.emit('Area_VulnActive', sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
+
+                socket.to(socket.room).emit("Load Pita Num", newTotalPita);
+                socket.emit("Load Pita Num", newTotalPita);   
             }
         });
 
@@ -1137,6 +1173,7 @@ module.exports = (io) => {
         //         socket.emit('Area_Vuln', sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vuln, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
         //     }
         // });
+
 
         // [SectionState] Section Destroy
         socket.on('Get_Section_Destroy_State', async(corp) => {
@@ -1182,6 +1219,41 @@ module.exports = (io) => {
             socket.to(socket.room).emit("Issue_Count", cntArr);
             socket.emit('Issue_Count', cntArr);
 
+        });
+
+        // [Monitoring] 영역 클릭하면 탐지된 공격 내용 emit
+        socket.on('Get_Issue', async(corpName,  s_idx) => {
+            console.log("[Monitoring] Get Issue 호출" + corpName + s_idx);
+            const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+            //console.log("[Monitoring] 결과 " + roomTotalJson[0][corpName].sections[s_idx].response.progress.toString());
+            var issueDetail = roomTotalJson[0][corpName].sections[s_idx].response.progress;
+            console.log("[Monitoring] 결과 ", issueDetail);
+            socket.emit('Get_Issue_Detail', issueDetail.length, issueDetail);
+        });
+
+        // [Abandon] 한 회사의 모든 영역이 파괴되었는지 확인 후 몰락 여부 결정
+        socket.on('is_All_Sections_Destroyed', async(corpName) => {
+            console.log("[Abandon]is_All_Sections_Destroyed " + corpName);
+            const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+            
+            var isAbondon = true;
+            var sectionsArr = roomTotalJson[0][corpName].sections;
+            for(i=0; i<sectionsArr.length; i++)
+            {
+                var isDestroy = roomTotalJson[0][corpName].sections[i].destroyStatus;
+                if(isDestroy == false){ // 한 영역이라도 false면 반복문 나감
+                    isAbondon = false;
+                    break;
+                }
+            }
+            console.log("[Abandon] isAbondon " + isAbondon);
+
+            if(isAbondon == true){ // 회사 몰락
+                console.log("[Abandon] 회사몰락 " + corpName);
+                roomTotalJson[0][corpName].abandonStatus = true;
+                await jsonStore.updatejson(roomTotalJson[0], socket.room);
+            }
+            
         });
 // ===================================================================================================================
         
@@ -1345,7 +1417,7 @@ module.exports = (io) => {
         }
     
         var progress = new Progress({
-            progress  : [],
+            progress  : [1,3,5,7,9],
             last  : -1
         })
 

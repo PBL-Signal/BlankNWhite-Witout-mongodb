@@ -44,7 +44,7 @@ module.exports = (io) => {
     let numPlayer = 1;
     let companyNameList = ["companyA", "companyB", "companyC", "companyD", "companyE"]
 
-
+    let timerId;
     
     io.use(async (socket, next) => {
         console.log("io.use");
@@ -303,6 +303,8 @@ module.exports = (io) => {
 
         // [WaitingRoom] 사용자 첫 입장 시 'add user' emit 
         socket.on('add user', async() => {
+            
+            io.sockets.emit('Visible AddedSettings'); // actionbar
         
             // console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', socket.nickname, 'room : ', socket.room );
             console.log('[add user] add user 호출됨 user : ', socket.nickname, 'room : ', socket.room );
@@ -702,13 +704,15 @@ module.exports = (io) => {
             console.log("On Main Map abandonStatusList : ", abandonStatusList);
             io.sockets.in(socket.room).emit('Company Status', abandonStatusList);
 
+            io.sockets.emit('Visible LimitedTime'); // actionbar
+
             // Timer 시작
-            var time = 60; //600=10분
+            var time = 600; //600=10분
             var min = "";
             var sec = "";
 
             io.sockets.in(socket.room).emit('Timer START');
-            let timerId = setInterval(function(){
+            timerId = setInterval(function(){
                 min = parseInt(time/60);
                 sec = time%60;
                 console.log("TIME : " + min + "분 " + sec + "초");
@@ -1269,6 +1273,8 @@ module.exports = (io) => {
         
         socket.on('disconnect', async function() {
             console.log('A Player disconnected!!! - socket.sessionID : ', socket.sessionID);
+            clearInterval(timerId)
+            console.log("[disconnect] 타이머 종료!");
 
             await leaveRoom(socket, socket.room);
             await sessionStore.deleteSession(socket.sessionID);

@@ -180,8 +180,7 @@ class redisListStore extends ListStore {
             namespace = namespace + String(args[i]) + ":"
         }
         try{
-            await this.redisClient.llen(`hashtable${namespace}${key}`);
-            return true;
+            return await this.redisClient.llen(`hashtable${namespace}${key}`);
         }catch(e){
             console.log(e.message);
             return false;

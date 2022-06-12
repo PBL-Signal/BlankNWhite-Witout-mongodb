@@ -16,6 +16,10 @@ const hashtableStore = new redisHashTableStore(redisClient);
 
 const { RedisJsonStore } = require("./redisJsonStore");
 const jsonStore = new RedisJsonStore(redisClient);
+
+const { redisListStore } = require("./redisListStore");
+const listStore = new redisListStore(redisClient);
+
 const { RedisRoomStore, InMemoryRoomStore } = require("./roomStore");
 const redis_room = new RedisRoomStore(redisClient);
 
@@ -177,13 +181,34 @@ module.exports = (io) => {
             */
 
             // step 0. redis-publicWaitingRoom 상태 확인 
-            if(false){    // <코드 미정>
+
+            var publicRoomCnt = await listStore.lenList('publicRoom', 'roomManage');
+            console.log("publicRoomCnt : ", publicRoomCnt);
+
+
+            if(publicRoomCnt > 0){    // <코드 미정>
                 // 경우 1
-                   // <코드 미정>
+                var publicRoomList = await listStore.rangeList('publicRoom', 0, -1, 'roomManage');
+                console.log("! publicRoomList : ", publicRoomList);
+
+                //0~9까지의 난수
+                var randomNum = {};
+                randomNum.random = function(n1, n2) {
+                    return parseInt(Math.random() * (n2 -n1 +1)) + n1;
+                };
+
+                var randomRoomIdx = randomNum.random(0,publicRoomCnt-1);
+                var roomPin = publicRoomList[randomRoomIdx];
+                console.log("@ randomRoomIdx  : ", randomRoomIdx);
+                console.log("@ roomPin  : ", roomPin);
+                
+                socket.room = roomPin;
+                console.log("socket.room", socket.room);
+                socket.emit('enterPublicRoom');
             }else {
                 // 경우 2
                 roomPin = await createRoom('public');
-                await initRoom(roomPin);
+                // await initRoom(roomPin);
 
                 console.log("succesCreateRoom roomPin: " , roomPin);
                 
@@ -225,7 +250,7 @@ module.exports = (io) => {
             // hashtableStore.storeHashTable("key", {"a":"f", 1:2}, 1, 2);
                
             var roomPin = await createRoom(room.roomType);
-            await initRoom(roomPin);
+            // await initRoom(roomPin);
 
             console.log("succesCreateRoom roomPin: " , roomPin);
             socket.room = roomPin;
@@ -244,60 +269,60 @@ module.exports = (io) => {
 
         // [WaitingRoom] UI player 대응 컴포넌트 idx 할당
         async function PlaceUser(team){
-            var userPlacement = JSON.parse(await jsonStore.getjson(socket.room))[0];
-            console.log("!!!~~userPlacement : ", userPlacement);
+            console.log("PlaceUser 함수---!");
 
-            if(!team){ //false(0)면 black  
-                // ++rooms[socket.room].numBlackUsers  ;
-                console.log("userPlacement blackPlacement" , userPlacement.blackPlacement);
-                var place = userPlacement.blackPlacement.pop();
+            var roomPin = socket.room;
+            var userPlacementName ;
+
+            if(!team){ //false(0)면 black
+                userPlacementName =  'blackPlacement';
             }else{
-                // ++rooms[socket.room].numWhiteUsers ;
-                console.log("userPlacement whitePlacement" , userPlacement.whitePlacement);
-                var place =  userPlacement.whitePlacement.pop();
-            }
+                userPlacementName =  'whitePlacement';
+            } 
+
+            console.log("userPlacementName " , userPlacementName);
+
+            var userPlacement =await hashtableStore.getHashTableFieldValue(roomPin, [userPlacementName], 'roomManage');
+            // console.log("userPlacement " , userPlacement);
+            userPlacement = userPlacement[0].split('');
+            // console.log("userPlacement.split() " , userPlacement);
+            var place =  userPlacement.pop();
+
+            userPlacement =  userPlacement.join('');
+            // console.log("AFTER! userPlacement.join('')" , userPlacement);
+            await hashtableStore.updateHashTableField(roomPin, userPlacementName, userPlacement, 'roomManage');
+
 
             console.log("[PlaceUser] 반환 team : ", team, " place : ", place); 
-            await jsonStore.storejson(userPlacement, socket.room);
+          
             return place
-
         }
 
         // [WaitingRoom] UI player 대응 컴포넌트 idx 제거
         async function DeplaceUser(prevTeam, idx){
-            var userPlacement = JSON.parse(await jsonStore.getjson(socket.room))[0];
-            console.log("!!!~~userPlacement : ", userPlacement);
-            console.log("DeplaceUser idx ! : " ,idx , "team : " , prevTeam);
+            console.log("DeplaceUser 함수---!");
+
+            var roomPin = socket.room;
+            var userPlacementName ;
 
             if(!prevTeam){ // false(0) 면 black팀
-                // blackPlayerIdx.Enqueue(idx);
-                userPlacement.blackPlacement.push(idx);
-                console.log("$$DeplaceUser blackPlacement.length" ,userPlacement.blackPlacement);
+                userPlacementName =  'blackPlacement';
             }else{
-                // whitePlayerIdx.Enqueue(idx);
-                userPlacement.whitePlacement.push(idx);
-                console.log("$$DeplaceUser whitePlacement.length" , userPlacement.whitePlacement);
+                userPlacementName =  'whitePlacement';
             }
 
-            await jsonStore.storejson(userPlacement, socket.room);
-        }
+            console.log("userPlacementName " , userPlacementName);
 
-        // [WaitingRoom] 팀 배정
-        async function SetTeam(roomInfoJson){
+            var userPlacement =await hashtableStore.getHashTableFieldValue(roomPin, [userPlacementName], 'roomManage');
+            // console.log("userPlacement " , userPlacement);
+            userPlacement = userPlacement[0].split('');
+            // console.log("userPlacement.split() " , userPlacement);
+            userPlacement.push(idx);
+            // console.log("$$DeplaceUser  userPlacement : " ,userPlacement);
 
-            console.log("SetTeam room: " ,socket.room, roomInfoJson.numBlackUsers, roomInfoJson.numWhiteUsers);
-            
-            ++roomInfoJson.numTotalUsers;
-            if (roomInfoJson.numBlackUsers > roomInfoJson.numWhiteUsers){
-                ++roomInfoJson.numWhiteUsers ;
-                redis_room.RoomInfo(socket.room,roomInfoJson);
-                return true
-            }else{
-                ++roomInfoJson.numBlackUsers  ;
-                redis_room.RoomInfo(socket.room,roomInfoJson);
-                return false
-            }
-            
+            userPlacement =  userPlacement.join('');
+            // console.log("AFTER! userPlacement.join('')" , userPlacement);
+            console.log("check!! ", await hashtableStore.updateHashTableField(roomPin, userPlacementName, userPlacement, 'roomManage'));
         }
 
 
@@ -317,17 +342,33 @@ module.exports = (io) => {
             // if (addedUser) return;
 
             var room = socket.room;
-  
-
-            
+        
             // 1. redis에서 room 정보 불러오기
-            var roomInfoJson =  JSON.parse(await redis_room.getRoomInfo(socket.room));
-            console.log('!!!~~룸정보', roomInfoJson);
-            console.log('!!!~~룸정보[numBlackUsers] : ', roomInfoJson.numBlackUsers);
-            
+            var roomManageDict = await hashtableStore.getAllHashTable(room, 'roomManage'); // 딕셔너리 형태
+            console.log('!!!~~룸정보 roomManage', roomManageDict);
 
-            // 2. new user를 white/black 배정 및 profile 색 지정 v
-            var team = await SetTeam(roomInfoJson);
+            // 2. new user를 white/black 배정 및 profile 색 지정 
+            // 2-1. team배정
+            var team;
+            if (roomManageDict.blackUserCnt > roomManageDict.whiteUserCnt){
+                ++roomManageDict.whiteUserCnt ;
+                team = true;
+            }else {
+                ++roomManageDict.blackUserCnt ;
+                team = false;
+            }
+            
+            ++roomManageDict.userCnt; 
+            await hashtableStore.storeHashTable(room, roomManageDict, 'roomManage');
+
+            // 만약 현재 방 인원이 꽉 찾으면 list에서 삭제해주기
+            if (roomManageDict.userCnt > 7){
+                var redisroomKey =  roomManageDict.roomType +'Room';
+                listStore.delElementList(redisroomKey, 1, room, 'roomManage');
+                console.log("roomManage의 list에서 삭제됨");
+            }
+
+            // 2-1. profile 배정
             const rand_Color = Math.floor(Math.random() * 12);
             let playerInfo = { 'userID': socket.userID, 'nickname': socket.nickname, 'team': team, 'status': 0, 'color': rand_Color, 'place' : await PlaceUser(team) };
             console.log("PlayersInfo : ", playerInfo);
@@ -338,7 +379,6 @@ module.exports = (io) => {
             socket.team = team;
             socket.color = rand_Color;
             socket.join(room);
-            // addedUser = true;
 
             // 4. 사용자 로그인 알림 (new user에게 모든 사용자의 정보를 push함) 
             // 해당 룸의 모든 사용자 정보 가져와 new user 정보 추가 후 update
@@ -349,8 +389,8 @@ module.exports = (io) => {
             }   
 
             console.log('!!!~~RoomMembersDict', RoomMembersDict);
-     
-    
+
+            
             var room_data = { 
                 room : room,
                 clientUserID : socket.userID,
@@ -402,14 +442,12 @@ module.exports = (io) => {
 
             await redis_room.updateMember(socket.room, socket.userID, playerInfo);
             console.log("수정 저장완료");
-            // rooms[socket.room].users[socket.id] = playerInfo;     // evenNumPlayer는 팀 정보
-            // console.log("수정후! : ",  rooms[socket.room].users[socket.id]);
+
 
             // 2. 수정한 내용 client들에게 뿌리기
             var playerJson = JSON.stringify(playerInfo);
 
-             console.log('check : ', playerJson);
-            // io.sockets.in(socket.room).emit('updateUI',playerJson);
+            console.log('check : ', playerJson);
             socket.broadcast.to(socket.room).emit('updateUI', playerJson);
 
         });  
@@ -421,14 +459,14 @@ module.exports = (io) => {
             console.log("_____________________________________________________________________");
             console.log('!!!!changeTeamStatus changeStatus : ', changeStatus);
 
-             // 1. 사용자 정보 수정 
-             var playerInfo = await redis_room.getMember(socket.room, socket.userID);
-             playerInfo.status = changeStatus;
-             console.log("PlayersInfo : ", playerInfo);
- 
-             await redis_room.updateMember(socket.room, socket.userID, playerInfo);// evenNumPlayer는 팀 정보
-            //  console.log("수정후! : ",  rooms[socket.room].users[socket.id]);
-            
+            // 1. 사용자 정보 수정 
+            var playerInfo = await redis_room.getMember(socket.room, socket.userID);
+            playerInfo.status = changeStatus;
+            console.log("PlayersInfo : ", playerInfo);
+
+            var room = socket.room;
+            await redis_room.updateMember(room, socket.userID, playerInfo);// evenNumPlayer는 팀 정보
+     
 
             var prevTeam = playerInfo.team; // 팀 바꾸기 전 현재 사용자 팀 정보
             var prevPlace = playerInfo.place;
@@ -453,16 +491,17 @@ module.exports = (io) => {
                 */
 
                 // 0. redis에서 room 정보 불러오기
-                var roomInfoJson =  JSON.parse(await redis_room.getRoomInfo(socket.room));
-                console.log('!!!~~룸정보', roomInfoJson);
-
+                // var roomInfoJson =  JSON.parse(await redis_room.getRoomInfo(socket.room));
+                // console.log('!!!~~룸정보', roomInfoJson);
+                var roomManageDict = await hashtableStore.getAllHashTable(room, 'roomManage'); // 딕셔너리 형태
+                console.log('!!!~~룸정보 roomManage', roomManageDict);
 
 
                 // 경우 1-1 : 현재 white 팀 -> black 가능한지 확인
-                console.log("@roomInfoJson.numBlackUsers : ", roomInfoJson.numBlackUsers);
-                console.log("@roomInfoJson.numWhiteUsers : ", roomInfoJson.numWhiteUsers);
+                console.log("@roomManageDict.blackUserCnt : ", roomManageDict.blackUserCnt);
+                console.log("@roomManageDict.whiteUserCnt : ", roomManageDict.whiteUserCnt);
 
-                if ((prevTeam == true && roomInfoJson.numBlackUsers <4) || (prevTeam == false && roomInfoJson.numWhiteUsers <4))
+                if ((prevTeam == true &&  roomManageDict.blackUserCnt <4) || (prevTeam == false && roomManageDict.whiteUserCnt <4))
                 {                
                     // 1. room의 사용자 team 정보 바꾸기
                     // playerInfo.team = false;
@@ -471,35 +510,34 @@ module.exports = (io) => {
                     socket.team = !prevTeam;;
                     playerInfo.status = 0; 
 
+                    if(prevTeam){ // white팀이면
+                        -- roomManageDict.whiteUserCnt ; 
+                        ++ roomManageDict.blackUserCnt ; 
+                    }else{
+                        // black팀이면
+                        ++ roomManageDict.whiteUserCnt; 
+                        -- roomManageDict.blackUserCnt ; 
+                    }
+         
+
+                    // 수정사항 REDIS 저장
+                    await hashtableStore.storeHashTable(room, roomManageDict, 'roomManage');
+  
                     // UI 위치 할당
                     await DeplaceUser(prevTeam, prevPlace);
                     playerInfo.place = await PlaceUser(!prevTeam);
-
-                 
-                    if(prevTeam){ // white팀이면
-                        -- roomInfoJson.numWhiteUsers ; 
-                        ++ roomInfoJson.numBlackUsers ; 
-                    }else{
-                        // black팀이면
-                        ++ roomInfoJson.numWhiteUsers ; 
-                        -- roomInfoJson.numBlackUsers ; 
-                    }
-
+      
                     // 수정사항 REDIS 저장
-                    await redis_room.RoomInfo(socket.room, roomInfoJson);
                     console.log("[찐최종 저장 ] playerInfo : ", playerInfo);
-                    await redis_room.updateMember(socket.room, socket.userID, playerInfo);
-                    // console.log("####!! blackPlacement" , userPlacement[socket.room].blackPlacement);
-                    // console.log("####!! whitePlacement" , userPlacement[socket.room].whitePlacement);
-
+                    await redis_room.updateMember(room, socket.userID, playerInfo);
 
 
                     // 2. 바뀐 정보 클라쪽에 보내기
                     var changeInfo = { 
                         type : 1,
-                        // player1 : playerInfo, // 이전 
+                        player1 : playerInfo, // 이전 ->수정 후 v3
                         // player1 : rooms[socket.room].users[socket.id]  // 수정 후
-                        player1 : await redis_room.getMember(socket.room, socket.userID)
+                        // player1 : await redis_room.getMember(socket.room, socket.userID) // 수정 후 v2
                     };
 
                     var teamChangeInfo = JSON.stringify(changeInfo);
@@ -1310,8 +1348,7 @@ module.exports = (io) => {
     
         var now_date = dateString + " " + timeString;
         return now_date;
-    };
-
+    }
 
     async function createRoom(roomType){
         //  1. redis - room에 저장
@@ -1321,43 +1358,47 @@ module.exports = (io) => {
         var room_info = {
             'creationDate' : creationDate,
             'roomType' : roomType,
-            'numBlackUsers' : 0,
-            'numWhiteUsers' : 0,
         };
 
         await redis_room.createRoom(roomPin, room_info);
 
-        // 2. redis - roomManagement에 저장
+        // 2. redis - roomManage/'roomKey' 저장
         var room_info = {
             'roomType' : roomType,
             'creationDate' : creationDate,
-            'userCnt' : 0
+            'userCnt' : 0,
+            'whiteUserCnt' : 0,
+            'blackUserCnt' : 0,
+            'blackPlacement' : '4321',
+            'whitePlacement' : '4321',
+            'toBlackUsers' : [],
+            'toWhiteUsers' : [],
         };
 
-        hashtableStore.storeHashTable(roomPin, room_info, 'roomManage', `${roomType}`);
+        hashtableStore.storeHashTable(roomPin, room_info, 'roomManage');
 
-        // 3. 만약 공개방이면 'publicWaitingRoom'에 추가하기
-        // <코드 미정>
-
+        // 3. redis - roomManage/publicRoom 또는 roomManage/privateRoom 에 저장
+        var redisroomKey =  roomType +'Room';
+        listStore.rpushList(redisroomKey, roomPin, false, 'roomManage');
 
         return roomPin
     };
 
 
     // Init waitingroom   
-    async function initRoom(roomPin){
-        var userPlacement = {
-            blackPlacement : [4,3,2,1], // Unity 자리 위치 할당 관리 큐
-            whitePlacement : [4,3,2,1],
-            toBlackUsers : [], // teamChange 대기 큐(사용자 고유 id 저장)
-            toWhiteUsers:  []
-        }
+    // async function initRoom(roomPin){
+    //     var userPlacement = {
+    //         blackPlacement : [4,3,2,1], // Unity 자리 위치 할당 관리 큐
+    //         whitePlacement : [4,3,2,1],
+    //         toBlackUsers : [], // teamChange 대기 큐(사용자 고유 id 저장)
+    //         toWhiteUsers:  []
+    //     }
 
-        // redis에 저장
-        jsonStore.storejson(userPlacement, roomPin);
-        const userPlacement_Redis = await jsonStore.getjson(roomPin);
-        console.log("!@#!@#!@", JSON.parse(userPlacement_Redis));
-    };
+    //     // redis에 저장
+    //     jsonStore.storejson(userPlacement, roomPin);
+    //     const userPlacement_Redis = await jsonStore.getjson(roomPin);
+    //     console.log("!@#!@#!@", JSON.parse(userPlacement_Redis));
+    // };
 
 
     // 공개방/비공개 방 들어갈 수 있는지 확인 (검증 : 룸 존재 여부, 룸 full 여부)
@@ -1377,14 +1418,15 @@ module.exports = (io) => {
 
         // 2. 해당 룸에 들어갈 수 있는지 (full상태 확인)
         console.log("room_member 수", await redis_room.RoomMembers_num(roomPin))
-        // 바꿔야 함 << 수정 필요 >> 여기가 아닌 roomManage/key 의 cnt ++
+        // 바꿔야 함 << 수정 필요 >> 여기가 아닌 roomManage/key 의 cnt ++ -> 아니 필요없음
         if (await redis_room.RoomMembers_num(roomPin) >= 8){
             console.log("permission False - room Full");
             return false
         }
 
-        // 바꿔야 함 << 수정 필요 >>
+        // 바꿔야 함 << 수정 필요 >> -> 아니다 이건 add user에서 처리해줘야 함  --> 아니 필요없음
         // 3. permission 주기 (, 방 상태 update 및 cnt ++)
+        // add user에서 cnt 변경하기
         // roomManage/key 의 cnt ++
         // socket.room 저장은 return 후 호출한 곳에서 해주자
         
@@ -1397,14 +1439,45 @@ module.exports = (io) => {
 
         // 1. 해당 인원이 나가면 room null인지 확인 (user 0명인 경우 룸 삭제)
         if (await redis_room.RoomMembers_num(roomPin) <= 1){
-            // + << 수정필요 >> - 나중에는 private/public의 cnt도 수정해야 됨 + userPlacement도 수정
             console.log("[룸 삭제]!");
-            redis_room.deleteRooms(roomPin);
+            redis_room.deleteRooms(roomPin); // 1) redis 기본 room 삭제
+
+            var redisroomKey = await hashtableStore.getHashTableFieldValue(roomPin, ['roomType'], 'roomManage'); // 3번 과정을 위해 roomType 가져오기
+            console.log('redisroomKey : ',redisroomKey, 'roomPin : ', roomPin);
+            console.log('hashtableStore.deleteHashTable', hashtableStore.deleteHashTable(roomPin,'roomManage')); // 2) roomManage room 삭제
+            console.log('listStore.delElementList : ', listStore.delElementList(redisroomKey[0] + 'Room', 0, roomPin, 'roomManage')); // 3) roomManage list에서 삭제
         }
         else{
-            // 2.  Redis - room 인원에서 삭제
+            // 1) roomManage room 인원 수정
+            // userCnt, blackUserCnt/whiteUserCnt, blackPlacement/whitePlacement 수정 필요
+            var roomManageInfo = await hashtableStore.getAllHashTable(roomPin, 'roomManage'); ;
+            console.log("roomManageInfo" , roomManageInfo);
+
+            roomManageInfo.userCnt = roomManageInfo.userCnt - 1; // userCnt 변경
+
+            if (socket.team){ // blackUserCnt/whiteUserCnt, blackPlacement/whitePlacement  팀 변경
+                roomManageInfo.whiteUserCnt = roomManageInfo.whiteUserCnt - 1;
+                await DeplaceUser(socket.team, await redis_room.getMember(socket.room, socket.userID).place); // blackPlacement/whitePlacement  -> DeplaceUser
+            }else{
+                roomManageInfo.blackUserCnt = roomManageInfo.blackUserCnt - 1;
+                await DeplaceUser(socket.team, await redis_room.getMember(socket.room, socket.userID).place);  // blackPlacement/whitePlacement  -> DeplaceUser
+            }
+
+            await hashtableStore.storeHashTable(room, roomManageDict, 'roomManage');
+
+
+            // 2)  Redis - room 인원에서 삭제
             redis_room.delMember(roomPin, socket.userID);
-            // + << 수정필요 >> - 나중에는 private/public의 cnt도 수정해야 됨 + userPlacement도 수정
+
+
+            // 3) roomManage list 인원 확인 (함수로 따로 빼기)
+            // 만약 해당 룸이 full이 아니면 list에 추가해주기
+            if (await redis_room.RoomMembers_num(roomPin) < 8){
+                var redisroomKey =  roomManageInfo.roomType +'Room';
+                listStore.rpushList(redisroomKey, roomPin, false, 'roomManage');
+                console.log("roomManage의 list에 추가됨");
+            }
+            
         }
         
         // 3. 방에 emit하기 (나갈려고 하는 사용자에게 보냄)
@@ -1415,6 +1488,9 @@ module.exports = (io) => {
 
         // 4. (join삭제) socket.leave(room) 
         socket.leave(roomPin);
+
+        // 5. 나머지 room 관련 정보 socket에서 삭제해주기!!
+       // << 코드 미정 >>
     };
 
 

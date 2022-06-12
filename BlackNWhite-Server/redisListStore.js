@@ -91,7 +91,7 @@ class redisListStore extends ListStore {
                 console.log(e.message);
                 return false;
             }
-        } else if (check == false){ // 아닌 곳에는 생성해서 넣기
+        } else if (check == false){ // 아닌 곳에는 새로 생성해서 넣기
             try {
                 await this.redisClient.lpush(`hashtable${namespace}${key}`, value);
                 return true;
@@ -217,7 +217,7 @@ class redisListStore extends ListStore {
         }
     }
 
-    async deleteList(key, …args) {
+    async deleteList(key, ...args) {
         var namespace = ":"
         for(var i=0; i < args.length; i++){
             namespace = namespace + String(args[i]) + ":"

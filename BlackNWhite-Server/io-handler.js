@@ -283,7 +283,7 @@ module.exports = (io) => {
             console.log("userPlacementName " , userPlacementName);
 
             var userPlacement =await hashtableStore.getHashTableFieldValue(roomPin, [userPlacementName], 'roomManage');
-            // console.log("userPlacement " , userPlacement);
+            console.log("userPlacement " , userPlacement);
             userPlacement = userPlacement[0].split('');
             // console.log("userPlacement.split() " , userPlacement);
             var place =  userPlacement.pop();

@@ -194,8 +194,8 @@ class redisListStore extends ListStore {
             namespace = namespace + String(args[i]) + ":"
         }
         try{
-            await this.redisClient.lrange(`hashtable${namespace}${key}`, startIndex, stopIndex);
-            return true;
+            return await this.redisClient.lrange(`hashtable${namespace}${key}`, startIndex, stopIndex);
+            // return true;
         }catch(e){
             console.log(e.message);
             return false;

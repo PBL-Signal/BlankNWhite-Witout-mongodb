@@ -53,12 +53,12 @@ class redisHashTableStore extends HashTableStore {
         }
     }
 
-    updateHashTableField(key, field, value, ...args){// 필드 값 업데이트
+    async updateHashTableField(key, field, value, ...args){// 필드 값 업데이트
         var namespace = ":"
         for(var i=0; i < args.length; i++){
             namespace = namespace + String(args[i]) + ":"
         }
-        if (this.redisClient.hexists(`hashtable${namespace}${key}`, field) == 1){// 필드가 있는지 확인
+        if (await this.redisClient.hexists(`hashtable${namespace}${key}`, field) == 1){// 필드가 있는지 확인
             this.redisClient.hset(`hashtable${namespace}${key}`, field, value);
             return true;
         } else {

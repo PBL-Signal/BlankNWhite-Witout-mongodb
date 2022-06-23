@@ -49,6 +49,7 @@ module.exports = (io) => {
     let companyNameList = ["companyA", "companyB", "companyC", "companyD", "companyE"]
 
     let timerId;
+    let pitaTimerId;
     
     io.use(async (socket, next) => {
         console.log("io.use");
@@ -761,13 +762,14 @@ module.exports = (io) => {
                 if(time<=0) {
                     console.log("시간종료!");
                     io.sockets.in(socket.room).emit('Timer END');
-                    clearInterval(timerId)
+                    clearInterval(timerId);
+                    clearInterval(pitaTimerId);
                 }
             }, 1000);
 
             // pita 30초 간격으로 100pita 지급
             var pitaIncome = 100; 
-            setInterval(async function(){
+            pitaTimerId = setInterval(async function(){
                 const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
 
                 roomTotalJson[0].blackTeam.total_pita += pitaIncome;
@@ -782,7 +784,7 @@ module.exports = (io) => {
                 
                 io.sockets.in(socket.room).emit('Update Black Pita', black_total_pita);
                 io.sockets.in(socket.room).emit('Update White Pita', white_total_pita);
-                io.sockets.in(socket.room).emit("Load Pita Num", black_total_pita);
+                // io.sockets.in(socket.room).emit("Load Pita Num", black_total_pita);
     
             }, 10000);
 

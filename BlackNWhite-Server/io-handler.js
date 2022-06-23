@@ -328,7 +328,7 @@ module.exports = (io) => {
 
         // [WaitingRoom] 사용자 첫 입장 시 'add user' emit 
         socket.on('add user', async() => {
-            
+            console.log("&&&&&&&&&&&&&&&&&& TEAM INFO + ", socket.team);
             io.sockets.emit('Visible AddedSettings'); // actionbar
         
             // console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', socket.nickname, 'room : ', socket.room );
@@ -1315,7 +1315,7 @@ module.exports = (io) => {
             socket.emit('Section_Destroy_State', JSON.stringify(sections));
         });
 
-        // Section Attacked Name TEST
+        // [SectionState] Section Attacked Name TEST
         socket.on('Get_Section_Attacked_Name', async(corp) => {
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
             
@@ -1329,7 +1329,7 @@ module.exports = (io) => {
             socket.emit('Section_Attacked_Name', JSON.stringify(sections));
         });
 
-        // [Monitoring] 관제 issue Count
+        // [SectionState] 관제 issue Count
         socket.on('Get_Issue_Count', async(corp) => {            
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
 
@@ -1348,15 +1348,15 @@ module.exports = (io) => {
 
         });
 
-        // [Monitoring] 영역 클릭하면 탐지된 공격 내용 emit
-        socket.on('Get_Issue', async(corpName,  s_idx) => {
-            console.log("[Monitoring] Get Issue 호출" + corpName + s_idx);
-            const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-            //console.log("[Monitoring] 결과 " + roomTotalJson[0][corpName].sections[s_idx].response.progress.toString());
-            var issueDetail = roomTotalJson[0][corpName].sections[s_idx].response.progress;
-            console.log("[Monitoring] 결과 ", issueDetail);
-            socket.emit('Get_Issue_Detail', issueDetail.length, issueDetail);
-        });
+        // // [Monitoring] 영역 클릭하면 탐지된 공격 내용 emit
+        // socket.on('Get_Issue', async(corpName,  s_idx) => {
+        //     console.log("[Monitoring] Get Issue 호출" + corpName + s_idx);
+        //     const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+        //     //console.log("[Monitoring] 결과 " + roomTotalJson[0][corpName].sections[s_idx].response.progress.toString());
+        //     var issueDetail = roomTotalJson[0][corpName].sections[s_idx].response.progress;
+        //     console.log("[Monitoring] 결과 ", issueDetail);
+        //     socket.emit('Get_Issue_Detail', issueDetail.length, issueDetail);
+        // });
 
         // [Abandon] 한 회사의 모든 영역이 파괴되었는지 확인 후 몰락 여부 결정
         socket.on('is_All_Sections_Destroyed', async(corpName) => {
@@ -1381,6 +1381,35 @@ module.exports = (io) => {
                 await jsonStore.updatejson(roomTotalJson[0], socket.room);
             }
             
+        });
+
+        // [Monitoring] monitoringLog 스키마 데이터 저장- test용(하드코딩)
+        socket.on('Put_MonitoringLog', async(corp) => {
+            console.log('Put_MonitoringLog CALLED  : ', corp);
+            
+            var test = {
+                time : "00:11:22",
+                nickname : "test1",
+                targetCompany : corp,
+                targetSection : "Area_DMZ",
+                actionType : "Monitoring",
+                detail : 2
+            };
+
+            var monTest = [test, test, test, test, test, test];
+            jsonStore.storejson(monTest, socket.room + "monLog");
+            console.log('Put_MonitoringLog SUCCESS!!  : ', monTest);
+        });
+
+        // [Monitoring] monitoringLog 스키마 데이터 보내기
+        socket.on('Get_MonitoringLog', async(corp) => {
+            console.log('Get_MonitoringLog CALLED  : ', corp);
+            
+            const monitoringLogJson = JSON.parse(await jsonStore.getjson(socket.room + "monLog"));
+            var corpName = corp;
+
+            console.log("@@@@@@@@ MonitoringLog @@@@@@@ ",  monitoringLogJson[0]);
+            socket.emit('MonitoringLog', monitoringLogJson[0]);
         });
 // ===================================================================================================================
         
@@ -1616,7 +1645,7 @@ module.exports = (io) => {
         }
     
         var progress = new Progress({
-            progress  : [1,3,5,7,9],
+            progress  : [],
             last  : -1
         })
 

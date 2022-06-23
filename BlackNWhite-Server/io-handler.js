@@ -401,8 +401,8 @@ module.exports = (io) => {
             var roomJson = JSON.stringify(room_data);
 
             console.log('check roomJson : ', roomJson);
-            io.sockets.in(room).emit('login',roomJson); 
-
+            // io.sockets.in(room).emit('login',roomJson); 
+            socket.emit('login',roomJson); 
      
             // 5. new user외의 사용자들에게 new user정보 보냄
             socket.broadcast.to(room).emit('user joined', playerInfo);
@@ -689,6 +689,8 @@ module.exports = (io) => {
             // redis에 저징
             jsonStore.storejson(roomTotalJson, socket.room);
 
+            
+            // socket.broadcast.to(socket.room).emit('onGameStart');
             io.sockets.in(socket.room).emit('onGameStart');
         });
 
@@ -742,13 +744,14 @@ module.exports = (io) => {
             console.log("On Main Map abandonStatusList : ", abandonStatusList);
             io.sockets.in(socket.room).emit('Company Status', abandonStatusList);
 
-            io.sockets.emit('Visible LimitedTime'); // actionbar
+            io.sockets.emit('Visible LimitedTime', socket.team.toString()); // actionbar
 
             // Timer 시작
-            var time = 600; //600=10분
+            var time = 600; //600=10분 
             var min = "";
             var sec = "";
 
+            // 게임 시간 타이머 
             io.sockets.in(socket.room).emit('Timer START');
             timerId = setInterval(function(){
                 min = parseInt(time/60);
@@ -761,6 +764,29 @@ module.exports = (io) => {
                     clearInterval(timerId)
                 }
             }, 1000);
+
+            // pita 30초 간격으로 100pita 지급
+            var pitaIncome = 100; 
+            setInterval(async function(){
+                const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+
+                roomTotalJson[0].blackTeam.total_pita += pitaIncome;
+                roomTotalJson[0].whiteTeam.total_pita += pitaIncome;
+
+                var black_total_pita = roomTotalJson[0].blackTeam.total_pita;
+                var white_total_pita = roomTotalJson[0].whiteTeam.total_pita;
+
+                await jsonStore.updatejson(roomTotalJson[0], socket.room);
+
+                console.log("!!! black_total_pita : " + black_total_pita + " white_total_pita : " + white_total_pita);
+                
+                io.sockets.in(socket.room).emit('Update Black Pita', black_total_pita);
+                io.sockets.in(socket.room).emit('Update White Pita', white_total_pita);
+                io.sockets.in(socket.room).emit("Load Pita Num", black_total_pita);
+    
+            }, 10000);
+
+
         });
         
 

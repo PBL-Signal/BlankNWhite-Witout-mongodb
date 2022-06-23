@@ -401,8 +401,8 @@ module.exports = (io) => {
             var roomJson = JSON.stringify(room_data);
 
             console.log('check roomJson : ', roomJson);
-            io.sockets.in(room).emit('login',roomJson); 
-
+            // io.sockets.in(room).emit('login',roomJson); 
+            socket.emit('login',roomJson); 
      
             // 5. new user외의 사용자들에게 new user정보 보냄
             socket.broadcast.to(room).emit('user joined', playerInfo);
@@ -689,6 +689,8 @@ module.exports = (io) => {
             // redis에 저징
             jsonStore.storejson(roomTotalJson, socket.room);
 
+            
+            // socket.broadcast.to(socket.room).emit('onGameStart');
             io.sockets.in(socket.room).emit('onGameStart');
         });
 
@@ -745,22 +747,39 @@ module.exports = (io) => {
             io.sockets.emit('Visible LimitedTime'); // actionbar
 
             // Timer 시작
-            var time = 600; //600=10분
+            var time = 600; //600=10분 
             var min = "";
             var sec = "";
 
+            // 게임 시간 타이머 
             io.sockets.in(socket.room).emit('Timer START');
             timerId = setInterval(function(){
                 min = parseInt(time/60);
                 sec = time%60;
                 console.log("TIME : " + min + "분 " + sec + "초");
                 time--;
+                // print("TIME TIME :  " + TIME);
                 if(time<=0) {
                     console.log("시간종료!");
                     io.sockets.in(socket.room).emit('Timer END');
                     clearInterval(timerId)
                 }
             }, 1000);
+
+            // pita 30초 간격으로 100pita 지급
+            var pitaIncome = 100; 
+            // pitaTimerID = setInterval(function(){
+            //     const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+            //     var black_total_pita = roomTotalJson[0].blackTeam.total_pita;
+            //     var white_total_pita = roomTotalJson[0].whiteTeam.total_pita;
+
+            //     console.log("black_total_pita : " + black_total_pita , " white_total_pita : " + white_total_pita);
+                
+                
+            //     socket.broadcast.to(room).emit('onGameStart');
+            //     //socket.to(socket.room).emit("Load Pita Num", newTotalPita);
+            // }, 30000); // 30초
+
         });
         
 

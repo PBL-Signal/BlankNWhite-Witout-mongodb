@@ -8,11 +8,11 @@ const monitoringLog = new Schema({
     targetCompany : { type : String, required : true },
     targetSection : { type : String, required : true },
     actionType : { type : String, required : true },
-    detail : { type : Number, required : true }
+    detail : { type : String, required : true }
 })
 
 
 module.exports = mongoose.model('monitoringLog', monitoringLog);
 
 
-// 시간 누구 회사 섹션 관제/공격/대응이름
+// 시간 누구 회사 섹션 관제/공격/대응 디테일

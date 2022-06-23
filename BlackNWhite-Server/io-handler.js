@@ -328,7 +328,7 @@ module.exports = (io) => {
 
         // [WaitingRoom] 사용자 첫 입장 시 'add user' emit 
         socket.on('add user', async() => {
-            
+            console.log("&&&&&&&&&&&&&&&&&& TEAM INFO + ", socket.team);
             io.sockets.emit('Visible AddedSettings'); // actionbar
         
             // console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', socket.nickname, 'room : ', socket.room );
@@ -401,8 +401,8 @@ module.exports = (io) => {
             var roomJson = JSON.stringify(room_data);
 
             console.log('check roomJson : ', roomJson);
-            io.sockets.in(room).emit('login',roomJson); 
-
+            // io.sockets.in(room).emit('login',roomJson); 
+            socket.emit('login',roomJson); 
      
             // 5. new user외의 사용자들에게 new user정보 보냄
             socket.broadcast.to(room).emit('user joined', playerInfo);
@@ -689,6 +689,8 @@ module.exports = (io) => {
             // redis에 저징
             jsonStore.storejson(roomTotalJson, socket.room);
 
+            
+            // socket.broadcast.to(socket.room).emit('onGameStart');
             io.sockets.in(socket.room).emit('onGameStart');
         });
 
@@ -742,13 +744,14 @@ module.exports = (io) => {
             console.log("On Main Map abandonStatusList : ", abandonStatusList);
             io.sockets.in(socket.room).emit('Company Status', abandonStatusList);
 
-            io.sockets.emit('Visible LimitedTime'); // actionbar
+            io.sockets.emit('Visible LimitedTime', socket.team.toString()); // actionbar
 
             // Timer 시작
-            var time = 600; //600=10분
+            var time = 600; //600=10분 
             var min = "";
             var sec = "";
 
+            // 게임 시간 타이머 
             io.sockets.in(socket.room).emit('Timer START');
             timerId = setInterval(function(){
                 min = parseInt(time/60);
@@ -761,6 +764,29 @@ module.exports = (io) => {
                     clearInterval(timerId)
                 }
             }, 1000);
+
+            // pita 30초 간격으로 100pita 지급
+            var pitaIncome = 100; 
+            setInterval(async function(){
+                const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+
+                roomTotalJson[0].blackTeam.total_pita += pitaIncome;
+                roomTotalJson[0].whiteTeam.total_pita += pitaIncome;
+
+                var black_total_pita = roomTotalJson[0].blackTeam.total_pita;
+                var white_total_pita = roomTotalJson[0].whiteTeam.total_pita;
+
+                await jsonStore.updatejson(roomTotalJson[0], socket.room);
+
+                console.log("!!! black_total_pita : " + black_total_pita + " white_total_pita : " + white_total_pita);
+                
+                io.sockets.in(socket.room).emit('Update Black Pita', black_total_pita);
+                io.sockets.in(socket.room).emit('Update White Pita', white_total_pita);
+                io.sockets.in(socket.room).emit("Load Pita Num", black_total_pita);
+    
+            }, 10000);
+
+
         });
         
 
@@ -1360,7 +1386,7 @@ module.exports = (io) => {
             socket.emit('Section_Destroy_State', JSON.stringify(sections));
         });
 
-        // Section Attacked Name TEST
+        // [SectionState] Section Attacked Name TEST
         socket.on('Get_Section_Attacked_Name', async(corp) => {
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
             
@@ -1374,7 +1400,7 @@ module.exports = (io) => {
             socket.emit('Section_Attacked_Name', JSON.stringify(sections));
         });
 
-        // [Monitoring] 관제 issue Count
+        // [SectionState] 관제 issue Count
         socket.on('Get_Issue_Count', async(corp) => {            
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
 
@@ -1393,15 +1419,15 @@ module.exports = (io) => {
 
         });
 
-        // [Monitoring] 영역 클릭하면 탐지된 공격 내용 emit
-        socket.on('Get_Issue', async(corpName,  s_idx) => {
-            console.log("[Monitoring] Get Issue 호출" + corpName + s_idx);
-            const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-            //console.log("[Monitoring] 결과 " + roomTotalJson[0][corpName].sections[s_idx].response.progress.toString());
-            var issueDetail = roomTotalJson[0][corpName].sections[s_idx].response.progress;
-            console.log("[Monitoring] 결과 ", issueDetail);
-            socket.emit('Get_Issue_Detail', issueDetail.length, issueDetail);
-        });
+        // // [Monitoring] 영역 클릭하면 탐지된 공격 내용 emit
+        // socket.on('Get_Issue', async(corpName,  s_idx) => {
+        //     console.log("[Monitoring] Get Issue 호출" + corpName + s_idx);
+        //     const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+        //     //console.log("[Monitoring] 결과 " + roomTotalJson[0][corpName].sections[s_idx].response.progress.toString());
+        //     var issueDetail = roomTotalJson[0][corpName].sections[s_idx].response.progress;
+        //     console.log("[Monitoring] 결과 ", issueDetail);
+        //     socket.emit('Get_Issue_Detail', issueDetail.length, issueDetail);
+        // });
 
         // [Abandon] 한 회사의 모든 영역이 파괴되었는지 확인 후 몰락 여부 결정
         socket.on('is_All_Sections_Destroyed', async(corpName) => {
@@ -1426,6 +1452,35 @@ module.exports = (io) => {
                 await jsonStore.updatejson(roomTotalJson[0], socket.room);
             }
             
+        });
+
+        // [Monitoring] monitoringLog 스키마 데이터 저장- test용(하드코딩)
+        socket.on('Put_MonitoringLog', async(corp) => {
+            console.log('Put_MonitoringLog CALLED  : ', corp);
+            
+            var test = {
+                time : "00:11:22",
+                nickname : "test1",
+                targetCompany : corp,
+                targetSection : "Area_DMZ",
+                actionType : "Monitoring",
+                detail : 2
+            };
+
+            var monTest = [test, test, test, test, test, test];
+            jsonStore.storejson(monTest, socket.room + "monLog");
+            console.log('Put_MonitoringLog SUCCESS!!  : ', monTest);
+        });
+
+        // [Monitoring] monitoringLog 스키마 데이터 보내기
+        socket.on('Get_MonitoringLog', async(corp) => {
+            console.log('Get_MonitoringLog CALLED  : ', corp);
+            
+            const monitoringLogJson = JSON.parse(await jsonStore.getjson(socket.room + "monLog"));
+            var corpName = corp;
+
+            console.log("@@@@@@@@ MonitoringLog @@@@@@@ ",  monitoringLogJson[0]);
+            socket.emit('MonitoringLog', monitoringLogJson[0]);
         });
 // ===================================================================================================================
         

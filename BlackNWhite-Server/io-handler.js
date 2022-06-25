@@ -215,6 +215,7 @@ module.exports = (io) => {
                 
             }    
             socket.room = roomPin;
+          
             console.log("socket.room", socket.room);
             socket.emit('enterPublicRoom');
 
@@ -226,7 +227,9 @@ module.exports = (io) => {
             console.log('[getPublcRooms]');
             // <<코드 미정>> 코드 수정 필요
             // 방 pin 번호, 방 인원수 
-            var roomslist = await redis_room.viewRoomList();
+            // var roomslist = await redis_room.viewRoomList();
+            var roomslist = await listStore.rangeList('publicRoom', 0, -1, 'roomManage');
+            console.log('[getPublcRooms] roomsList : ', roomslist);
             var publicRooms = []
             for (const room of roomslist){
                 // publicRooms[room] = await redis_room.RoomMembers_num(room)
@@ -314,7 +317,7 @@ module.exports = (io) => {
 
             console.log("userPlacementName " , userPlacementName);
 
-            var userPlacement =await hashtableStore.getHashTableFieldValue(roomPin, [userPlacementName], 'roomManage');
+            var userPlacement = await hashtableStore.getHashTableFieldValue(roomPin, [userPlacementName], 'roomManage');
             // console.log("userPlacement " , userPlacement);
             userPlacement = userPlacement[0].split('');
             // console.log("userPlacement.split() " , userPlacement);

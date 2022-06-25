@@ -1078,7 +1078,7 @@ module.exports = (io) => {
             } else {
 
                 let step; // attack Step
-                if (0 <= attackJson.attackIndex && attackJson.attackIndex < 4){
+                if (attackJson.attackIndex == 4){
                     step = 2;
                 } else if (attackJson.attackIndex == 5){
                     step = 3;
@@ -1819,7 +1819,7 @@ module.exports = (io) => {
         }
     
         var progress = new Progress({
-            progress  : [0, 4, 5, 6, 7],
+            progress  : [],
             last  : -1
         })
 
@@ -1833,8 +1833,8 @@ module.exports = (io) => {
                 level  : 0,
                 vuln : 0,
                 vulnActive : false,
-                attackStep : 4,
-                responseStep : 4,
+                attackStep : 0,
+                responseStep : 0,
                 attack : progress,
                 response : progress,
                 }),

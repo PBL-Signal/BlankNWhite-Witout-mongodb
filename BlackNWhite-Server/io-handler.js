@@ -1444,6 +1444,7 @@ module.exports = (io) => {
                 roomTotalJson[0][corpName].abandonStatus = true;
                 await jsonStore.updatejson(roomTotalJson[0], socket.room);
 
+                // [GameLog] 로그 추가
                 const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
                 const whiteLogJson = JSON.parse(await jsonStore.getjson(socket.room+":whiteLog"));
 
@@ -1459,8 +1460,10 @@ module.exports = (io) => {
                 await jsonStore.updatejson(blackLogJson[0], socket.room+":blackLog");
                 await jsonStore.updatejson(whiteLogJson[0], socket.room+":whiteLog");
 
-                socket.emit('Put_BlackLog', monitoringLog);
-                socket.emit('Put_WhiteLog', monitoringLog);
+                var logArr = [];
+                logArr.push(monitoringLog);
+                socket.emit('BlackLog', logArr);
+                socket.emit('WhiteLog', logArr);
             }
             
         });
@@ -1469,61 +1472,43 @@ module.exports = (io) => {
         socket.on('Put_MonitoringLog', async(corp) => {
             console.log('Put_MonitoringLog CALLED  : ', corp);
             
-            var test = {
-                time : "00:11:22",
-                nickname : "test1",
-                targetCompany : "companyA",
-                targetSection : "Area_DMZ",
-                actionType : "Detected",
-                detail : 2
-            };
-            var test2 = {
-                time : "00:11:22",
-                nickname : "test1",
-                targetCompany : "companyA",
-                targetSection : "Area_Sec",
-                actionType : "Detected",
-                detail : 2
-            };
+            // var test = {
+            //     time : "00:11:22",
+            //     nickname : "test1",
+            //     targetCompany : "companyA",
+            //     targetSection : "Area_DMZ",
+            //     actionType : "Detected",
+            //     detail : "test"
+            // };
+            // var test2 = {
+            //     time : "00:11:22",
+            //     nickname : "test1",
+            //     targetCompany : "companyA",
+            //     targetSection : "Area_Sec",
+            //     actionType : "Detected",
+            //     detail : "test"
+            // };
 
-            var test3 = {
-                time : "00:11:22",
-                nickname : "test1",
-                targetCompany : "companyB",
-                targetSection : "Area_DMZ",
-                actionType : "Response",
-                detail : 2
-            };
-            var test4 = {
-                time : "00:11:22",
-                nickname : "test1",
-                targetCompany : "companyB",
-                targetSection : "Area_Sec",
-                actionType : "Damage",
-                detail : 2
-            };
+            // var test3 = {
+            //     time : "00:11:22",
+            //     nickname : "test1",
+            //     targetCompany : "companyB",
+            //     targetSection : "Area_DMZ",
+            //     actionType : "Response",
+            //     detail : "test"
+            // };
+            // var test4 = {
+            //     time : "00:11:22",
+            //     nickname : "test1",
+            //     targetCompany : "companyB",
+            //     targetSection : "Area_Sec",
+            //     actionType : "Damage",
+            //     detail : "test"
+            // };
 
-            var monTest = [test, test2, test, test2, test, test2, test3, test4, test3, test4,test3, test4];
+            //var monTest = [test, test2, test, test2, test, test2, test3, test4, test3, test4,test3, test4];
             //jsonStore.storejson(monTest, socket.room+":whiteLog");
-            //console.log('Put_MonitoringLog SUCCESS!!  : ', monTest);
-
-            const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
-            const whiteLogJson = JSON.parse(await jsonStore.getjson(socket.room+":whiteLog"));
-
-            let today = new Date();   
-            let hours = today.getHours(); // 시
-            let minutes = today.getMinutes();  // 분
-            let seconds = today.getSeconds();  // 초
-            let now = hours+":"+minutes+":"+seconds;
-            var monitoringLog = {time: now, nickname: "aaaaaa", targetCompany: corpName, targetSection: "Area_DMZ", actionType: "Damage", detail: "Area_DMZ"+"가 파괴되었습니다."};
-
-            blackLogJson[0].push(monitoringLog);
-            whiteLogJson[0].push(monitoringLog);
-            await jsonStore.updatejson(blackLogJson[0], socket.room+":blackLog");
-            await jsonStore.updatejson(whiteLogJson[0], socket.room+":whiteLog");
-
-            socket.emit('Put_BlackLog', monitoringLog);
-            socket.emit('Put_WhiteLog', monitoringLog);
+            
         });
 
         // [Monitoring] monitoringLog 스키마 데이터 보내기
@@ -1551,23 +1536,21 @@ module.exports = (io) => {
             socket.emit('MonitoringLog', jsonArray);
         });
 
-        // [GmaeLog] GmaeLog Black 스키마 데이터 보내기 => 한줄씩 보내기 안되납?
-        socket.on('Put_BlackLog', async(newLog) => {
-            console.log('Get_BlackLog CALLED >> ', newLog);
-            var logList = [newLog];
-            console.log('Get_BlackLog CALLED >> ', logList);
-            socket.emit('BlackLog', logList);
-        });
+        // // [GmaeLog] GmaeLog Black 스키마 데이터 보내기 => 한줄씩 보내기 안되납?
+        // socket.on('Put_BlackLog', async(newLog) => {
+        //     console.log('Put_BlackLog CALLED >> ', newLog);
+        //     var logList = [newLog];
+        //     console.log('Put_BlackLog CALLED >> ', logList);
+        //     socket.emit('BlackLog', logList);
+        // });
 
-        // [GmaeLog] GmaeLog White 스키마 데이터 보내기
-        socket.on('Get_WhiteLog', async() => {
-            console.log('Get_WhiteLog CALLED');
-            
-            const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":whiteLog"));
-
-            console.log("@@@@@@@@ MonitoringLog @@@@@@@ ",  blackLogJson[0]);
-            socket.emit('BlackLog', blackLogJson[0]);
-        });
+        // // [GmaeLog] GmaeLog White 스키마 데이터 보내기
+        // socket.on('Put_WhiteLog', async(newLog) => {
+        //     console.log('Put_WhiteLog CALLED', newLog);
+        //     //var logList = [newLog];
+        //     // console.log('Put_WhiteLog CALLED >> ', logList);
+        //     // socket.emit('WhiteLog', logList);
+        // });
 // ===================================================================================================================
         
         socket.on('disconnect', async function() {
@@ -1814,7 +1797,7 @@ module.exports = (io) => {
             attackLV : [0,0,0,0,0,0,0,0,0,0,0,0,0],
             sections : [
                 new Section({
-                destroyStatus  : false ,
+                destroyStatus  : true ,
                 level  : 0,
                 vuln : 0,
                 vulnActive : false,
@@ -1825,7 +1808,7 @@ module.exports = (io) => {
                 }),
 
                 new Section({
-                    destroyStatus  : false ,
+                    destroyStatus  : true ,
                     level  : 0,
                     vuln : 1,
                     vulnActive : false,
@@ -1836,7 +1819,7 @@ module.exports = (io) => {
                 }),
 
                 new Section({
-                    destroyStatus  : false ,
+                    destroyStatus  : true ,
                     level  : 0,
                     vuln : 2,
                     vulnActive : false,
@@ -1916,9 +1899,11 @@ module.exports = (io) => {
                 whiteLogJson[0].push(monitoringLog);
                 await jsonStore.updatejson(blackLogJson[0], socket.room+":blackLog");
                 await jsonStore.updatejson(whiteLogJson[0], socket.room+":whiteLog");
-
-                socket.emit('Put_BlackLog', monitoringLog);
-                socket.emit('Put_WhiteLog', monitoringLog);
+                
+                var logArr = [];
+                logArr.push(monitoringLog);
+                socket.emit('BlackLog', logArr);
+                socket.emit('WhiteLog', logArr);
             }
 
             if (step > roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attackStep"]){

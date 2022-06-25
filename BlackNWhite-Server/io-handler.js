@@ -332,7 +332,7 @@ module.exports = (io) => {
 
         // [WaitingRoom] 사용자 첫 입장 시 'add user' emit 
         socket.on('add user', async() => {
-            console.log("&&&&&&&&&&&&&&&&&& TEAM INFO + ", socket.team);
+            // console.log("&&&&&&&&&&&&&&&&&& TEAM INFO + ", socket.team);
             io.sockets.emit('Visible AddedSettings'); // actionbar
         
             // console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', socket.nickname, 'room : ', socket.room );
@@ -376,7 +376,7 @@ module.exports = (io) => {
 
             // 2-1. profile 배정
             const rand_Color = Math.floor(Math.random() * 12);
-            let playerInfo = { 'userID': socket.userID, 'nickname': socket.nickname, 'team': team, 'status': 0, 'color': rand_Color, 'place' : await PlaceUser(team) };
+            let playerInfo = { userID: socket.userID, nickname: socket.nickname, team: team, status: 0, color: rand_Color, place : await PlaceUser(team) };
             console.log("PlayersInfo : ", playerInfo);
 
 
@@ -409,7 +409,7 @@ module.exports = (io) => {
             socket.emit('login',roomJson); 
      
             // 5. new user외의 사용자들에게 new user정보 보냄
-            socket.broadcast.to(room).emit('user joined', playerInfo);
+            socket.broadcast.to(room).emit('user joined', JSON.stringify(playerInfo));
 
         });
         
@@ -702,11 +702,21 @@ module.exports = (io) => {
             // redis에 저징
             jsonStore.storejson(roomTotalJson, socket.room);
 
-            
-            // socket.broadcast.to(socket.room).emit('onGameStart');
-            io.sockets.in(socket.room).emit('onGameStart');
+            // socket.broadcast.to(socket.room).emit('onGameStart');  //ver0
+            io.sockets.in(socket.room).emit('onGameStart'); // ver1/
         });
 
+        //  [WaitingRoom] GameStart로 모든 클라이언트의 on을 받는 함수로 팀별로 room join하여 씬 이동함 
+        socket.on('joinTeam', async() => {
+            // 팀별로 ROOM 추가 join
+            socket.roomTeam = socket.room + socket.team.toString();
+            console.log("@@ socket.nickname : " , socket.nickname, " socket.roomTeam  : ",  socket.roomTeam);
+            socket.join(socket.roomTeam);
+
+            socket.emit('loadMainGame', socket.team.toString()); //ver3
+            // io.sockets.in(socket.room+'false').emit('onBlackGameStart');// ver2
+            // io.sockets.in(socket.room+'true').emit('onWhiteGameStart');// ver2
+        });
 
 
         // [MainGame] 게임 시작시 해당 룸의 사용자 정보 넘김
@@ -752,12 +762,15 @@ module.exports = (io) => {
             console.log("Team 정보 :", socket.team);
             console.log("room 정보 :", socket.room);
             console.log("roomJson!! :",roomJson);
-            io.sockets.in(socket.room).emit('MainGameStart', roomJson);
+            // io.sockets.in(socket.room).emit('MainGameStart', roomJson);
+            socket.emit('MainGameStart', roomJson);
             
             console.log("On Main Map abandonStatusList : ", abandonStatusList);
             io.sockets.in(socket.room).emit('Company Status', abandonStatusList);
 
-            io.sockets.emit('Visible LimitedTime', socket.team.toString()); // actionbar
+            // io.sockets.emit('Visible LimitedTime', socket.team.toString()); // actionbar
+            console.log("[[[InitGame]] socket.nickname, team : ", socket.nickname, socket.team);
+            socket.emit('Visible LimitedTime', socket.team.toString()); // actionbar
 
             // Timer 시작
             var time = 600; //600=10분 
@@ -795,8 +808,8 @@ module.exports = (io) => {
 
                 console.log("!!! black_total_pita : " + black_total_pita + " white_total_pita : " + white_total_pita);
                 
-                io.sockets.in(socket.room).emit('Update Black Pita', black_total_pita);
-                io.sockets.in(socket.room).emit('Update White Pita', white_total_pita);
+                io.sockets.in(socket.room+'false').emit('Update Black Pita', black_total_pita);
+                io.sockets.in(socket.room+'true').emit('Update White Pita', white_total_pita);
                 // io.sockets.in(socket.room).emit("Load Pita Num", black_total_pita);
     
             }, 10000);
@@ -1560,6 +1573,7 @@ module.exports = (io) => {
         socket.on('disconnect', async function() {
             console.log('A Player disconnected!!! - socket.sessionID : ', socket.sessionID);
             clearInterval(timerId)
+            clearInterval(pitaTimerId);
             console.log("[disconnect] 타이머 종료!");
 
             await leaveRoom(socket, socket.room);
@@ -1760,7 +1774,8 @@ module.exports = (io) => {
         // RoomTotalJson 생성 및 return 
         var userCompanyStatus = new UserCompanyStatus({
             warnCnt    : 0,
-            detectCnt : 0
+            detectCnt : 0,
+            IsBlocked   : false, //무력화 상태
         });
 
 
@@ -1771,7 +1786,6 @@ module.exports = (io) => {
             blackUsers[user.UsersID] = new BlackUsers({
                 userId   : user.UsersID,
                 profileColor : user.UsersProfileColor,
-                IsBlocked   : false,
                 currentLocation : "",
                 companyA    : userCompanyStatus,
                 companyB    : userCompanyStatus,
@@ -1785,7 +1799,6 @@ module.exports = (io) => {
             whiteUsers[user.UsersID] =  new WhiteUsers({
                 userId   : user.UsersID,
                 profileColor : user.UsersProfileColor,
-                IsBlocked   : false,
                 currentLocation : ""
             })
         }

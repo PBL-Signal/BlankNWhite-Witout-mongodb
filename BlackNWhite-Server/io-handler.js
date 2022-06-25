@@ -1001,13 +1001,25 @@ module.exports = (io) => {
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
             console.log("Load card list teamData : ", teamDataJson);
 
-            let step = roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["attackStep"];
-            console.log("roomTotalJson[0][teamDataJson.companyName]['sections'][teamDataJson.sectionIndex]", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]);
+            if (socket.team == true){  // white 팀 response step
+                console.log("Load Attack Step - sectino", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]);
+                console.log("load response list : ", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["response"]["progress"]);
+                console.log("load response step : ", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["responseStep"]);
 
-            console.log("load attack step : ", step);
+                socket.to(socket.room).emit("Load Response List", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["response"]["progress"]);
+                socket.emit("Load Response List", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["response"]["progress"]);
 
-            socket.to(socket.room).emit("Attack Step", step);
-            socket.emit("Attack Step", step);
+                socket.to(socket.room).emit("Response Step", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["responseStep"]);
+                socket.emit("Response Step", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["responseStep"]);
+            } else {  // black 팀 attack step
+                let step = roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["attackStep"];
+                console.log("roomTotalJson[0][teamDataJson.companyName]['sections'][teamDataJson.sectionIndex]", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]);
+
+                console.log("load attack step : ", step);
+
+                socket.to(socket.room).emit("Attack Step", step);
+                socket.emit("Attack Step", step);
+            }
         });
 
         // 공격을 수행하였을 때 결과 처리 및 total pita 정보 보내기
@@ -1034,8 +1046,8 @@ module.exports = (io) => {
                         step = 1;
             
                         console.log("결정된 인덱스 별 step : ", 1);
-                        await attackCount(socket, roomTotalJson, attackJson, cardLv, 1)
-                        await responseCount(socket, roomTotalJson, attackJson, cardLv);
+                        await attackCount(socket, roomTotalJson, attackJson, cardLv, 1);
+                        await monitoringCount(socket, roomTotalJson, attackJson, cardLv);
                     } else {
                         console.log("이미 수행한 공격입니다.");
                     }
@@ -1044,7 +1056,7 @@ module.exports = (io) => {
             } else {
 
                 let step; // attack Step
-                if (attackJson.attackIndex == 4){
+                if (0 <= attackJson.attackIndex && attackJson.attackIndex < 4){
                     step = 2;
                 } else if (attackJson.attackIndex == 5){
                     step = 3;
@@ -1063,8 +1075,8 @@ module.exports = (io) => {
                     roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["last"] = attackJson.attackIndex;
             
                     console.log("결정된 인덱스 별 step : ", step);
-                    await attackCount(socket, roomTotalJson, attackJson, cardLv, step)
-                    await responseCount(socket, roomTotalJson, attackJson, cardLv);
+                    await attackCount(socket, roomTotalJson, attackJson, cardLv, step);
+                    await monitoringCount(socket, roomTotalJson, attackJson, cardLv);
                 } else {
                     console.log("이미 수행한 공격입니다.");
                 }
@@ -1103,12 +1115,16 @@ module.exports = (io) => {
             let responseJson = JSON.parse(responseData);
 
             let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-            console.log("White Team Response list (before) : ", roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["response"]["progress"]);
-            console.log("Black Team Attack list (before) : ", roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attack"]["progress"]);
+            console.log("White Team Response list (Click Response before) : ", roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["response"]["progress"]);
+            console.log("Black Team Attack list (Click Response before) : ", roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attack"]["progress"]);
             console.log("Click Response responseJson : ", responseJson);
             console.log("response step load json : ", roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["responseStep"]);
 
+            let cardLv = roomTotalJson[0][responseJson.companyName]["penetrationTestingLV"][responseJson.attackIndex];
 
+            await responseCount(socket, roomTotalJson, responseJson, cardLv)
+
+            
         });
 
 
@@ -1659,7 +1675,6 @@ module.exports = (io) => {
             detectCnt : 0
         });
 
-
         var blackUsers = {};
         var whiteUsers = {};
 
@@ -1687,7 +1702,7 @@ module.exports = (io) => {
         }
     
         var progress = new Progress({
-            progress  : [],
+            progress  : [0, 4, 5, 6, 7],
             last  : -1
         })
 
@@ -1701,8 +1716,8 @@ module.exports = (io) => {
                 level  : 0,
                 vuln : 0,
                 vulnActive : false,
-                attackStep : 0,
-                responseStep : 0,
+                attackStep : 4,
+                responseStep : 4,
                 attack : progress,
                 response : progress,
                 }),
@@ -1799,13 +1814,13 @@ module.exports = (io) => {
     }
 
     // 공격 별 n초 후 관제 리스트로 넘기기
-    async function responseCount(socket, roomTotalJson, attackJson, cardLv){
+    async function monitoringCount(socket, roomTotalJson, attackJson, cardLv){
         var responseTime = setTimeout(async function(){
             // let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
             let delIndex = roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"].indexOf(attackJson.attackIndex);
 
-            console.log("White Team Response list (responseCount) : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"]);
-            console.log("Black Team Attack list (responseCount) : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"]);
+            console.log("White Team Response list (monitoringCount) : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"]);
+            console.log("Black Team Attack list (monitoringCount) : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"]);
 
             if (delIndex > -1){
                 roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"].splice(delIndex, 1);
@@ -1816,7 +1831,7 @@ module.exports = (io) => {
                 console.log("[timeout] roomTotalJson[0][attackJson.companyName][sections][attackJson.sectionIndex][response][progress]", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"]);
 
                 // white room으로 response list 보내기 -> 해당 공격들만 활성화 시키기
-                
+
 
                 console.log("Done Monitoring atttck : ", delIndex);
 
@@ -1832,6 +1847,82 @@ module.exports = (io) => {
             }
 
         }, config["RESEARCH_" + (attackJson.attackIndex + 1)]["time"][cardLv] * 1000);
+    }
+
+    // 대응 별 n초 후 공격 성공
+    async function responseCount(socket, roomTotalJson, responseJson, cardLv){
+        var attackStepTime = setTimeout(async function(){
+
+            // response list에서 대응 성공한 공격 삭제
+            var responseList = roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["response"]["progress"];
+            for(var i = 0; i < responseList.length; i++){ 
+                if (responseList[i] === responseJson.attackIndex) { 
+                    console.log("Delete Response attack in Response List : ", i);
+                    responseList.splice(i, 1); 
+                    break;
+                }
+            }
+
+            var attackList = roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attack"]["progress"];
+            for(var i = 0; i < attackList.length; i++){ 
+                if (attackList[i] === responseJson.attackIndex) { 
+                    console.log("Delete Response attack in Response List : ", i);
+                    attackList.splice(i, 1); 
+                    break;
+                }
+            }
+
+            let step; // attack Step
+            console.log("Math.max(...responseList) ; ", Math.max(...responseList));
+            console.log("response lsit(before maxattack) : ", roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["response"]["progress"]);
+            if (responseList.length == 0){
+                step = -1;
+            } else {
+                let maxAttack = Math.max(...responseList);
+                if (0 <= maxAttack && maxAttack < 4){
+                    step = 0;
+                } else if (maxAttack == 4){
+                    step = 1;
+                } else if (maxAttack == 5){
+                    step = 2;
+                } else if (maxAttack == 6){
+                    step = 3;
+                } else if (7 <= maxAttack && maxAttack <= 10){
+                    step = 4;
+                } else if (11 <= maxAttack && maxAttack <= 12){
+                    step = 5;
+                }
+            }
+
+            socket.to(socket.room).emit('Load Response List', responseList);
+            socket.emit('Load Response List', responseList);            
+
+            socket.to(socket.room).emit("Response Step", step);
+            socket.emit("Response Step", step);
+
+            roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["response"]["progress"] = responseList;
+            roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attack"]["progress"] = attackList;
+
+            // let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+            console.log("White Team Response list (responseCount) : ", roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["response"]["progress"]);
+            console.log("Black Team Attack list (responseCount) : ", roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attack"]["progress"]);
+
+            if (step < roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attackStep"]){
+                roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attackStep"] = step;
+                roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["responseStep"] = step;
+            }
+
+            console.log("[setTimeout] roomTotalJson response step ", roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attackStep"]);
+            console.log("[setTimeout] roomTotalJson response step, step ", step);
+
+            await jsonStore.updatejson(roomTotalJson[0], socket.room);
+            roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));                
+
+            console.log("attack step after edit json (attackCount) : ", roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attackStep"]);
+
+            clearTimeout(attackStepTime);
+
+        }, config["ATTACK_" + (responseJson.attackIndex + 1)]["time"][cardLv] * 1000);
     }
     
 }

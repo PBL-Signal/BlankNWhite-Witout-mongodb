@@ -332,7 +332,7 @@ module.exports = (io) => {
 
         // [WaitingRoom] 사용자 첫 입장 시 'add user' emit 
         socket.on('add user', async() => {
-            console.log("&&&&&&&&&&&&&&&&&& TEAM INFO + ", socket.team);
+            // console.log("&&&&&&&&&&&&&&&&&& TEAM INFO + ", socket.team);
             io.sockets.emit('Visible AddedSettings'); // actionbar
         
             // console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', socket.nickname, 'room : ', socket.room );
@@ -1714,7 +1714,8 @@ module.exports = (io) => {
         // RoomTotalJson 생성 및 return 
         var userCompanyStatus = new UserCompanyStatus({
             warnCnt    : 0,
-            detectCnt : 0
+            detectCnt : 0,
+            IsBlocked   : false, //무력화 상태
         });
 
 
@@ -1725,7 +1726,6 @@ module.exports = (io) => {
             blackUsers[user.UsersID] = new BlackUsers({
                 userId   : user.UsersID,
                 profileColor : user.UsersProfileColor,
-                IsBlocked   : false,
                 currentLocation : "",
                 companyA    : userCompanyStatus,
                 companyB    : userCompanyStatus,
@@ -1739,7 +1739,6 @@ module.exports = (io) => {
             whiteUsers[user.UsersID] =  new WhiteUsers({
                 userId   : user.UsersID,
                 profileColor : user.UsersProfileColor,
-                IsBlocked   : false,
                 currentLocation : ""
             })
         }

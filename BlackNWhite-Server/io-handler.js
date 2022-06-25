@@ -376,7 +376,7 @@ module.exports = (io) => {
 
             // 2-1. profile 배정
             const rand_Color = Math.floor(Math.random() * 12);
-            let playerInfo = { 'userID': socket.userID, 'nickname': socket.nickname, 'team': team, 'status': 0, 'color': rand_Color, 'place' : await PlaceUser(team) };
+            let playerInfo = { userID: socket.userID, nickname: socket.nickname, team: team, status: 0, color: rand_Color, place : await PlaceUser(team) };
             console.log("PlayersInfo : ", playerInfo);
 
 
@@ -409,7 +409,7 @@ module.exports = (io) => {
             socket.emit('login',roomJson); 
      
             // 5. new user외의 사용자들에게 new user정보 보냄
-            socket.broadcast.to(room).emit('user joined', playerInfo);
+            socket.broadcast.to(room).emit('user joined', JSON.stringify(playerInfo));
 
         });
         

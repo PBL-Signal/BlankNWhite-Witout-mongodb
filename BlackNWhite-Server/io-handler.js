@@ -686,6 +686,15 @@ module.exports = (io) => {
                
             // 게임 관련 Json 생성 (new)
             var roomTotalJson = InitGame(socket.room, blackUsersInfo, whiteUsersInfo);
+            
+            // monitoringLog 생성
+            var monitoringLog = {};
+            jsonStore.storejson(monitoringLog, socket.room+":blackLog");
+            jsonStore.storejson(monitoringLog, socket.room+":whiteLog");
+            // var test = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"))[0];
+            // console.log("monitoringLog INIT test >> ", test);
+
+            var monitoringLog2 = {time: "12:34:56", nickname: "test1", targetCompany: "companyA", targetSection: "Area_DMZ", actionType: "monitoring", detail: "dddd 공격을 수행했습니다."};
 
             // redis에 저징
             jsonStore.storejson(roomTotalJson, socket.room);
@@ -1452,6 +1461,15 @@ module.exports = (io) => {
                 console.log("[Abandon] 회사몰락 " + corpName);
                 roomTotalJson[0][corpName].abandonStatus = true;
                 await jsonStore.updatejson(roomTotalJson[0], socket.room);
+
+                let today = new Date();   
+                let hours = today.getHours(); // 시
+                let minutes = today.getMinutes();  // 분
+                let seconds = today.getSeconds();  // 초
+                let now = hours+":"+minutes+":"+seconds;
+                var monitoringLog = {time: now, nickname: "test1", targetCompany: "companyA", targetSection: "Area_DMZ", actionType: "Damage", detail: corpName+"가 파괴되었습니다."};
+                await jsonStore.updatejson(monitoringLog, socket.room+":blackLog");
+                await jsonStore.updatejson(monitoringLog, socket.room+":whiteLog");
             }
             
         });
@@ -1465,12 +1483,37 @@ module.exports = (io) => {
                 nickname : "test1",
                 targetCompany : corp,
                 targetSection : "Area_DMZ",
-                actionType : "Monitoring",
+                actionType : "Detected",
+                detail : 2
+            };
+            var test2 = {
+                time : "00:11:22",
+                nickname : "test1",
+                targetCompany : corp,
+                targetSection : "Area_Sec",
+                actionType : "Detected",
                 detail : 2
             };
 
-            var monTest = [test, test, test, test, test, test];
-            jsonStore.storejson(monTest, socket.room + "monLog");
+            var test3 = {
+                time : "00:11:22",
+                nickname : "test1",
+                targetCompany : corp,
+                targetSection : "Area_DMZ",
+                actionType : "Response",
+                detail : 2
+            };
+            var test4 = {
+                time : "00:11:22",
+                nickname : "test1",
+                targetCompany : corp,
+                targetSection : "Area_Sec",
+                actionType : "Damage",
+                detail : 2
+            };
+
+            var monTest = [test, test2, test, test2, test, test2, test3, test4, test3, test4,test3, test4];
+            jsonStore.storejson(monTest, socket.room+":whiteLog");
             console.log('Put_MonitoringLog SUCCESS!!  : ', monTest);
         });
 
@@ -1478,8 +1521,7 @@ module.exports = (io) => {
         socket.on('Get_MonitoringLog', async(corp) => {
             console.log('Get_MonitoringLog CALLED  : ', corp);
             
-            const monitoringLogJson = JSON.parse(await jsonStore.getjson(socket.room + "monLog"));
-            var corpName = corp;
+            const monitoringLogJson = JSON.parse(await jsonStore.getjson(socket.room+":whiteLog"));
 
             console.log("@@@@@@@@ MonitoringLog @@@@@@@ ",  monitoringLogJson[0]);
             socket.emit('MonitoringLog', monitoringLogJson[0]);
@@ -1680,6 +1722,8 @@ module.exports = (io) => {
     // [GameStart] 게임시작을 위해 게임 스키마 초기화 
     function InitGame(room_key, blackUsersInfo, whiteUsersInfo){
         console.log("INIT GAME 호출됨------! blackUsersID", blackUsersInfo);
+
+
         /*
             var blackUsers = [ user1ID, user2ID, user3ID ];
         */

@@ -810,8 +810,8 @@ module.exports = (io) => {
 
                 console.log("!!! black_total_pita : " + black_total_pita + " white_total_pita : " + white_total_pita);
                 
-                io.sockets.in(socket.room+'false').emit('Update Black Pita', black_total_pita);
-                io.sockets.in(socket.room+'true').emit('Update White Pita', white_total_pita);
+                io.sockets.in(socket.room+'false').emit('Update Pita', black_total_pita);
+                io.sockets.in(socket.room+'true').emit('Update Pita', white_total_pita);
                 // io.sockets.in(socket.room).emit("Load Pita Num", black_total_pita);
     
             }, 10000);

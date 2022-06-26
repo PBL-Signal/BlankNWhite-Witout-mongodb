@@ -773,7 +773,7 @@ module.exports = (io) => {
             socket.emit('Visible LimitedTime', socket.team.toString()); // actionbar
 
             // Timer 시작
-            var time = 600; //600=10분 
+            var time = 600; //600=10분, 1분 -> 60
             var min = "";
             var sec = "";
 
@@ -792,49 +792,77 @@ module.exports = (io) => {
                 }
             }, 1000);
 
-            // pita 30초 간격으로 100pita 지급
-            var pitaIncome = 100; 
-            var pitaIncome2 = 80; 
+            // pita 10초 간격으로 pita 지급
+            var pitaInterval= config.BLACK_INCOME.time * 1000; // black, white 동일함 * 1000초
+            // console.log("[TEST] pitaInterval :", pitaInterval);
             pitaTimerId = setInterval(async function(){
                 const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
 
-                roomTotalJson[0].blackTeam.total_pita += pitaIncome;
-                roomTotalJson[0].whiteTeam.total_pita += pitaIncome2;
+                roomTotalJson[0].blackTeam.total_pita += config.BLACK_INCOME.pita;
+                roomTotalJson[0].whiteTeam.total_pita += config.WHITE_INCOME.pita;
 
                 var black_total_pita = roomTotalJson[0].blackTeam.total_pita;
                 var white_total_pita = roomTotalJson[0].whiteTeam.total_pita;
 
                 await jsonStore.updatejson(roomTotalJson[0], socket.room);
 
-                console.log("!!! black_total_pita : " + black_total_pita + " white_total_pita : " + white_total_pita);
+                console.log("!!! [월급 지급] black_total_pita : " + black_total_pita + " white_total_pita : " + white_total_pita);
                 
                 io.sockets.in(socket.room+'false').emit('Update Pita', black_total_pita);
                 io.sockets.in(socket.room+'true').emit('Update Pita', white_total_pita);
                 // io.sockets.in(socket.room).emit("Load Pita Num", black_total_pita);
     
-            }, 10000);
+            }, pitaInterval);
 
 
         });
         
 
 
-        // 무력화 test
-        socket.on('TestNeutralization', function() {
-            console.log("[On] TestNeutralization");
-            console.log("[Emit] OnNeutralization");
-            // io.sockets.in(socket.room).emit('OnNeutralization');
-            var test = { 
-                test : test
-            };
-            var testJson = JSON.stringify(test);
-            socket.emit('OnNeutralization', testJson);
+        // 무력화 test (나중에 삭제해야됨)
+        socket.on('TestNeutralization', async function() {
+            console.log("[On] TestNeutralization 스키마에 경고 추가 및 isBlocked True");
+            // console.log("[Emit] OnNeutralization");
+
+            const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+
+            // 회사 A, C 에 경고 3번으로 무력화 true
+            roomTotalJson[0].blackTeam.users[socket.userID].companyA.warnCnt = 3;
+            roomTotalJson[0].blackTeam.users[socket.userID].companyA.IsBlocked = true;
+
+            roomTotalJson[0].blackTeam.users[socket.userID].companyC.warnCnt = 3;
+            roomTotalJson[0].blackTeam.users[socket.userID].companyC.IsBlocked = true;
+
+
+            // console.log("[CHECK] roomTotalJson[0].blackTeam.users[socket.userID] : ", roomTotalJson[0].blackTeam.users[socket.userID]);
+            await jsonStore.updatejson(roomTotalJson[0], socket.room);
+
+            socket.emit('OnNeutralization', true);            
+        });
+
+        // 특정 회사가 무력화인지 확인
+        socket.on('Check Neutralization',  async function(company) {
+            console.log("[On] Check Neutralization ", company);
+
+            const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+
+            // 회사 isBlocked 정보 가져옴
+            var companyIsBlocked = roomTotalJson[0].blackTeam.users[socket.userID][company].IsBlocked;
+            console.log("!-- companyIsBlocked : ", companyIsBlocked);
+            
+            // null 처리
+            if (!companyIsBlocked){
+                companyIsBlocked = false;
+                console.log("!-- companyIsBlocked NULL처리 : ", companyIsBlocked);
+            }
+            
+            socket.emit('OnNeutralization', companyIsBlocked);
         });
 
 
         // 무력화 해결 시도 시
-        socket.on('Try Non-neutralization', async(room)=> {
-            console.log("[On] Solve Neutralization");
+        socket.on('Try Non-neutralization', async(company)=> {
+            console.log("[On] Solve Neutralization company :", company);
           
             //  json 불러와서 해당 영역 회사 경고 초기화 함 
             var roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
@@ -846,21 +874,20 @@ module.exports = (io) => {
             // 가격화 
             if (black_total_pita - config.UNBLOCK_INFO.pita < 0){
                 // 실패시
-                console.log("failed");
-                socket.emit('Failed Neutralization');
+                console.log("무력화 해제 실패!");
+                socket.emit('After non-Neutralization', false);
             }
             else{
-                console.log("solved");
-                // json 변경
-                roomTotalJson[0].blackTeam.total_pita = black_total_pita - 100;
-                await jsonStore.updatejson(roomTotalJson[0], socket.room);
-
-                // 확인
-                var roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-                console.log("UPDATE 후에 JSON!!!",roomTotalJson[0]);
+                // isBlocked 해제
+                roomTotalJson[0].blackTeam.users[socket.userID][company].IsBlocked = false;
+                // pita 가격 마이너스
+                roomTotalJson[0].blackTeam.total_pita = black_total_pita - config.UNBLOCK_INFO.pita;
                 
-                // 성공시 
-                socket.emit('Solved Neutralization');
+                await jsonStore.updatejson(roomTotalJson[0], socket.room);
+                io.sockets.in(socket.room+'false').emit('Update Pita', roomTotalJson[0].blackTeam.total_pita );
+
+                console.log("무력화 해제 성공!");
+                socket.emit('After non-Neutralization', true);
             }
 
         });

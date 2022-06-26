@@ -46,7 +46,9 @@ module.exports = (io) => {
     let gamePlayer = {};
     let evenNumPlayer = false;
     let numPlayer = 1;
-    let companyNameList = ["companyA", "companyB", "companyC", "companyD", "companyE"]
+    let companyNameList = ["companyA", "companyB", "companyC", "companyD", "companyE"];
+    let sectionNames = [["Area_DMZ", "Area_Interal", "Area_Sec"], ["Area_DMZ", "Area_Interal", "Area_Sec"],["Area_DMZ", "Area_Interal", "Area_Sec"],["Area_DMZ", "Area_Interal", "Area_Sec"],["Area_DMZ", "Area_Interal", "Area_Sec"]];
+                
 
     let timerId;
     let pitaTimerId;
@@ -1055,11 +1057,19 @@ module.exports = (io) => {
                 console.log("load response list : ", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["response"]["progress"]);
                 console.log("load response step : ", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["responseStep"]);
 
-                socket.to(socket.room).emit("Load Response List", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["response"]["progress"]);
-                socket.emit("Load Response List", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["response"]["progress"]);
+                let responseProgress = []
+                for(var i in roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["response"]["progress"]){
+                    console.log("responseIndex : ", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["response"]["progress"][i]);
+                    responseProgress.push(Number(Object.keys(roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["response"]["progress"][i])));
+                }
 
-                socket.to(socket.room).emit("Response Step", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["responseStep"]);
-                socket.emit("Response Step", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["responseStep"]);
+                console.log("responseProgress : ", responseProgress)
+
+                socket.to(socket.room).emit("Load Response List", responseProgress);
+                socket.emit("Load Response List", responseProgress);
+
+                socket.to(socket.room).emit("Response Step", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["responseStep"] - 1);
+                socket.emit("Response Step", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["responseStep"] - 1);
             } else {  // black 팀 attack step
                 let step = roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["attackStep"];
                 console.log("roomTotalJson[0][teamDataJson.companyName]['sections'][teamDataJson.sectionIndex]", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]);
@@ -1087,10 +1097,24 @@ module.exports = (io) => {
             if (0 <= attackJson.attackIndex && attackJson.attackIndex < 4){
                 if (attackJson.attackIndex == roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["vuln"]){
                     console.log("attack success : ", attackJson.attackIndex)
-                    if (!(roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"].includes(attackJson.attackIndex) || 
-                        roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"].includes(attackJson.attackIndex))){
-                        
-                        roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"].push(attackJson.attackIndex);
+
+                    var attackList = roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"];
+                    var responseList = roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"];
+                    var existAttack = false;
+                    for(var i = 0; i < attackList.length; i++){ 
+                        console.log("공격 수행 여부 attackList[i] : ", attackList[i]);
+                        if (Object.keys(attackList[i]) == attackJson.attackIndex || Object.keys(responseList[i]) == attackJson.attackIndex) { 
+                            existAttack = true;
+                            break;
+                        }
+                    }
+
+                    console.log("공격 수행 여부 : ", existAttack);
+
+                    if (!existAttack){
+                        let json = new Object();
+                        json[attackJson.attackIndex] = socket.userID;
+                        roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"].push(json);
                         roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["last"] = attackJson.attackIndex;
                         step = 1;
             
@@ -1117,15 +1141,26 @@ module.exports = (io) => {
                     step = 6;
                 }
 
-                if (!(roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"].includes(attackJson.attackIndex) || 
-                    roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"].includes(attackJson.attackIndex))){
-                    
-                    roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"].push(attackJson.attackIndex);
-                    roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["last"] = attackJson.attackIndex;
-            
-                    console.log("결정된 인덱스 별 step : ", step);
-                    await attackCount(socket, roomTotalJson, attackJson, cardLv, step);
-                    await monitoringCount(socket, roomTotalJson, attackJson, cardLv);
+                var attackList = roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"];
+                var responseList = roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"];
+                var existAttack = false;
+                for(var i = 0; i < attackList.length; i++){ 
+                    if (Object.keys(attackList[i]) == attackJson.attackIndex || Object.keys(responseList[i]) == attackJson.attackIndex) { 
+                        existAttack = true;
+                        break;
+                    }
+                }
+
+                if (!existAttack){
+
+                        let json = new Object();
+                        json[attackJson.attackIndex] = socket.userID;
+                        roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"].push(json);
+                        roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["last"] = attackJson.attackIndex;
+                
+                        console.log("결정된 인덱스 별 step : ", step);
+                        await attackCount(socket, roomTotalJson, attackJson, cardLv, step);
+                        await monitoringCount(socket, roomTotalJson, attackJson, cardLv);
                 } else {
                     console.log("이미 수행한 공격입니다.");
                 }
@@ -1885,11 +1920,8 @@ module.exports = (io) => {
                 let seconds = today.getSeconds();  // 초
                 let now = hours+":"+minutes+":"+seconds;
 
-                var sectionNames = [["Area_DMZ", "Area_Interal", "Area_Sec"], ["Area_DMZ", "Area_Interal", "Area_Sec"],["Area_DMZ", "Area_Interal", "Area_Sec"],["Area_DMZ", "Area_Interal", "Area_Sec"],["Area_DMZ", "Area_Interal", "Area_Sec"]];
                 var companyIdx =  attackJson.companyName.charCodeAt(7) - 65;
                 var monitoringLog = {time: now, nickname: "", targetCompany: attackJson.companyName, targetSection: sectionNames[companyIdx][attackJson.sectionIndex], actionType: "Damage", detail: sectionNames[companyIdx][attackJson.sectionIndex]+"가 파괴되었습니다."};
-
-                
 
                 blackLogJson[0].push(monitoringLog);
                 whiteLogJson[0].push(monitoringLog);
@@ -1924,17 +1956,45 @@ module.exports = (io) => {
 
     // 공격 별 n초 후 관제 리스트로 넘기기
     async function monitoringCount(socket, roomTotalJson, attackJson, cardLv){
-        var responseTime = setTimeout(async function(){
+        var monitoringTime = setTimeout(async function(){
             // let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-            let delIndex = roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"].indexOf(attackJson.attackIndex);
+
+            var attackList = roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"];
+            let delIndex = -1;
+            for(var i = 0; i < attackList.length; i++){ 
+                if (Object.keys(attackList[i]) == attackJson.attackIndex) { 
+                    delIndex = i
+                    console.log("Delete Response attack in Response List : ", i);
+                    break;
+                }
+            }
+
+            console.log("monitoring success? : ", Boolean(delIndex));
 
             console.log("White Team Response list (monitoringCount) : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"]);
             console.log("Black Team Attack list (monitoringCount) : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"]);
 
             if (delIndex > -1){
-                roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"].splice(delIndex, 1);
-                roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"].push(attackJson.attackIndex);
+                delete roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"][attackJson.attackIndex];
+
+                let json = new Object();
+                json[attackJson.attackIndex] = socket.userID;
+                attackList.splice(i, 1); 
+                roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"].push(json);
                 roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["last"] = attackJson.attackIndex;
+
+                let responseProgress = []
+                for(var i in roomTotalJson[0][attackJson.companyName]){
+                    console.log("responseIndex : ", roomTotalJson[0][attackJson.companyName][i]);
+                    responseProgress.push(Number(Object.keys(roomTotalJson[0][attackJson.companyName][i])));
+                }
+                
+                console.log("responseProgress", responseProgress);
+
+                socket.to(socket.room).emit('Load Response List', responseProgress);
+                socket.emit('Load Response List', responseProgress);
+
+                roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"] = attackList;
 
                 console.log("[timeout] roomTotalJson[0][attackJson.companyName]['sections'][attackJson.sectionIndex]['attack']['progress']", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"]);
                 console.log("[timeout] roomTotalJson[0][attackJson.companyName][sections][attackJson.sectionIndex][response][progress]", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"]);
@@ -1942,14 +2002,14 @@ module.exports = (io) => {
                 // white room으로 response list 보내기 -> 해당 공격들만 활성화 시키기
 
 
-                console.log("Done Monitoring atttck : ", delIndex);
+                console.log("Done Monitoring atttck : ", attackJson.attackIndex);
 
                 await jsonStore.updatejson(roomTotalJson[0], socket.room);
                 roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
                 console.log("White Team Response list (timeout) : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"]);
                 console.log("Black Team Attack list (timeout) : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"]);
             
-                clearTimeout(responseTime);
+                clearTimeout(monitoringTime);
                 
             } else {
                 console.log("what the");
@@ -1965,49 +2025,56 @@ module.exports = (io) => {
             // response list에서 대응 성공한 공격 삭제
             var responseList = roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["response"]["progress"];
             for(var i = 0; i < responseList.length; i++){ 
-                if (responseList[i] === responseJson.attackIndex) { 
+                if (Object.keys(responseList[i]) == responseJson.attackIndex) { 
                     console.log("Delete Response attack in Response List : ", i);
                     responseList.splice(i, 1); 
                     break;
                 }
             }
 
-            var attackList = roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attack"]["progress"];
-            for(var i = 0; i < attackList.length; i++){ 
-                if (attackList[i] === responseJson.attackIndex) { 
-                    console.log("Delete Response attack in Response List : ", i);
-                    attackList.splice(i, 1); 
-                    break;
-                }
-            }
+            // var attackList = roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attack"]["progress"];
+            // for(var i = 0; i < attackList.length; i++){ 
+            //     if (Object.keys(attackList[i]) == responseJson.attackIndex) { 
+            //         console.log("Delete Response attack in Response List : ", i);
+            //         attackList.splice(i, 1); 
+            //         break;
+            //     }
+            // }
 
             let step; // attack Step
-            console.log("Math.max(...responseList) ; ", Math.max(...responseList));
+
+            let responseProgress = []
+            for(var i in responseList){
+                console.log("responseIndex : ", responseList[i]);
+                responseProgress.push(Number(Object.keys(responseList[i])));
+            }
+
+            console.log("Math.max(...responseList) ; ", Math.max(...responseProgress));
             console.log("response lsit(before maxattack) : ", roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["response"]["progress"]);
             if (responseList.length == 0){
-                step = -1;
+                step = 0;
             } else {
-                let maxAttack = Math.max(...responseList);
+                let maxAttack = Math.max(...responseProgress);
                 if (0 <= maxAttack && maxAttack < 4){
-                    step = 0;
-                } else if (maxAttack == 4){
                     step = 1;
-                } else if (maxAttack == 5){
+                } else if (maxAttack == 4){
                     step = 2;
-                } else if (maxAttack == 6){
+                } else if (maxAttack == 5){
                     step = 3;
-                } else if (7 <= maxAttack && maxAttack <= 10){
+                } else if (maxAttack == 6){
                     step = 4;
-                } else if (11 <= maxAttack && maxAttack <= 12){
+                } else if (7 <= maxAttack && maxAttack <= 10){
                     step = 5;
+                } else if (11 <= maxAttack && maxAttack <= 12){
+                    step = 6;
                 }
             }
 
-            socket.to(socket.room).emit('Load Response List', responseList);
-            socket.emit('Load Response List', responseList);            
+            socket.to(socket.room).emit('Load Response List', responseProgress);
+            socket.emit('Load Response List', responseProgress);            
 
-            socket.to(socket.room).emit("Response Step", step);
-            socket.emit("Response Step", step);
+            socket.to(socket.room).emit("Response Step", step - 1);
+            socket.emit("Response Step", step - 1);
 
             roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["response"]["progress"] = responseList;
             roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attack"]["progress"] = attackList;

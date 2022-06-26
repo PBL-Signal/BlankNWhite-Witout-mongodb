@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const Progress = new Schema({
-    progress  : { type : Array, required : true },
+    progress  : { type : Object, required : true },
     last  : { type : Number, required : true },
 })
 

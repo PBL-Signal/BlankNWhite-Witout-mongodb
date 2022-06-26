@@ -1094,23 +1094,28 @@ module.exports = (io) => {
 
             
 
+            let cardLv = roomTotalJson[0][attackJson.companyName]["penetrationTestingLV"][attackJson.attackIndex];
             let pitaNum;
             if (attackJson.teamName == true) {
-                pitaNum = roomTotalJson[0]['whiteTeam']['total_pita'] - config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][" + cardLv + "];
+                pitaNum = roomTotalJson[0]['whiteTeam']['total_pita'] - config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][cardLv];
                 roomTotalJson[0]['whiteTeam']['total_pita'] = pitaNum;
+
+                console.log("[!!!!!] pita num : ", pitaNum);
 
                 socket.to(socket.room+'true').emit('Update Pita', pitaNum);
                 socket.emit('Update Pita', pitaNum);
             } else {
-                pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] - config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][" + cardLv + "];
+                pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] - config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][cardLv];
                 roomTotalJson[0]['blackTeam']['total_pita'] = pitaNum;
+
+                console.log("[!!!!!] pita num : ", pitaNum);
 
                 socket.to(socket.room+'false').emit('Update Pita', pitaNum);
                 socket.emit('Update Pita', pitaNum);
             }
 
+
             // 만약 1단계 공격이라면 그에 맞는 공격만 효과가 있음
-            let cardLv = roomTotalJson[0][attackJson.companyName]["penetrationTestingLV"][attackJson.attackIndex];
             if (0 <= attackJson.attackIndex && attackJson.attackIndex < 4){
                 if (attackJson.attackIndex == roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["vuln"]){
                     console.log("attack success : ", attackJson.attackIndex)
@@ -1234,6 +1239,9 @@ module.exports = (io) => {
                 roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"][upgradeAttackInfo.attackIndex] += 1;
                 pitaNum = roomTotalJson[0]['whiteTeam']['total_pita'] - config["RESEARCH_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv];
                 roomTotalJson[0]['whiteTeam']['total_pita'] = pitaNum;
+
+                console.log("[!!!!!] pita num : ", pitaNum);
+
                 socket.to(socket.room+'true').emit('Update Pita', pitaNum);
                 socket.emit('Update Pita', pitaNum);
             } else {
@@ -1242,6 +1250,9 @@ module.exports = (io) => {
                 roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"][upgradeAttackInfo.attackIndex] += 1;
                 pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] - config["RESEARCH_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv];
                 roomTotalJson[0]['blackTeam']['total_pita'] = pitaNum;
+
+                console.log("[!!!!!] pita num : ", pitaNum);
+
                 socket.to(socket.room+'false').emit('Update Pita', pitaNum);
                 socket.emit('Update Pita', pitaNum);
             }

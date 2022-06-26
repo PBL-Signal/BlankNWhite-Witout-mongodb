@@ -1263,9 +1263,11 @@ module.exports = (io) => {
                     socket.to(socket.room).emit("New_Level", area_level.toString());
                     socket.emit('New_Level', area_level.toString());
 
-                    socket.to(socket.room).emit("Load Pita Num", newTotalPita);
-                    socket.emit("Load Pita Num", newTotalPita);    
+                    io.sockets.in(socket.room+'true').emit('Update Pita', newTotalPita); // 화이트팀
+                    io.sockets.emit('Update Pita', newTotalPita);
 
+                    // socket.to(socket.room).emit("Load Pita Num", newTotalPita);
+                    // socket.emit("Load Pita Num", newTotalPita);    
                 }
             }
         });
@@ -1347,8 +1349,11 @@ module.exports = (io) => {
                 socket.to(socket.room).emit("Area_VulnActive", sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
                 socket.emit('Area_VulnActive', sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
 
-                socket.to(socket.room).emit("Load Pita Num", newTotalPita);
-                socket.emit("Load Pita Num", newTotalPita);   
+                io.sockets.in(socket.room+'false').emit('Update Pita', newTotalPita); // 블랙팀
+                io.sockets.emit('Update Pita', newTotalPita);
+
+                // socket.to(socket.room).emit("Load Pita Num", newTotalPita);
+                // socket.emit("Load Pita Num", newTotalPita);   
             }
         });
 
@@ -1421,7 +1426,7 @@ module.exports = (io) => {
             var cntArr = [];
             for(i=0; i<sectionsArr.length; i++)
             {
-                var sectionData = roomTotalJson[0][corpName].sections[i].attack.progress.length;
+                var sectionData = roomTotalJson[0][corpName].sections[i].response.progress.length;
                 cntArr[i] = sectionData;
             }
 

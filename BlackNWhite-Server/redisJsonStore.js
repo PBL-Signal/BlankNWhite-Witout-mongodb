@@ -33,9 +33,9 @@ class RedisJsonStore extends JsonStore {
     }
 
     async updatejson(schema, key){
-        console.log(await this.redisClient.call("keys", "*"), key);
+        //console.log(await this.redisClient.call("keys", "*"), key);
         const arr = await this.redisClient.call("keys", "*");
-        console.log(arr.includes(key));
+        //console.log(arr.includes(key));
         if (arr.includes(key)){
             return await this.redisClient.call("JSON.SET", key, "$", JSON.stringify(schema))=="OK";
         } else {

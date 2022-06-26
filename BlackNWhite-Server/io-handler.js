@@ -1096,8 +1096,12 @@ module.exports = (io) => {
                         await monitoringCount(socket, roomTotalJson, attackJson, cardLv);
                     } else {
                         console.log("이미 수행한 공격입니다.");
+                        await monitoringCountBlocked(socket, roomTotalJson, attackJson, cardLv);
                     }
                     
+                } else {
+                    console.log("취약점이 아닌 공격입니다.");
+                    await monitoringCountBlocked(socket, roomTotalJson, attackJson, cardLv);
                 }
             } else {
 
@@ -1136,6 +1140,7 @@ module.exports = (io) => {
                         await monitoringCount(socket, roomTotalJson, attackJson, cardLv);
                 } else {
                     console.log("이미 수행한 공격입니다.");
+                    await monitoringCountBlocked(socket, roomTotalJson, attackJson, cardLv);
                 }
                 
             }
@@ -1760,8 +1765,8 @@ module.exports = (io) => {
 
         // RoomTotalJson 생성 및 return 
         var userCompanyStatus = new UserCompanyStatus({
+            detectCnt : [0, 0, 0],
             warnCnt    : 0,
-            detectCnt : 0,
             IsBlocked   : false, //무력화 상태
         });
 
@@ -1854,7 +1859,6 @@ module.exports = (io) => {
             companyE    : initCompany,
         };
       
-
         return RoomTotalJson
     }
 
@@ -1930,14 +1934,16 @@ module.exports = (io) => {
     // 공격 별 n초 후 관제 리스트로 넘기기
     async function monitoringCount(socket, roomTotalJson, attackJson, cardLv){
         var monitoringTime = setTimeout(async function(){
-            // let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
 
             var attackList = roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"];
             let delIndex = -1;
+            let attacker = "";
             for(var i = 0; i < attackList.length; i++){ 
                 if (Object.keys(attackList[i]) == attackJson.attackIndex) { 
                     delIndex = i
+                    attacker = attackList[i][attackJson.attackIndex];
                     console.log("Delete Response attack in Response List : ", i);
+                    console.log("Delete Response attack's attacker' : ", attacker);
                     break;
                 }
             }
@@ -1948,13 +1954,26 @@ module.exports = (io) => {
             console.log("Black Team Attack list (monitoringCount) : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"]);
 
             if (delIndex > -1){
-                delete roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"][attackJson.attackIndex];
-
                 let json = new Object();
                 json[attackJson.attackIndex] = socket.userID;
                 attackList.splice(i, 1); 
                 roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"].push(json);
                 roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["last"] = attackJson.attackIndex;
+
+                // 나중에 1단계에서 취약점 외의 공격들도 감지할 수 있도록 수정하기
+                roomTotalJson[0]["blackTeam"]["users"][attacker][attackJson.companyName]["detectCnt"][attackJson.sectionIndex] += 1;
+                if (roomTotalJson[0]["blackTeam"]["users"][attacker][attackJson.companyName]["detectCnt"][attackJson.sectionIndex] == 3){
+                    roomTotalJson[0]["blackTeam"]["users"][attacker][attackJson.companyName]["detectCnt"][attackJson.sectionIndex] = 0;
+                    roomTotalJson[0]["blackTeam"]["users"][attacker][attackJson.companyName]["warnCnt"] += 1
+                    if (roomTotalJson[0]["blackTeam"]["users"][attacker][attackJson.companyName]["warnCnt"] == 3){
+                        roomTotalJson[0]["blackTeam"]["users"][attacker][attackJson.companyName]["warnCnt"] = 0;
+                        roomTotalJson[0]["blackTeam"]["users"][attacker][attackJson.companyName]["IsBlocked"] = true;
+                        socket.emit('OnNeutralization', true);
+                        console.log("You are Blockes!!!!");
+                    }
+                }
+
+                console.log(attacker, "의 userCompanyStatus : ", roomTotalJson[0]["blackTeam"]["users"][attacker]);
 
                 let responseProgress = []
                 for(var i in roomTotalJson[0][attackJson.companyName]){
@@ -1988,6 +2007,29 @@ module.exports = (io) => {
                 console.log("what the");
             }
 
+        }, config["RESEARCH_" + (attackJson.attackIndex + 1)]["time"][cardLv] * 1000);
+    }
+
+    // 공격은 수행하였지만 관제에서 무시되는 경우 warn만 +1
+    async function monitoringCountBlocked(socket, roomTotalJson, attackJson, cardLv){
+        var monitoringTime = setTimeout(async function(){
+            // 나중에 1단계에서 취약점 외의 공격들도 감지할 수 있도록 수정하기
+            roomTotalJson[0]["blackTeam"]["users"][socket.userID][attackJson.companyName]["detectCnt"][attackJson.sectionIndex] += 1;
+            if (roomTotalJson[0]["blackTeam"]["users"][socket.userID][attackJson.companyName]["detectCnt"][attackJson.sectionIndex] == 3){
+                roomTotalJson[0]["blackTeam"]["users"][socket.userID][attackJson.companyName]["detectCnt"][attackJson.sectionIndex] = 0;
+                roomTotalJson[0]["blackTeam"]["users"][socket.userID][attackJson.companyName]["warnCnt"] += 1
+                if (roomTotalJson[0]["blackTeam"]["users"][socket.userID][attackJson.companyName]["warnCnt"] == 3){
+                    roomTotalJson[0]["blackTeam"]["users"][socket.userID][attackJson.companyName]["warnCnt"] = 0;
+                    roomTotalJson[0]["blackTeam"]["users"][socket.userID][attackJson.companyName]["IsBlocked"] = true;
+                    socket.emit('OnNeutralization', true);
+                    console.log("You are Blockes!!!!");
+                }
+            }
+
+            console.log(socket.userID, "의 userCompanyStatus : ", roomTotalJson[0]["blackTeam"]["users"][socket.userID]);
+            await jsonStore.updatejson(roomTotalJson[0], socket.room);
+            
+            clearTimeout(monitoringTime);
         }, config["RESEARCH_" + (attackJson.attackIndex + 1)]["time"][cardLv] * 1000);
     }
 

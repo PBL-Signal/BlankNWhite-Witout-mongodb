@@ -46,7 +46,9 @@ module.exports = (io) => {
     let gamePlayer = {};
     let evenNumPlayer = false;
     let numPlayer = 1;
-    let companyNameList = ["companyA", "companyB", "companyC", "companyD", "companyE"]
+    let companyNameList = ["companyA", "companyB", "companyC", "companyD", "companyE"];
+    let sectionNames = [["Area_DMZ", "Area_Interal", "Area_Sec"], ["Area_DMZ", "Area_Interal", "Area_Sec"],["Area_DMZ", "Area_Interal", "Area_Sec"],["Area_DMZ", "Area_Interal", "Area_Sec"],["Area_DMZ", "Area_Interal", "Area_Sec"]];
+                
 
     let timerId;
     let pitaTimerId;
@@ -1858,11 +1860,8 @@ module.exports = (io) => {
                 let seconds = today.getSeconds();  // 초
                 let now = hours+":"+minutes+":"+seconds;
 
-                var sectionNames = [["Area_DMZ", "Area_Interal", "Area_Sec"], ["Area_DMZ", "Area_Interal", "Area_Sec"],["Area_DMZ", "Area_Interal", "Area_Sec"],["Area_DMZ", "Area_Interal", "Area_Sec"],["Area_DMZ", "Area_Interal", "Area_Sec"]];
                 var companyIdx =  attackJson.companyName.charCodeAt(7) - 65;
                 var monitoringLog = {time: now, nickname: "", targetCompany: attackJson.companyName, targetSection: sectionNames[companyIdx][attackJson.sectionIndex], actionType: "Damage", detail: sectionNames[companyIdx][attackJson.sectionIndex]+"가 파괴되었습니다."};
-
-                
 
                 blackLogJson[0].push(monitoringLog);
                 whiteLogJson[0].push(monitoringLog);

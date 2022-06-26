@@ -1092,6 +1092,23 @@ module.exports = (io) => {
             console.log("Click Response responseJson : ", attackJson);
             console.log("attack step load json : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attackStep"]);
 
+            
+
+            let pitaNum;
+            if (attackJson.teamName == true) {
+                pitaNum = roomTotalJson[0]['whiteTeam']['total_pita'] - config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][" + cardLv + "];
+                roomTotalJson[0]['whiteTeam']['total_pita'] = pitaNum;
+
+                socket.to(socket.room+'true').emit('Update Pita', pitaNum);
+                socket.emit('Update Pita', pitaNum);
+            } else {
+                pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] - config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][" + cardLv + "];
+                roomTotalJson[0]['blackTeam']['total_pita'] = pitaNum;
+
+                socket.to(socket.room+'false').emit('Update Pita', pitaNum);
+                socket.emit('Update Pita', pitaNum);
+            }
+
             // 만약 1단계 공격이라면 그에 맞는 공격만 효과가 있음
             let cardLv = roomTotalJson[0][attackJson.companyName]["penetrationTestingLV"][attackJson.attackIndex];
             if (0 <= attackJson.attackIndex && attackJson.attackIndex < 4){
@@ -1172,21 +1189,6 @@ module.exports = (io) => {
                 
             }
 
-            let pitaNum;
-            if (attackJson.teamName == true) {
-                pitaNum = roomTotalJson[0]['whiteTeam']['total_pita'] - config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][" + cardLv + "];
-                roomTotalJson[0]['whiteTeam']['total_pita'] = pitaNum;
-
-                socket.to(socket.room).emit('Update White Pita', pitaNum);
-                socket.emit('Update White Pita', pitaNum);
-            } else {
-                pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] - config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][" + cardLv + "];
-                roomTotalJson[0]['blackTeam']['total_pita'] = pitaNum;
-
-                socket.to(socket.room).emit('Update Black Pita', pitaNum);
-                socket.emit('Update Black Pita', pitaNum);
-            }
-
             // step = roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attackStep"];
             console.log("roomTotalJson[0][attackJson.companyName]['sections'][attackJson.sectionIndex] : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]);
             // console.log("attack step update : ", step);
@@ -1232,12 +1234,16 @@ module.exports = (io) => {
                 roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"][upgradeAttackInfo.attackIndex] += 1;
                 pitaNum = roomTotalJson[0]['whiteTeam']['total_pita'] - config["RESEARCH_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv];
                 roomTotalJson[0]['whiteTeam']['total_pita'] = pitaNum;
+                socket.to(socket.room+'true').emit('Update Pita', pitaNum);
+                socket.emit('Update Pita', pitaNum);
             } else {
                 console.log("black team upgrade attack card");
                 cardLv = roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"][upgradeAttackInfo.attackIndex];
                 roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"][upgradeAttackInfo.attackIndex] += 1;
                 pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] - config["RESEARCH_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv];
                 roomTotalJson[0]['blackTeam']['total_pita'] = pitaNum;
+                socket.to(socket.room+'false').emit('Update Pita', pitaNum);
+                socket.emit('Update Pita', pitaNum);
             }
 
             console.log("Update card list roomTotalJson : ", roomTotalJson[0][upgradeAttackInfo.companyName]);
@@ -1249,12 +1255,8 @@ module.exports = (io) => {
 
             if (socket.team == true) {
                 returnValue = roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"];
-                socket.to(socket.room).emit('Update White Pita', pitaNum);
-                socket.emit('Update White Pita', pitaNum);
             } else {
                 returnValue = roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"];
-                socket.to(socket.room).emit('Update Black Pita', pitaNum);
-                socket.emit('Update Black Pita', pitaNum);
             }
 
             // 나중에 white와 black 구분해서 보내기

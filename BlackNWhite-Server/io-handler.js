@@ -48,7 +48,7 @@ module.exports = (io) => {
     let numPlayer = 1;
     let companyNameList = ["companyA", "companyB", "companyC", "companyD", "companyE"];
     let sectionNames = [["Area_DMZ", "Area_Interal", "Area_Sec"], ["Area_DMZ", "Area_Interal", "Area_Sec"],["Area_DMZ", "Area_Interal", "Area_Sec"],["Area_DMZ", "Area_Interal", "Area_Sec"],["Area_DMZ", "Area_Interal", "Area_Sec"]];
-                
+    let vulnArray = ["Reconnaissance", "Credential Access", "Discovery", "Collection"];            
 
     let timerId;
     let pitaTimerId;
@@ -890,6 +890,25 @@ module.exports = (io) => {
 
                 console.log("무력화 해제 성공!");
                 socket.emit('After non-Neutralization', true);
+
+                // [GameLog] 로그 추가 - 무력화 해제 로그
+                const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
+
+                let today = new Date();   
+                let hours = today.getHours(); // 시
+                let minutes = today.getMinutes();  // 분
+                let seconds = today.getSeconds();  // 초
+                let now = hours+":"+minutes+":"+seconds;
+                var monitoringLog = {time: now, nickname: socket.nickname, targetCompany: attackJson.companyName, targetSection: "", actionType: "Neutralization", detail: socket.nickname+"님 무력화 해제되었습니다."};
+
+                blackLogJson[0].push(monitoringLog);
+                await jsonStore.updatejson(blackLogJson[0], socket.room+":blackLog");
+
+                var logArr = [];
+                logArr.push(monitoringLog);
+                // socket.emit('BlackLog', logArr);
+                // socket.to(socket.room).emit('BlackLog', logArr);
+                io.sockets.in(socket.room+'false').emit('addLog', logArr);
             }
 
         });
@@ -1338,12 +1357,11 @@ module.exports = (io) => {
                     console.log("================= After UPDATE ================= : ", NewRoomTotalJson[0][corpName].sections[sectionIdx]);
 
                     var area_level = sectionIdx.toString() + "-" + (roomTotalJson[0][corpName].sections[sectionIdx].level);
-                    socket.to(socket.room).emit("New_Level", area_level.toString());
-                    socket.emit('New_Level', area_level.toString());
+                    io.sockets.in(socket.room+'true').emit('New_Level', corpName, area_level.toString());
+                    // socket.to(socket.room).emit("New_Level", area_level.toString());
+                    // socket.emit('New_Level', area_level.toString());
 
                     io.sockets.in(socket.room+'true').emit('Update Pita', newTotalPita); // 화이트팀
-                    io.sockets.emit('Update Pita', newTotalPita);
-
                     // socket.to(socket.room).emit("Load Pita Num", newTotalPita);
                     // socket.emit("Load Pita Num", newTotalPita);    
                 }
@@ -1362,8 +1380,11 @@ module.exports = (io) => {
             for(var i=0; i<sectionsArr.length; i++){
                 var sectionInfo = { Corp: corpName, areaIdx: i, level: roomTotalJson[0][corpName].sections[i].level, vuln: roomTotalJson[0][corpName].sections[i].vuln}
                 console.log("[Section] sectionInfo-detail", sectionInfo);
-                socket.to(socket.room).emit("Area_Start_Emit", JSON.stringify(sectionInfo));
+                
+                // socket.to(socket.room).emit("Area_Start_Emit", JSON.stringify(sectionInfo));
                 socket.emit('Area_Start_Emit', JSON.stringify(sectionInfo));
+
+
                 /*
                 [Section] sectionInfo-detail { Corp: 'companyA', areaIdx: 0, level: 0, vuln: 3 }
                 [Section] sectionInfo-detail { Corp: 'companyA', areaIdx: 1, level: 0, vuln: 1 }
@@ -1383,8 +1404,11 @@ module.exports = (io) => {
             for(var i=0; i<sectionsArr.length; i++){
                 var sectionInfo = { Corp: corpName, areaIdx: i, vuln: roomTotalJson[0][corpName].sections[i].vuln, vulnActive: roomTotalJson[0][corpName].sections[i].vulnActive}
                 console.log("[PreDiscovery] sectionInfo-detail", sectionInfo);
-                socket.to(socket.room).emit("PreDiscovery_Start_Emit", JSON.stringify(sectionInfo));
+                
+                // socket.to(socket.room).emit("PreDiscovery_Start_Emit", JSON.stringify(sectionInfo));
                 socket.emit('PreDiscovery_Start_Emit', JSON.stringify(sectionInfo));
+
+
                 /*
                 [Section] sectionInfo-detail { Corp: 'companyA', areaIdx: 0, vuln: 3, vulnActive: false}
                 [Section] sectionInfo-detail { Corp: 'companyA', areaIdx: 1, vuln: 1, vulnActive: false}
@@ -1405,6 +1429,8 @@ module.exports = (io) => {
             var corpName = data.Corp;
             var sectionIdx = data.areaIdx;
 
+            var vulnIdx =  roomTotalJson[0][corpName].sections[sectionIdx].vuln;
+
             
             if( roomTotalJson[0][corpName].sections[sectionIdx].vulnActive == true){
                 console.log("이미 취약점확인됨" + roomTotalJson[0][corpName].sections[sectionIdx].vulnActive.toString());
@@ -1424,48 +1450,36 @@ module.exports = (io) => {
                 console.log("UPDATE 후에 JSON!!!",roomTotalJsonA[0]);
                 console.log("After black_total_pita!!!", black_total_pita - config.EXPLORE_INFO.pita);
 
-                socket.to(socket.room).emit("Area_VulnActive", sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
-                socket.emit('Area_VulnActive', sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
+                io.sockets.in(socket.room+'false').emit('Area_VulnActive', corpName, sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
+                // socket.to(socket.room).emit("Area_VulnActive", sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
+                // socket.emit('Area_VulnActive', sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
 
                 io.sockets.in(socket.room+'false').emit('Update Pita', newTotalPita); // 블랙팀
-                io.sockets.emit('Update Pita', newTotalPita);
-
                 // socket.to(socket.room).emit("Load Pita Num", newTotalPita);
                 // socket.emit("Load Pita Num", newTotalPita);   
+
+                // [GameLog] 로그 추가 - 사전탐색 로그
+                const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
+
+                let today = new Date();   
+                let hours = today.getHours(); // 시
+                let minutes = today.getMinutes();  // 분
+                let seconds = today.getSeconds();  // 초
+                let now = hours+":"+minutes+":"+seconds;
+
+                var companyIdx =  corpName.charCodeAt(7) - 65;
+                var monitoringLog = {time: now, nickname: socket.nickname, targetCompany: corpName, targetSection: sectionNames[companyIdx][sectionIdx], actionType: "PreDiscovery", detail: "취약점 " +vulnArray[vulnIdx] +"이 발견되었습니다."};
+
+                blackLogJson[0].push(monitoringLog);
+                await jsonStore.updatejson(blackLogJson[0], socket.room+":blackLog");
+                
+                var logArr = [];
+                logArr.push(monitoringLog);
+                //socket.emit('BlackLog', logArr);
+                //socket.to(socket.room).emit('BlackLog', logArr);
+                io.sockets.in(socket.room+'false').emit('addLog', logArr);
             }
         });
-
-        // // ## [Vuln] 영역 클릭 시  ====> vuln 전달하는 버전. 지금은 active 여부를 보냄(위 코드)
-        // socket.on('Get_Vuln', async (data) => {
-        //     console.log('[Vuln] Click Area_Name IDX : ', data);
-        //     data = JSON.parse(data);
-
-        //     const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-        //     var black_total_pita = roomTotalJson[0].blackTeam.total_pita;
-        //     console.log("Before black_total_pita!!!", black_total_pita );
-
-        //     var corpName = data.Corp;
-        //     var sectionIdx = data.areaIdx;
-
-        //     if(black_total_pita - config.EXPLORE_INFO.pita < 0)
-        //     {
-        //         console.log("피타 부족");
-        //     } else {
-        //         // json 변경
-        //         roomTotalJson[0].blackTeam.total_pita = black_total_pita - config.EXPLORE_INFO.pita; // pita 감소
-        //         roomTotalJson[0][corpName].sections[sectionIdx].vulnActive = true;  // vulnActive 변경
-        //         await jsonStore.updatejson(roomTotalJson[0], socket.room);
-
-        //         // 확인
-        //         var roomTotalJsonA = JSON.parse(await jsonStore.getjson(socket.room));
-        //         console.log("UPDATE 후에 JSON!!!",roomTotalJsonA[0]);
-        //         console.log("After black_total_pita!!!", black_total_pita - config.EXPLORE_INFO.pita);
-
-        //         socket.to(socket.room).emit("Area_Vuln", sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vuln, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
-        //         socket.emit('Area_Vuln', sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vuln, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
-        //     }
-        // });
-
 
         // [SectionState] Section Destroy
         socket.on('Get_Section_Destroy_State', async(corp) => {
@@ -1476,21 +1490,20 @@ module.exports = (io) => {
 
             //console.log("@@@@@@@@ Destroy State @@@@@@@ ",  roomTotalJson[0][corpName].sections);
             var sections = {sections: roomTotalJson[0][corpName].sections};
-            socket.to(socket.room).emit("Section_Destroy_State", JSON.stringify(sections));
+
+            // socket.to(socket.room).emit("Section_Destroy_State", JSON.stringify(sections));
             socket.emit('Section_Destroy_State', JSON.stringify(sections));
         });
 
         // [SectionState] Section Attacked Name TEST
         socket.on('Get_Section_Attacked_Name', async(corp) => {
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-            
             var corpName = corp;
 
             //console.log("@@@@@@@@ Destroy State @@@@@@@ ",  roomTotalJson[0][corpName].sections);
             var sections = {sections: roomTotalJson[0][corpName].sections}
 
-
-            socket.to(socket.room).emit("Section_Attacked_Name", JSON.stringify(sections));
+            // socket.to(socket.room).emit("Section_Attacked_Name", JSON.stringify(sections));
             socket.emit('Section_Attacked_Name', JSON.stringify(sections));
         });
 
@@ -1508,20 +1521,10 @@ module.exports = (io) => {
                 cntArr[i] = sectionData;
             }
 
-            socket.to(socket.room).emit("Issue_Count", cntArr);
+            // socket.to(socket.room).emit("Issue_Count", cntArr);
             socket.emit('Issue_Count', cntArr);
 
         });
-
-        // // [Monitoring] 영역 클릭하면 탐지된 공격 내용 emit
-        // socket.on('Get_Issue', async(corpName,  s_idx) => {
-        //     console.log("[Monitoring] Get Issue 호출" + corpName + s_idx);
-        //     const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-        //     //console.log("[Monitoring] 결과 " + roomTotalJson[0][corpName].sections[s_idx].response.progress.toString());
-        //     var issueDetail = roomTotalJson[0][corpName].sections[s_idx].response.progress;
-        //     console.log("[Monitoring] 결과 ", issueDetail);
-        //     socket.emit('Get_Issue_Detail', issueDetail.length, issueDetail);
-        // });
 
         // [Abandon] 한 회사의 모든 영역이 파괴되었는지 확인 후 몰락 여부 결정
         socket.on('is_All_Sections_Destroyed', async(corpName) => {
@@ -1564,10 +1567,12 @@ module.exports = (io) => {
 
                 var logArr = [];
                 logArr.push(monitoringLog);
-                socket.emit('BlackLog', logArr);
-                socket.to(socket.room).emit('BlackLog', logArr);
-                socket.emit('WhiteLog', logArr);
-                socket.to(socket.room).emit('WhiteLog', logArr);
+                // socket.emit('BlackLog', logArr);
+                // socket.to(socket.room).emit('BlackLog', logArr);
+                io.sockets.in(socket.room+'false').emit('addLog', logArr);
+                // socket.emit('WhiteLog', logArr);
+                // socket.to(socket.room).emit('WhiteLog', logArr);
+                io.sockets.in(socket.room+'true').emit('addLog', logArr);
 
                 // 회사 아이콘 색상 변경
                 let abandonStatusList = [];
@@ -1575,8 +1580,12 @@ module.exports = (io) => {
                     abandonStatusList.push(roomTotalJson[0][company]["abandonStatus"]);
                 }
 
+                
                 console.log("Section Destroy -> abandonStatusList : ", abandonStatusList);
-                io.sockets.in(socket.room).emit('Company Status', abandonStatusList);
+
+                io.sockets.in(socket.room+'false').emit('Company Status', abandonStatusList); // 블랙팀
+                io.sockets.in(socket.room+'true').emit('Company Status', abandonStatusList); // 화이트팀
+                // io.sockets.in(socket.room).emit('Company Status', abandonStatusList);
             }
             
         });
@@ -1914,6 +1923,27 @@ module.exports = (io) => {
         var attackStepTime = setTimeout(async function(){
             socket.to(socket.room).emit("Attack Step", step);
             socket.emit("Attack Step", step);
+            console.log("attackCount CALLED");
+
+            // [GameLog] 로그 추가 - 공격 성공 로그
+            const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
+
+            let today = new Date();   
+            let hours = today.getHours(); // 시
+            let minutes = today.getMinutes();  // 분
+            let seconds = today.getSeconds();  // 초
+            let now = hours+":"+minutes+":"+seconds;
+            var companyIdx =  attackJson.companyName.charCodeAt(7) - 65;
+            var monitoringLog = {time: now, nickname: socket.nickname, targetCompany: attackJson.companyName, targetSection: sectionNames[companyIdx][attackJson.sectionIndex], actionType: "Attack", detail: attackJson.attackIndex.toString()+"공격이 수행되었습니다."};
+
+            blackLogJson[0].push(monitoringLog);
+            await jsonStore.updatejson(blackLogJson[0], socket.room+":blackLog");
+
+            var logArr = [];
+            logArr.push(monitoringLog);
+            //socket.emit('BlackLog', logArr);
+            //socket.to(socket.room).emit('BlackLog', logArr);
+            io.sockets.in(socket.room+'false').emit('addLog', logArr);
 
             // let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
             console.log("White Team Response list (attackCount) : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"]);
@@ -1927,12 +1957,16 @@ module.exports = (io) => {
 
                 sectionDestroy = {company : attackJson.companyName, section : attackJson.sectionIndex};
                 var destroyJson = JSON.stringify(sectionDestroy);
-                socket.to(socket.room).emit("Section Destroy", destroyJson);
-                socket.emit("Section Destroy", destroyJson);
 
-                socket.to(socket.room).emit('is_All_Sections_Destroyed', attackJson.companyName);
-                socket.emit('is_All_Sections_Destroyed', attackJson.companyName);
+                io.sockets.in(socket.room+'false').emit('Section Destroy', destroyJson);
+                // socket.to(socket.room).emit("Section Destroy", destroyJson);
+                // socket.emit("Section Destroy", destroyJson);
 
+                io.sockets.in(socket.room+'false').emit('is_All_Sections_Destroyed', attackJson.companyName);
+                // socket.to(socket.room).emit('is_All_Sections_Destroyed', attackJson.companyName);
+                // socket.emit('is_All_Sections_Destroyed', attackJson.companyName);
+
+                // [GameLog] 로그 추가 - 섹션 파괴 로그
                 const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
                 const whiteLogJson = JSON.parse(await jsonStore.getjson(socket.room+":whiteLog"));
 
@@ -1942,8 +1976,8 @@ module.exports = (io) => {
                 let seconds = today.getSeconds();  // 초
                 let now = hours+":"+minutes+":"+seconds;
 
-                var companyIdx =  attackJson.companyName.charCodeAt(7) - 65;
-                var monitoringLog = {time: now, nickname: "", targetCompany: attackJson.companyName, targetSection: sectionNames[companyIdx][attackJson.sectionIndex], actionType: "Damage", detail: sectionNames[companyIdx][attackJson.sectionIndex]+"가 파괴되었습니다."};
+                //var companyIdx =  attackJson.companyName.charCodeAt(7) - 65;
+                var monitoringLog = {time: now, nickname: "", targetCompany: attackJson.companyName, targetSection: sectionNames[companyIdx][attackJson.sectionIndex], actionType: "Damage", detail: "파괴되었습니다."};
 
                 blackLogJson[0].push(monitoringLog);
                 whiteLogJson[0].push(monitoringLog);
@@ -1952,10 +1986,12 @@ module.exports = (io) => {
                 
                 var logArr = [];
                 logArr.push(monitoringLog);
-                socket.emit('BlackLog', logArr);
-                socket.to(socket.room).emit('BlackLog', logArr);
-                socket.emit('WhiteLog', logArr);
-                socket.to(socket.room).emit('WhiteLog', logArr);
+                //socket.emit('BlackLog', logArr);
+                //socket.to(socket.room).emit('BlackLog', logArr);
+                io.sockets.in(socket.room+'false').emit('addLog', logArr);
+                //socket.emit('WhiteLog', logArr);
+                //socket.to(socket.room).emit('WhiteLog', logArr);
+                io.sockets.in(socket.room+'true').emit('addLog', logArr);
             }
 
             if (step > roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attackStep"]){
@@ -2015,6 +2051,36 @@ module.exports = (io) => {
                         roomTotalJson[0]["blackTeam"]["users"][attacker][attackJson.companyName]["IsBlocked"] = true;
                         socket.emit('OnNeutralization', true);
                         console.log("You are Blockes!!!!");
+
+                        // [GameLog] 로그 추가 - 무력화(블랙) & 무력화 발견(화이트)로그
+                        const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
+                        const whiteLogJson = JSON.parse(await jsonStore.getjson(socket.room+":whiteLog"));
+
+                        let today = new Date();   
+                        let hours = today.getHours(); // 시
+                        let minutes = today.getMinutes();  // 분
+                        let seconds = today.getSeconds();  // 초
+                        let now = hours+":"+minutes+":"+seconds;
+
+                        //var companyIdx =  attackJson.companyName.charCodeAt(7) - 65;
+                        var monitoringLogBlack = {time: now, nickname: socket.nickname, targetCompany: attackJson.companyName, targetSection: "", actionType: "Neutralization", detail: socket.nickname+"님이 공격 차단되었습니다."};
+                        var monitoringLogWhite = {time: now, nickname: "", targetCompany: attackJson.companyName, targetSection: "", actionType: "Neutralization", detail: attackJson.companyName+"에서 공격 차단이 수행되었습니다."};
+
+                        blackLogJson[0].push(monitoringLogBlack);
+                        whiteLogJson[0].push(monitoringLogWhite);
+                        await jsonStore.updatejson(blackLogJson[0], socket.room+":blackLog");
+                        await jsonStore.updatejson(whiteLogJson[0], socket.room+":whiteLog");
+                        
+                        var logArr = [];
+                        logArr.push(monitoringLogBlack);
+                        //socket.emit('BlackLog', logArr);
+                        //socket.to(socket.room).emit('BlackLog', logArr);
+                        io.sockets.in(socket.room+'false').emit('addLog', logArr);
+                        logArr = [];
+                        logArr.push(monitoringLogWhite);
+                        //socket.emit('WhiteLog', logArr);
+                        //socket.to(socket.room).emit('WhiteLog', logArr);
+                        io.sockets.in(socket.room+'true').emit('addLog', logArr);
                     }
                 }
 
@@ -2052,6 +2118,27 @@ module.exports = (io) => {
                 console.log("what the");
             }
 
+            // [GameLog] 로그 추가 - 관제 로그 추가
+            const whiteLogJson = JSON.parse(await jsonStore.getjson(socket.room+":whiteLog"));
+
+            let today = new Date();   
+            let hours = today.getHours(); // 시
+            let minutes = today.getMinutes();  // 분
+            let seconds = today.getSeconds();  // 초
+            let now = hours+":"+minutes+":"+seconds;
+            var companyIdx =  attackJson.companyName.charCodeAt(7) - 65;
+            var monitoringLog = {time: now, nickname: "", targetCompany: attackJson.companyName, targetSection: sectionNames[companyIdx][attackJson.sectionIndex], actionType: "Detected", detail: sectionNames[companyIdx][attackJson.sectionIndex]+"가 파괴되었습니다."};
+            console.log("[GameLog] monitoringLog > ",monitoringLog);
+            whiteLogJson[0].push(monitoringLog);
+            await jsonStore.updatejson(whiteLogJson[0], socket.room+":whiteLog");
+            console.log("[GameLog] monitoringLog2 >> ",monitoringLog);
+
+            var logArr = [];
+            logArr.push(monitoringLog);
+            //socket.emit('WhiteLog', logArr);
+            //socket.to(socket.room).emit('WhiteLog', logArr);
+            io.sockets.in(socket.room+'true').emit('addLog', logArr);
+
         }, config["RESEARCH_" + (attackJson.attackIndex + 1)]["time"][cardLv] * 1000);
     }
 
@@ -2068,6 +2155,36 @@ module.exports = (io) => {
                     roomTotalJson[0]["blackTeam"]["users"][socket.userID][attackJson.companyName]["IsBlocked"] = true;
                     socket.emit('OnNeutralization', true);
                     console.log("You are Blockes!!!!");
+
+                    // [GameLog] 로그 추가 - 무력화(블랙) & 무력화 발견(화이트)로그
+                    const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
+                    const whiteLogJson = JSON.parse(await jsonStore.getjson(socket.room+":whiteLog"));
+
+                    let today = new Date();   
+                    let hours = today.getHours(); // 시
+                    let minutes = today.getMinutes();  // 분
+                    let seconds = today.getSeconds();  // 초
+                    let now = hours+":"+minutes+":"+seconds;
+
+                    //var companyIdx =  attackJson.companyName.charCodeAt(7) - 65;
+                    var monitoringLogBlack = {time: now, nickname: socket.nickname, targetCompany: attackJson.companyName, targetSection: "", actionType: "Neutralization", detail: socket.nickname+"님이 공격 차단되었습니다."};
+                    var monitoringLogWhite = {time: now, nickname: "", targetCompany: attackJson.companyName, targetSection: "", actionType: "Neutralization", detail: attackJson.companyName+"에서 공격 차단이 수행되었습니다."};
+
+                    blackLogJson[0].push(monitoringLogBlack);
+                    whiteLogJson[0].push(monitoringLogWhite);
+                    await jsonStore.updatejson(blackLogJson[0], socket.room+":blackLog");
+                    await jsonStore.updatejson(whiteLogJson[0], socket.room+":whiteLog");
+                    
+                    var logArr = [];
+                    logArr.push(monitoringLogBlack);
+                    //socket.emit('BlackLog', logArr);
+                    //socket.to(socket.room).emit('BlackLog', logArr);
+                    io.sockets.in(socket.room+'false').emit('addLog', logArr);
+                    logArr = [];
+                    logArr.push(monitoringLogWhite);
+                    //socket.emit('WhiteLog', logArr);
+                    //socket.to(socket.room).emit('WhiteLog', logArr);
+                    io.sockets.in(socket.room+'true').emit('addLog', logArr);
                 }
             }
 
@@ -2137,7 +2254,7 @@ module.exports = (io) => {
             socket.emit("Response Step", step - 1);
 
             roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["response"]["progress"] = responseList;
-            roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attack"]["progress"] = attackList;
+            //roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attack"]["progress"] = attackList;
 
             // let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
             console.log("White Team Response list (responseCount) : ", roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["response"]["progress"]);
@@ -2155,6 +2272,27 @@ module.exports = (io) => {
             roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));                
 
             console.log("attack step after edit json (attackCount) : ", roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attackStep"]);
+
+            // [GameLog] 로그 추가 - 대응 로그
+            const whiteLogJson = JSON.parse(await jsonStore.getjson(socket.room+":whiteLog"));
+
+            let today = new Date();   
+            let hours = today.getHours(); // 시
+            let minutes = today.getMinutes();  // 분
+            let seconds = today.getSeconds();  // 초
+            let now = hours+":"+minutes+":"+seconds;
+
+            var companyIdx =  responseJson.companyName.charCodeAt(7) - 65;
+            var monitoringLog = {time: now, nickname: socket.nickname, targetCompany: responseJson.companyName, targetSection: sectionNames[companyIdx][responseJson.sectionIndex], actionType: "Response", detail: responseJson.sectionIndex.toString()+"대응이 수행되었습니다."};
+
+            whiteLogJson[0].push(monitoringLog);
+            await jsonStore.updatejson(whiteLogJson[0], socket.room+":whiteLog");
+            
+            var logArr = [];
+            logArr.push(monitoringLog);
+            //socket.emit('WhiteLog', logArr);
+            //socket.to(socket.room).emit('WhiteLog', logArr);
+            io.sockets.in(socket.room+'true').emit('addLog', logArr);
 
             clearTimeout(attackStepTime);
 

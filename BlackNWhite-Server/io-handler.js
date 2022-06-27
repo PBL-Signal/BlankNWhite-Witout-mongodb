@@ -712,7 +712,7 @@ module.exports = (io) => {
         socket.on('joinTeam', async() => {
             // 팀별로 ROOM 추가 join
             socket.roomTeam = socket.room + socket.team.toString();
-            console.log("@@ socket.nickname : " , socket.nickname, " socket.roomTeam  : ",  socket.roomTeam);
+            // console.log("@@ socket.nickname : " , socket.nickname, " socket.roomTeam  : ",  socket.roomTeam);
             socket.join(socket.roomTeam);
 
             socket.emit('loadMainGame', socket.team.toString()); //ver3
@@ -979,28 +979,31 @@ module.exports = (io) => {
             console.log("Select Company CompanyIndex : ", CompanyName);
 
             let teamLocations = {};
+            let teamLocationsJson = "";
 
             if (socket.team == true) {
                 roomTotalJson[0]["whiteTeam"]["users"][socket.userID]["currentLocation"] = CompanyName;
                 for (const userID in roomTotalJson[0]["whiteTeam"]["users"]){
                     teamLocations[userID] = roomTotalJson[0]["whiteTeam"]["users"][userID]["currentLocation"];
                 }
+                
+                teamLocationsJson = JSON.stringify(teamLocations);
+                console.log("teamLocationsJson : ", teamLocationsJson);
+                socket.to(socket.room+'true').emit("Load User Location", teamLocationsJson);
             } else {
                 roomTotalJson[0]["blackTeam"]["users"][socket.userID]["currentLocation"] = CompanyName;
                 for (const userID in roomTotalJson[0]["blackTeam"]["users"]){
                     teamLocations[userID] = roomTotalJson[0]["blackTeam"]["users"][userID]["currentLocation"];
                 }
+
+                teamLocationsJson = JSON.stringify(teamLocations);
+                console.log("teamLocationsJson : ", teamLocationsJson);
+                socket.to(socket.room+'false').emit("Load User Location", teamLocationsJson);
             }
 
-
-            let teamLocationsJson = JSON.stringify(teamLocations);
-            console.log("teamLocationsJson : ", teamLocationsJson);
-            socket.to(socket.room).emit("Load User Location", teamLocationsJson);
             socket.emit("Load User Location", teamLocationsJson);
 
             await jsonStore.updatejson(roomTotalJson[0], socket.room);
-            roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-
         });
 
 
@@ -1008,23 +1011,28 @@ module.exports = (io) => {
             let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
 
             let teamLocations = {};
+            let teamLocationsJson = "";
 
             if (socket.team == true) {
                 roomTotalJson[0]["whiteTeam"]["users"][socket.userID]["currentLocation"] = "";
                 for (const userID in roomTotalJson[0]["whiteTeam"]["users"]){
                     teamLocations[userID] = roomTotalJson[0]["whiteTeam"]["users"][userID]["currentLocation"];
                 }
+
+                teamLocationsJson = JSON.stringify(teamLocations);
+                console.log("teamLocationsJson : ", teamLocationsJson);
+                socket.to(socket.room+'true').emit("Load User Location", teamLocationsJson);
             } else {
                 roomTotalJson[0]["blackTeam"]["users"][socket.userID]["currentLocation"] = "";
                 for (const userID in roomTotalJson[0]["blackTeam"]["users"]){
                     teamLocations[userID] = roomTotalJson[0]["blackTeam"]["users"][userID]["currentLocation"];
                 }
+
+                teamLocationsJson = JSON.stringify(teamLocations);
+                console.log("teamLocationsJson : ", teamLocationsJson);
+                socket.to(socket.room+'false').emit("Load User Location", teamLocationsJson);
             }
-
-
-            let teamLocationsJson = JSON.stringify(teamLocations);
-            console.log("teamLocationsJson : ", teamLocationsJson);
-            socket.to(socket.room).emit("Load User Location", teamLocationsJson);
+            
             socket.emit("Load User Location", teamLocationsJson);
 
             await jsonStore.updatejson(roomTotalJson[0], socket.room);
@@ -1042,15 +1050,17 @@ module.exports = (io) => {
 
             if (socket.team == true) {
                 returnArray = roomTotalJson[0][teamDataJson.companyName]["penetrationTestingLV"];
+                console.log("load card list return value : ", returnArray);
+
+                socket.to(socket.room+'true').emit("Card List", returnArray);
+                socket.emit("Card List", returnArray);
             } else {
                 returnArray = roomTotalJson[0][teamDataJson.companyName]["attackLV"];
+                console.log("load card list return value : ", returnArray);
+
+                socket.to(socket.room+'false').emit("Card List", returnArray);
+                socket.emit("Card List", returnArray);
             }
-
-            let returnValue = returnArray;
-            console.log("load card list return value : ", returnValue);
-
-            socket.to(socket.room).emit("Card List", returnValue);
-            socket.emit("Card List", returnValue);
         });
 
         // 게임 카드 리스트 보내기
@@ -1073,10 +1083,10 @@ module.exports = (io) => {
 
                 console.log("responseProgress : ", responseProgress)
 
-                socket.to(socket.room).emit("Load Response List", responseProgress);
+                socket.to(socket.room+'true').emit("Load Response List", responseProgress);
                 socket.emit("Load Response List", responseProgress);
 
-                socket.to(socket.room).emit("Response Step", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["responseStep"] - 1);
+                socket.to(socket.room+'true').emit("Response Step", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["responseStep"] - 1);
                 socket.emit("Response Step", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["responseStep"] - 1);
             } else {  // black 팀 attack step
                 let step = roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["attackStep"];
@@ -1084,7 +1094,7 @@ module.exports = (io) => {
 
                 console.log("load attack step : ", step);
 
-                socket.to(socket.room).emit("Attack Step", step);
+                socket.to(socket.room+'false').emit("Attack Step", step);
                 socket.emit("Attack Step", step);
             }
         });
@@ -1274,13 +1284,14 @@ module.exports = (io) => {
 
             if (socket.team == true) {
                 returnValue = roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"];
+                socket.to(socket.room+'true').emit("Card List", returnValue);
             } else {
                 returnValue = roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"];
+                socket.to(socket.room+'false').emit("Card List", returnValue);
             }
 
             // 나중에 white와 black 구분해서 보내기
             console.log("Update Card List Return Value : ", returnValue);
-            socket.to(socket.room).emit("Card List", returnValue);
             socket.emit("Card List", returnValue);
 
         });
@@ -1297,16 +1308,26 @@ module.exports = (io) => {
             }
 
             console.log("On Main Map abandonStatusList : ", abandonStatusList);
+            socket.to(socket.room).emit('Company Status', abandonStatusList);
             socket.emit('Company Status', abandonStatusList);
         })
         
-        // 회사 차단 인원 확인 (현제 test로 하드코딩 하여 추후 json에서 가져와 수정해야 함)
-        // 다음주에 해야 됨
-        socket.on('On Monitoring', function() {
-            // let comapny_abandonStatus = {companyA: true, companyB: false, companyC: false, companyD: false, companyE: false};
-            let company_blockedNum = 2;
-            // var companyStatusJson = JSON.stringify(comapny_abandonStatus);
-            socket.to(socket.room).emit("Blocked Num", company_blockedNum);
+
+        socket.on('On Monitoring', async() => {
+            let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+            let company_blockedNum;
+
+            for (var userId in roomTotalJson[0]["blackTeam"]["users"]){
+                console.log("[On Monitoring] user id : ", userId);
+
+                if (roomTotalJson[0]["blackTeam"]["users"][userId][attackJson.companyName]["IsBlocked"] == true){
+                    company_blockedNum += 1;
+                }
+            }
+
+            console.log("[On Monitoring] company_blockedNum : ", company_blockedNum);
+        
+            socket.to(socket.room+'true').emit("Blocked Num", company_blockedNum);
             socket.emit('Blocked Num', company_blockedNum);
 
 
@@ -1920,7 +1941,7 @@ module.exports = (io) => {
     // 공격 별 n초 후 공격 성공
     async function attackCount(socket, roomTotalJson, attackJson, cardLv, step){
         var attackStepTime = setTimeout(async function(){
-            socket.to(socket.room).emit("Attack Step", step);
+            socket.to(socket.room+'false').emit("Attack Step", step);
             socket.emit("Attack Step", step);
 
             // let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
@@ -2022,9 +2043,21 @@ module.exports = (io) => {
                         roomTotalJson[0]["blackTeam"]["users"][attacker][attackJson.companyName]["warnCnt"] = 0;
                         roomTotalJson[0]["blackTeam"]["users"][attacker][attackJson.companyName]["IsBlocked"] = true;
                         socket.emit('OnNeutralization', true);
-                        console.log("You are Blockes!!!!");
+                        console.log("You are Blocked!!!!");
                     }
                 }
+
+                let company_blockedNum;
+                for (var userId in roomTotalJson[0]["blackTeam"]["users"]){
+                    console.log("[On Monitoring] user id : ", userId);
+
+                    if (roomTotalJson[0]["blackTeam"]["users"][userId][attackJson.companyName]["IsBlocked"] == true){
+                        company_blockedNum += 1;
+                    }
+                }
+                console.log("[On Monitoring] company_blockedNum : ", company_blockedNum);
+                socket.to(socket.room+'true').emit("Blocked Num", company_blockedNum);
+                socket.emit('Blocked Num', company_blockedNum);
 
                 console.log(attacker, "의 userCompanyStatus : ", roomTotalJson[0]["blackTeam"]["users"][attacker]);
 
@@ -2036,7 +2069,7 @@ module.exports = (io) => {
                 
                 console.log("responseProgress", responseProgress);
 
-                socket.to(socket.room).emit('Load Response List', responseProgress);
+                socket.to(socket.room+'true').emit('Load Response List', responseProgress);
                 socket.emit('Load Response List', responseProgress);
 
                 roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"] = attackList;
@@ -2075,9 +2108,21 @@ module.exports = (io) => {
                     roomTotalJson[0]["blackTeam"]["users"][socket.userID][attackJson.companyName]["warnCnt"] = 0;
                     roomTotalJson[0]["blackTeam"]["users"][socket.userID][attackJson.companyName]["IsBlocked"] = true;
                     socket.emit('OnNeutralization', true);
-                    console.log("You are Blockes!!!!");
+                    console.log("You are Blocked!!!!");
                 }
             }
+
+            let company_blockedNum;
+            for (var userId in roomTotalJson[0]["blackTeam"]["users"]){
+                console.log("[On Monitoring] user id : ", userId);
+
+                if (roomTotalJson[0]["blackTeam"]["users"][userId][attackJson.companyName]["IsBlocked"] == true){
+                    company_blockedNum += 1;
+                }
+            }
+            console.log("[On Monitoring] company_blockedNum : ", company_blockedNum);
+            socket.to(socket.room+'true').emit("Blocked Num", company_blockedNum);
+            socket.emit('Blocked Num', company_blockedNum);
 
             console.log(socket.userID, "의 userCompanyStatus : ", roomTotalJson[0]["blackTeam"]["users"][socket.userID]);
             await jsonStore.updatejson(roomTotalJson[0], socket.room);
@@ -2138,11 +2183,14 @@ module.exports = (io) => {
                 }
             }
 
-            socket.to(socket.room).emit('Load Response List', responseProgress);
+            socket.to(socket.room+'true').emit('Load Response List', responseProgress);
             socket.emit('Load Response List', responseProgress);            
 
-            socket.to(socket.room).emit("Response Step", step - 1);
+            socket.to(socket.room+'true').emit("Response Step", step - 1);
             socket.emit("Response Step", step - 1);
+
+
+            // 대응 되었음을 black에게 알림
 
             roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["response"]["progress"] = responseList;
             roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attack"]["progress"] = attackList;

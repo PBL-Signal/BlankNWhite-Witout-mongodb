@@ -1694,6 +1694,13 @@ module.exports = (io) => {
     async function createRoom(roomType){
         //  1. redis - room에 저장
         var roomPin = randomN();
+        while (redis_room.checkRooms(roomPin))
+        {
+            console.log("룸키 중복 발생_룸 키 재발급");
+            roomPin = randomN();
+        }
+
+
         var creationDate = nowDate();
 
         var room_info = {

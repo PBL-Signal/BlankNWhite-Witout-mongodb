@@ -873,25 +873,33 @@ module.exports = (io) => {
             var black_total_pita = roomTotalJson[0].blackTeam.total_pita;
             console.log("blackTeam.total_pita!!!", black_total_pita );
 
-            // 가격화 
-            if (black_total_pita - config.UNBLOCK_INFO.pita < 0){
-                // 실패시
-                console.log("무력화 해제 실패!");
+
+            // 무력화 상태인지 확인
+            var companyIsBlocked = roomTotalJson[0].blackTeam.users[socket.userID][company].IsBlocked;
+            console.log("!-- companyIsBlocked : ", companyIsBlocked);
+            if (!companyIsBlocked)
+            {
+                console.log("무력화 상태 아님!");
                 socket.emit('After non-Neutralization', false);
-            }
-            else{
-                // isBlocked 해제
-                roomTotalJson[0].blackTeam.users[socket.userID][company].IsBlocked = false;
-                // pita 가격 마이너스
-                roomTotalJson[0].blackTeam.total_pita = black_total_pita - config.UNBLOCK_INFO.pita;
-                
-                await jsonStore.updatejson(roomTotalJson[0], socket.room);
-                io.sockets.in(socket.room+'false').emit('Update Pita', roomTotalJson[0].blackTeam.total_pita );
+            }else{
+                // 가격화 
+                if (black_total_pita - config.UNBLOCK_INFO.pita < 0){
+                    console.log("무력화 해제 실패!");
+                    socket.emit('After non-Neutralization', false);
+                }
+                else{
+                    // isBlocked 해제
+                    roomTotalJson[0].blackTeam.users[socket.userID][company].IsBlocked = false;
+                    // pita 가격 마이너스
+                    roomTotalJson[0].blackTeam.total_pita = black_total_pita - config.UNBLOCK_INFO.pita;
+                    
+                    await jsonStore.updatejson(roomTotalJson[0], socket.room);
+                    io.sockets.in(socket.room+'false').emit('Update Pita', roomTotalJson[0].blackTeam.total_pita );
 
-                console.log("무력화 해제 성공!");
-                socket.emit('After non-Neutralization', true);
+                    console.log("무력화 해제 성공!");
+                    socket.emit('After non-Neutralization', true);
+                }
             }
-
         });
 
         ////////////////////////////////////////////////////////////////////////////////////

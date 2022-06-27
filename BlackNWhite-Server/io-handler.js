@@ -36,6 +36,15 @@ const Company = require("./schemas/roomTotal/Company");
 const Section = require("./schemas/roomTotal/Section");
 const Progress = require("./schemas/roomTotal/Progress");
 
+// 자바스크립트는 특정 문자열 인덱스 수정 불가라, 이를 대체하기 위해 가져온 함수
+String.prototype.replaceAt = function(index, replacement) {
+    if (index >= this.length) {
+        return this.valueOf();
+    }
+
+    return this.substring(0, index) + replacement + this.substring(index + 1);
+}
+
 module.exports = (io) => {
     
     var gameserver = io.of("blacknwhite");
@@ -269,75 +278,10 @@ module.exports = (io) => {
         });
 
 
-
-        // [WaitingRoom] 
-        // let addedUser = false; // added 유저 경우 
-
-        // [WaitingRoom] UI player 대응 컴포넌트 idx 할당
-        async function PlaceUser(team){
-            console.log("PlaceUser 함수---!");
-
-            var roomPin = socket.room;
-            var userPlacementName ;
-
-            if(!team){ //false(0)면 black
-                userPlacementName =  'blackPlacement';
-            }else{
-                userPlacementName =  'whitePlacement';
-            } 
-
-            console.log("userPlacementName " , userPlacementName);
-
-            var userPlacement =await hashtableStore.getHashTableFieldValue(roomPin, [userPlacementName], 'roomManage');
-            console.log("userPlacement " , userPlacement);
-            userPlacement = userPlacement[0].split('');
-            // console.log("userPlacement.split() " , userPlacement);
-            var place =  userPlacement.pop();
-
-            userPlacement =  userPlacement.join('');
-            // console.log("AFTER! userPlacement.join('')" , userPlacement);
-            await hashtableStore.updateHashTableField(roomPin, userPlacementName, userPlacement, 'roomManage');
-
-
-            console.log("[PlaceUser] 반환 team : ", team, " place : ", place); 
-          
-            return place
-        }
-
-        // [WaitingRoom] UI player 대응 컴포넌트 idx 제거
-        async function DeplaceUser(prevTeam, idx){
-            console.log("DeplaceUser 함수---!");
-
-            var roomPin = socket.room;
-            var userPlacementName ;
-
-            if(!prevTeam){ // false(0) 면 black팀
-                userPlacementName =  'blackPlacement';
-            }else{
-                userPlacementName =  'whitePlacement';
-            }
-
-            console.log("userPlacementName " , userPlacementName);
-
-            var userPlacement = await hashtableStore.getHashTableFieldValue(roomPin, [userPlacementName], 'roomManage');
-            // console.log("userPlacement " , userPlacement);
-            userPlacement = userPlacement[0].split('');
-            // console.log("userPlacement.split() " , userPlacement);
-            userPlacement.push(idx);
-            // console.log("$$DeplaceUser  userPlacement : " ,userPlacement);
-
-            userPlacement =  userPlacement.join('');
-            // console.log("AFTER! userPlacement.join('')" , userPlacement);
-            console.log("check!! ", await hashtableStore.updateHashTableField(roomPin, userPlacementName, userPlacement, 'roomManage'));
-        }
-
-
         // [WaitingRoom] 사용자 첫 입장 시 'add user' emit 
         socket.on('add user', async() => {
-            // console.log("&&&&&&&&&&&&&&&&&& TEAM INFO + ", socket.team);
+
             io.sockets.emit('Visible AddedSettings'); // actionbar
-        
-            // console.log('[add user] add user 호출됨 addedUser : ', addedUser, 'user : ', socket.nickname, 'room : ', socket.room );
             console.log('[add user] add user 호출됨 user : ', socket.nickname, 'room : ', socket.room );
             /*
                 < 로직 > 
@@ -347,7 +291,7 @@ module.exports = (io) => {
                 4. 사용자 로그인 알림 (new user에게 모든 사용자의 정보를 push함) 
                 5. new user외의 사용자들에게 new user정보보냄
             */
-            // if (addedUser) return;
+        
 
             var room = socket.room;
         
@@ -367,7 +311,7 @@ module.exports = (io) => {
             }
             
             ++roomManageDict.userCnt; 
-            await hashtableStore.storeHashTable(room, roomManageDict, 'roomManage');
+            
 
             // 만약 현재 방 인원이 꽉 찾으면 list에서 삭제해주기
             if (roomManageDict.userCnt > 7){
@@ -376,13 +320,20 @@ module.exports = (io) => {
                 console.log("roomManage의 list에서 삭제됨");
             }
 
+
             // 2-1. profile 배정
-            const rand_Color = Math.floor(Math.random() * 12);
-            let playerInfo = { userID: socket.userID, nickname: socket.nickname, team: team, status: 0, color: rand_Color, place : await PlaceUser(team) };
+            const rand_Color = roomManageDict.profileColors.indexOf('0'); //0~11
+            roomManageDict.profileColors = roomManageDict.profileColors.replaceAt(rand_Color, '1');
+            console.log("rand_Color : ",rand_Color ,"roomManageDict.profileColors : " , roomManageDict.profileColors);
+            // const rand_Color = Math.floor(Math.random() * 12);
+            
+            let playerInfo = { userID: socket.userID, nickname: socket.nickname, team: team, status: 0, color: rand_Color, place : await PlaceUser(room, team) };
             console.log("PlayersInfo : ", playerInfo);
 
-
+            
             // 3. 2번에서 만든 new user정보 저장(redis_room.addMember) 및 socket.join, socket.color
+            await hashtableStore.storeHashTable(room, roomManageDict, 'roomManage');
+            
             redis_room.addMember(socket.room, socket.userID, playerInfo);
             socket.team = team;
             socket.color = rand_Color;
@@ -392,6 +343,7 @@ module.exports = (io) => {
             // 해당 룸의 모든 사용자 정보 가져와 new user 정보 추가 후 update
             var RoomMembersList =  await redis_room.RoomMembers(socket.room);
             var RoomMembersDict = {}
+
             for (const member of RoomMembersList){
                 RoomMembersDict[member] = await redis_room.getMember(room, member);
             }   
@@ -440,24 +392,42 @@ module.exports = (io) => {
 
 
         // [WaitingRoom] profile 변경 시 
-        socket.on('changeProfileColor',  async(colorIndex) =>{
-            console.log('changeProfileColor colorIndex : ', colorIndex);
+        socket.on('changeProfileColor',  async() =>{
+            console.log('changeProfileColor 프로필 변경');
             
-            // 1. 사용자 정보 수정 
+            // 0. 이전의 사용자 정보의 프로필 색상 인덱스 가져옴
             var playerInfo = await redis_room.getMember(socket.room, socket.userID);
-            playerInfo.color = colorIndex;
+            var prevColorIndex = playerInfo.color;
             console.log("PlayersInfo : ", playerInfo);
 
+            // 1. 룸 정보에서 가능한 프로필 색상 인덱스 가져오고 이전 프로필 인덱스는 0으로 만듦
+            var profileColors = await hashtableStore.getHashTableFieldValue(socket.room, ['profileColors'], 'roomManage');
+            profileColors = profileColors[0].replaceAt(prevColorIndex, '0'); // 이전 프로필 인덱스 0으로 설정
+            
+            const rand_Color = profileColors.indexOf('0', (prevColorIndex + 1)%12); // <확인필요> 새 프로필 인덱스 할당
+            // 프로필 인덱스 최대를 넘어가도 앞으로 와서 반복되도독 하기
+            if (rand_Color == -1){
+                rand_Color = profileColors.indexOf('0');
+            }
+            profileColors = profileColors.replaceAt(rand_Color, '1');
+
+
+            console.log("rand_Color : ",rand_Color ,"profileColors : " , profileColors);
+            await hashtableStore.updateHashTableField(socket.room, 'profileColors', profileColors, 'roomManage');
+
+            // 2. 사용자 정보 수정 
+            playerInfo.color = rand_Color;
+            console.log(" 수정 후 PlayersInfo : ", playerInfo);
+
             await redis_room.updateMember(socket.room, socket.userID, playerInfo);
-            console.log("수정 저장완료");
 
 
-            // 2. 수정한 내용 client들에게 뿌리기
+            // 3. 수정한 내용을 요청한 사람 포함 모두에게 뿌리기
             var playerJson = JSON.stringify(playerInfo);
 
             console.log('check : ', playerJson);
-            socket.broadcast.to(socket.room).emit('updateUI', playerJson);
-
+            // socket.broadcast.to(socket.room).emit('updateUI', playerJson);
+            io.sockets.in(socket.room).emit('updateUI',playerJson); // 모든 사람에게 뿌림
         });  
 
 
@@ -532,8 +502,8 @@ module.exports = (io) => {
                     await hashtableStore.storeHashTable(room, roomManageDict, 'roomManage');
   
                     // UI 위치 할당
-                    await DeplaceUser(prevTeam, prevPlace);
-                    playerInfo.place = await PlaceUser(!prevTeam);
+                    await DeplaceUser(room, prevTeam, prevPlace);
+                    playerInfo.place = await PlaceUser(room, !prevTeam);
       
                     // 수정사항 REDIS 저장
                     console.log("[찐최종 저장 ] playerInfo : ", playerInfo);
@@ -625,14 +595,14 @@ module.exports = (io) => {
                         console.log('변경전 rooms[socket.room].users[matchPlayer2Id] : ', matchPlayer2);
                     
                         // 2) place & team 변경
-                        DeplaceUser(matchPlayer1.team, matchPlayer1.place);
-                        DeplaceUser(matchPlayer2.team, matchPlayer2.place);
+                        DeplaceUser(room, matchPlayer1.team, matchPlayer1.place);
+                        DeplaceUser(room, matchPlayer2.team, matchPlayer2.place);
 
                         matchPlayer1.team = !matchPlayer1.team
                         matchPlayer2.team = !matchPlayer2.team
 
-                        matchPlayer1.place = PlaceUser(matchPlayer1.team);
-                        matchPlayer2.place = PlaceUser(matchPlayer2.team);
+                        matchPlayer1.place = PlaceUser(room, matchPlayer1.team);
+                        matchPlayer2.place = PlaceUser(room, matchPlayer2.team);
 
                         // 3) 변경사항 저장
                         rooms[socket.room].users[matchPlayer1Id] = matchPlayer1;
@@ -712,7 +682,7 @@ module.exports = (io) => {
         socket.on('joinTeam', async() => {
             // 팀별로 ROOM 추가 join
             socket.roomTeam = socket.room + socket.team.toString();
-            console.log("@@ socket.nickname : " , socket.nickname, " socket.roomTeam  : ",  socket.roomTeam);
+            // console.log("@@ socket.nickname : " , socket.nickname, " socket.roomTeam  : ",  socket.roomTeam);
             socket.join(socket.roomTeam);
 
             socket.emit('loadMainGame', socket.team.toString()); //ver3
@@ -873,44 +843,54 @@ module.exports = (io) => {
             var black_total_pita = roomTotalJson[0].blackTeam.total_pita;
             console.log("blackTeam.total_pita!!!", black_total_pita );
 
-            // 가격화 
-            if (black_total_pita - config.UNBLOCK_INFO.pita < 0){
-                // 실패시
-                console.log("무력화 해제 실패!");
+
+            // 무력화 상태인지 확인
+            var companyIsBlocked = roomTotalJson[0].blackTeam.users[socket.userID][company].IsBlocked;
+            console.log("!-- companyIsBlocked : ", companyIsBlocked);
+            if (!companyIsBlocked)
+            {
+                console.log("무력화 상태 아님!");
                 socket.emit('After non-Neutralization', false);
+            }else{
+                // 가격화 
+                if (black_total_pita - config.UNBLOCK_INFO.pita < 0){
+                    console.log("무력화 해제 실패!");
+                    socket.emit('After non-Neutralization', false);
+                }
+                else{
+                    // isBlocked 해제
+                    roomTotalJson[0].blackTeam.users[socket.userID][company].IsBlocked = false;
+                    // pita 가격 마이너스
+                    roomTotalJson[0].blackTeam.total_pita = black_total_pita - config.UNBLOCK_INFO.pita;
+                    
+                    await jsonStore.updatejson(roomTotalJson[0], socket.room);
+                    io.sockets.in(socket.room+'false').emit('Update Pita', roomTotalJson[0].blackTeam.total_pita );
+
+                    console.log("무력화 해제 성공!");
+                    socket.emit('After non-Neutralization', true);
+
+                    // [GameLog] 로그 추가 - 무력화 해제 로그
+                    const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
+
+                    let today = new Date();   
+                    let hours = today.getHours(); // 시
+                    let minutes = today.getMinutes();  // 분
+                    let seconds = today.getSeconds();  // 초
+                    let now = hours+":"+minutes+":"+seconds;
+                    var monitoringLog = {time: now, nickname: socket.nickname, targetCompany: attackJson.companyName, targetSection: "", actionType: "Neutralization", detail: socket.nickname+"님 무력화 해제되었습니다."};
+
+                    blackLogJson[0].push(monitoringLog);
+                    await jsonStore.updatejson(blackLogJson[0], socket.room+":blackLog");
+
+                    var logArr = [];
+                    logArr.push(monitoringLog);
+                    // socket.emit('BlackLog', logArr);
+                    // socket.to(socket.room).emit('BlackLog', logArr);
+                    io.sockets.in(socket.room+'false').emit('addLog', logArr);
+                    console.log("무력화 해제 성공!");
+                    socket.emit('After non-Neutralization', true);
+                }
             }
-            else{
-                // isBlocked 해제
-                roomTotalJson[0].blackTeam.users[socket.userID][company].IsBlocked = false;
-                // pita 가격 마이너스
-                roomTotalJson[0].blackTeam.total_pita = black_total_pita - config.UNBLOCK_INFO.pita;
-                
-                await jsonStore.updatejson(roomTotalJson[0], socket.room);
-                io.sockets.in(socket.room+'false').emit('Update Pita', roomTotalJson[0].blackTeam.total_pita );
-
-                console.log("무력화 해제 성공!");
-                socket.emit('After non-Neutralization', true);
-
-                // [GameLog] 로그 추가 - 무력화 해제 로그
-                const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
-
-                let today = new Date();   
-                let hours = today.getHours(); // 시
-                let minutes = today.getMinutes();  // 분
-                let seconds = today.getSeconds();  // 초
-                let now = hours+":"+minutes+":"+seconds;
-                var monitoringLog = {time: now, nickname: socket.nickname, targetCompany: attackJson.companyName, targetSection: "", actionType: "Neutralization", detail: socket.nickname+"님 무력화 해제되었습니다."};
-
-                blackLogJson[0].push(monitoringLog);
-                await jsonStore.updatejson(blackLogJson[0], socket.room+":blackLog");
-
-                var logArr = [];
-                logArr.push(monitoringLog);
-                // socket.emit('BlackLog', logArr);
-                // socket.to(socket.room).emit('BlackLog', logArr);
-                io.sockets.in(socket.room+'false').emit('addLog', logArr);
-            }
-
         });
 
         ////////////////////////////////////////////////////////////////////////////////////
@@ -990,28 +970,31 @@ module.exports = (io) => {
             console.log("Select Company CompanyIndex : ", CompanyName);
 
             let teamLocations = {};
+            let teamLocationsJson = "";
 
             if (socket.team == true) {
                 roomTotalJson[0]["whiteTeam"]["users"][socket.userID]["currentLocation"] = CompanyName;
                 for (const userID in roomTotalJson[0]["whiteTeam"]["users"]){
                     teamLocations[userID] = roomTotalJson[0]["whiteTeam"]["users"][userID]["currentLocation"];
                 }
+                
+                teamLocationsJson = JSON.stringify(teamLocations);
+                console.log("teamLocationsJson : ", teamLocationsJson);
+                socket.to(socket.room+'true').emit("Load User Location", teamLocationsJson);
             } else {
                 roomTotalJson[0]["blackTeam"]["users"][socket.userID]["currentLocation"] = CompanyName;
                 for (const userID in roomTotalJson[0]["blackTeam"]["users"]){
                     teamLocations[userID] = roomTotalJson[0]["blackTeam"]["users"][userID]["currentLocation"];
                 }
+
+                teamLocationsJson = JSON.stringify(teamLocations);
+                console.log("teamLocationsJson : ", teamLocationsJson);
+                socket.to(socket.room+'false').emit("Load User Location", teamLocationsJson);
             }
 
-
-            let teamLocationsJson = JSON.stringify(teamLocations);
-            console.log("teamLocationsJson : ", teamLocationsJson);
-            socket.to(socket.room).emit("Load User Location", teamLocationsJson);
             socket.emit("Load User Location", teamLocationsJson);
 
             await jsonStore.updatejson(roomTotalJson[0], socket.room);
-            roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-
         });
 
 
@@ -1019,23 +1002,28 @@ module.exports = (io) => {
             let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
 
             let teamLocations = {};
+            let teamLocationsJson = "";
 
             if (socket.team == true) {
                 roomTotalJson[0]["whiteTeam"]["users"][socket.userID]["currentLocation"] = "";
                 for (const userID in roomTotalJson[0]["whiteTeam"]["users"]){
                     teamLocations[userID] = roomTotalJson[0]["whiteTeam"]["users"][userID]["currentLocation"];
                 }
+
+                teamLocationsJson = JSON.stringify(teamLocations);
+                console.log("teamLocationsJson : ", teamLocationsJson);
+                socket.to(socket.room+'true').emit("Load User Location", teamLocationsJson);
             } else {
                 roomTotalJson[0]["blackTeam"]["users"][socket.userID]["currentLocation"] = "";
                 for (const userID in roomTotalJson[0]["blackTeam"]["users"]){
                     teamLocations[userID] = roomTotalJson[0]["blackTeam"]["users"][userID]["currentLocation"];
                 }
+
+                teamLocationsJson = JSON.stringify(teamLocations);
+                console.log("teamLocationsJson : ", teamLocationsJson);
+                socket.to(socket.room+'false').emit("Load User Location", teamLocationsJson);
             }
-
-
-            let teamLocationsJson = JSON.stringify(teamLocations);
-            console.log("teamLocationsJson : ", teamLocationsJson);
-            socket.to(socket.room).emit("Load User Location", teamLocationsJson);
+            
             socket.emit("Load User Location", teamLocationsJson);
 
             await jsonStore.updatejson(roomTotalJson[0], socket.room);
@@ -1053,15 +1041,17 @@ module.exports = (io) => {
 
             if (socket.team == true) {
                 returnArray = roomTotalJson[0][teamDataJson.companyName]["penetrationTestingLV"];
+                console.log("load card list return value : ", returnArray);
+
+                socket.to(socket.room+'true').emit("Card List", returnArray);
+                socket.emit("Card List", returnArray);
             } else {
                 returnArray = roomTotalJson[0][teamDataJson.companyName]["attackLV"];
+                console.log("load card list return value : ", returnArray);
+
+                socket.to(socket.room+'false').emit("Card List", returnArray);
+                socket.emit("Card List", returnArray);
             }
-
-            let returnValue = returnArray;
-            console.log("load card list return value : ", returnValue);
-
-            socket.to(socket.room).emit("Card List", returnValue);
-            socket.emit("Card List", returnValue);
         });
 
         // 게임 카드 리스트 보내기
@@ -1084,10 +1074,10 @@ module.exports = (io) => {
 
                 console.log("responseProgress : ", responseProgress)
 
-                socket.to(socket.room).emit("Load Response List", responseProgress);
+                socket.to(socket.room+'true').emit("Load Response List", responseProgress);
                 socket.emit("Load Response List", responseProgress);
 
-                socket.to(socket.room).emit("Response Step", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["responseStep"] - 1);
+                socket.to(socket.room+'true').emit("Response Step", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["responseStep"] - 1);
                 socket.emit("Response Step", roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["responseStep"] - 1);
             } else {  // black 팀 attack step
                 let step = roomTotalJson[0][teamDataJson.companyName]["sections"][teamDataJson.sectionIndex]["attackStep"];
@@ -1095,7 +1085,7 @@ module.exports = (io) => {
 
                 console.log("load attack step : ", step);
 
-                socket.to(socket.room).emit("Attack Step", step);
+                socket.to(socket.room+'false').emit("Attack Step", step);
                 socket.emit("Attack Step", step);
             }
         });
@@ -1256,7 +1246,7 @@ module.exports = (io) => {
                 console.log("white team upgrade attack card");
                 cardLv = roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"][upgradeAttackInfo.attackIndex];
                 roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"][upgradeAttackInfo.attackIndex] += 1;
-                pitaNum = roomTotalJson[0]['whiteTeam']['total_pita'] - config["RESEARCH_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv];
+                pitaNum = roomTotalJson[0]['whiteTeam']['total_pita'] - config["MONITORING_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv];
                 roomTotalJson[0]['whiteTeam']['total_pita'] = pitaNum;
 
                 console.log("[!!!!!] pita num : ", pitaNum);
@@ -1267,7 +1257,7 @@ module.exports = (io) => {
                 console.log("black team upgrade attack card");
                 cardLv = roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"][upgradeAttackInfo.attackIndex];
                 roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"][upgradeAttackInfo.attackIndex] += 1;
-                pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] - config["RESEARCH_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv];
+                pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] - config["MONITORING_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv];
                 roomTotalJson[0]['blackTeam']['total_pita'] = pitaNum;
 
                 console.log("[!!!!!] pita num : ", pitaNum);
@@ -1285,13 +1275,14 @@ module.exports = (io) => {
 
             if (socket.team == true) {
                 returnValue = roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"];
+                socket.to(socket.room+'true').emit("Card List", returnValue);
             } else {
                 returnValue = roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"];
+                socket.to(socket.room+'false').emit("Card List", returnValue);
             }
 
             // 나중에 white와 black 구분해서 보내기
             console.log("Update Card List Return Value : ", returnValue);
-            socket.to(socket.room).emit("Card List", returnValue);
             socket.emit("Card List", returnValue);
 
         });
@@ -1308,16 +1299,27 @@ module.exports = (io) => {
             }
 
             console.log("On Main Map abandonStatusList : ", abandonStatusList);
+            socket.to(socket.room).emit('Company Status', abandonStatusList);
             socket.emit('Company Status', abandonStatusList);
         })
         
-        // 회사 차단 인원 확인 (현제 test로 하드코딩 하여 추후 json에서 가져와 수정해야 함)
-        // 다음주에 해야 됨
-        socket.on('On Monitoring', function() {
-            // let comapny_abandonStatus = {companyA: true, companyB: false, companyC: false, companyD: false, companyE: false};
-            let company_blockedNum = 2;
-            // var companyStatusJson = JSON.stringify(comapny_abandonStatus);
-            socket.to(socket.room).emit("Blocked Num", company_blockedNum);
+
+        socket.on('On Monitoring', async(companyName) => {
+            console.log("On Monitoring companyName : ", companyName);
+            let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+            let company_blockedNum;
+
+            for (var userId in roomTotalJson[0]["blackTeam"]["users"]){
+                console.log("[On Monitoring] user id : ", userId);
+
+                if (roomTotalJson[0]["blackTeam"]["users"][userId][companyName]["IsBlocked"] == true){
+                    company_blockedNum += 1;
+                }
+            }
+
+            console.log("[On Monitoring] company_blockedNum : ", company_blockedNum);
+        
+            socket.to(socket.room+'true').emit("Blocked Num", company_blockedNum);
             socket.emit('Blocked Num', company_blockedNum);
 
 
@@ -1664,6 +1666,64 @@ module.exports = (io) => {
         return now_date;
     }
 
+    // [WaitingRoom] UI player 대응 컴포넌트 idx 할당
+    async function PlaceUser(roomPin, team){
+        console.log("PlaceUser 함수---!");
+
+        // var roomPin = socket.room;
+        var userPlacementName ;
+
+        if(!team){ //false(0)면 black
+            userPlacementName =  'blackPlacement';
+        }else{
+            userPlacementName =  'whitePlacement';
+        } 
+
+        console.log("userPlacementName " , userPlacementName);
+
+        var userPlacement =await hashtableStore.getHashTableFieldValue(roomPin, [userPlacementName], 'roomManage');
+        console.log("userPlacement " , userPlacement);
+        userPlacement = userPlacement[0].split('');
+        // console.log("userPlacement.split() " , userPlacement);
+        var place =  userPlacement.pop();
+
+        userPlacement =  userPlacement.join('');
+        // console.log("AFTER! userPlacement.join('')" , userPlacement);
+        await hashtableStore.updateHashTableField(roomPin, userPlacementName, userPlacement, 'roomManage');
+
+
+        console.log("[PlaceUser] 반환 team : ", team, " place : ", place); 
+      
+        return place
+    }
+
+    // [WaitingRoom] UI player 대응 컴포넌트 idx 제거
+    async function DeplaceUser(roomPin, prevTeam, idx){
+        console.log("DeplaceUser 함수---!");
+
+        // var roomPin = socket.room;
+        var userPlacementName ;
+
+        if(!prevTeam){ // false(0) 면 black팀
+            userPlacementName =  'blackPlacement';
+        }else{
+            userPlacementName =  'whitePlacement';
+        }
+
+        console.log("userPlacementName " , userPlacementName);
+
+        var userPlacement = await hashtableStore.getHashTableFieldValue(roomPin, [userPlacementName], 'roomManage');
+        // console.log("userPlacement " , userPlacement);
+        userPlacement = userPlacement[0].split('');
+        // console.log("userPlacement.split() " , userPlacement);
+        userPlacement.push(idx);
+        // console.log("$$DeplaceUser  userPlacement : " ,userPlacement);
+
+        userPlacement =  userPlacement.join('');
+        // console.log("AFTER! userPlacement.join('')" , userPlacement);
+        console.log("check!! ", await hashtableStore.updateHashTableField(roomPin, userPlacementName, userPlacement, 'roomManage'));
+    }
+
     async function createRoom(roomType){
         //  1. redis - room에 저장
         var roomPin = randomN();
@@ -1687,6 +1747,7 @@ module.exports = (io) => {
             'whitePlacement' : '4321',
             'toBlackUsers' : [],
             'toWhiteUsers' : [],
+            'profileColors' : '000000000000'
         };
 
         hashtableStore.storeHashTable(roomPin, room_info, 'roomManage');
@@ -1763,21 +1824,21 @@ module.exports = (io) => {
         }
         else{
             // 1) roomManage room 인원 수정
-            // userCnt, blackUserCnt/whiteUserCnt, blackPlacement/whitePlacement 수정 필요
+            // userCnt, blackUserCnt/whiteUserCnt, blackPlacement/whitePlacement, profileColors 수정 필요
             var roomManageInfo = await hashtableStore.getAllHashTable(roomPin, 'roomManage'); ;
             console.log("roomManageInfo" , roomManageInfo);
 
             roomManageInfo.userCnt = roomManageInfo.userCnt - 1; // userCnt 변경
 
-            if (socket.team){ // blackUserCnt/whiteUserCnt, blackPlacement/whitePlacement  팀 변경
+            if (socket.team){ // profileColors, blackUserCnt/whiteUserCnt, blackPlacement/whitePlacement,   팀 변경
                 roomManageInfo.whiteUserCnt = roomManageInfo.whiteUserCnt - 1;
-                await DeplaceUser(socket.team, await redis_room.getMember(socket.room, socket.userID).place); // blackPlacement/whitePlacement  -> DeplaceUser
+                await DeplaceUser(roomPin, socket.team, await redis_room.getMember(socket.room, socket.userID).place); // blackPlacement/whitePlacement  -> DeplaceUser
             }else{
                 roomManageInfo.blackUserCnt = roomManageInfo.blackUserCnt - 1;
-                await DeplaceUser(socket.team, await redis_room.getMember(socket.room, socket.userID).place);  // blackPlacement/whitePlacement  -> DeplaceUser
+                await DeplaceUser(roomPin, socket.team, await redis_room.getMember(socket.room, socket.userID).place);  // blackPlacement/whitePlacement  -> DeplaceUser
             }
 
-            await hashtableStore.storeHashTable(room, roomManageDict, 'roomManage');
+            await hashtableStore.storeHashTable(roomPin, roomManageInfo, 'roomManage');
 
 
             // 2)  Redis - room 인원에서 삭제
@@ -1786,9 +1847,10 @@ module.exports = (io) => {
 
             // 3) roomManage list 인원 확인 (함수로 따로 빼기)
             // 만약 해당 룸이 full이 아니면 list에 추가해주기
-            if (await redis_room.RoomMembers_num(roomPin) < 8){
+            // console.log("!await listStore.lpopList(roomPin, 'roomManage', 'publicRoom') : ", !await listStore.lpopList(roomPin, 'roomManage', 'publicRoom'));
+            if (!await listStore.lpopList(roomPin, 'roomManage', 'publicRoom') && redis_room.RoomMembers_num(roomPin) < 8){
                 var redisroomKey =  roomManageInfo.roomType +'Room';
-                listStore.rpushList(redisroomKey, roomPin, false, 'roomManage');
+                listStore.rpushList(redisroomKey, roomPin, true, 'roomManage');
                 console.log("roomManage의 list에 추가됨");
             }
             
@@ -1921,7 +1983,7 @@ module.exports = (io) => {
     // 공격 별 n초 후 공격 성공
     async function attackCount(socket, roomTotalJson, attackJson, cardLv, step){
         var attackStepTime = setTimeout(async function(){
-            socket.to(socket.room).emit("Attack Step", step);
+            socket.to(socket.room+'false').emit("Attack Step", step);
             socket.emit("Attack Step", step);
             console.log("attackCount CALLED");
 
@@ -2010,6 +2072,35 @@ module.exports = (io) => {
             clearTimeout(attackStepTime);
 
         }, config["ATTACK_" + (attackJson.attackIndex + 1)]["time"][cardLv] * 1000);
+
+        socket.on("Click Response", async(responseData) => {
+            let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+
+            console.log("Click Attack jsonStr : ", responseData);
+            let responseJson = JSON.parse(responseData);
+
+            let responseStep;
+            if (0 <= responseJson.attackIndex && responseJson.attackIndex < 4){
+                responseStep = 1;
+            } else if (responseJson.attackIndex == 4){
+                responseStep = 2;
+            } else if (responseJson.attackIndex == 5){
+                responseStep = 3;
+            } else if (responseJson.attackIndex == 6){
+                responseStep = 4;
+            } else if (7 <= responseJson.attackIndex && responseJson.attackIndex <= 10){
+                responseStep = 5;
+            } else if (11 <= responseJson.attackIndex && responseJson.attackIndex <= 12){
+                responseStep = 6;
+            }
+
+            if (roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attackStep"] == (responseStep + 1)){
+                console.log("대응됨! -> attackCount 중지");
+                clearTimeout(attackStepTime);
+                socket.to(socket.room+socket.team).emit("Stop Performing");
+                socket.emit("Stop Performing");
+            }
+        });
     }
 
     // 공격 별 n초 후 관제 리스트로 넘기기
@@ -2050,7 +2141,7 @@ module.exports = (io) => {
                         roomTotalJson[0]["blackTeam"]["users"][attacker][attackJson.companyName]["warnCnt"] = 0;
                         roomTotalJson[0]["blackTeam"]["users"][attacker][attackJson.companyName]["IsBlocked"] = true;
                         socket.emit('OnNeutralization', true);
-                        console.log("You are Blockes!!!!");
+                        console.log("You are Blocked!!!!");
 
                         // [GameLog] 로그 추가 - 무력화(블랙) & 무력화 발견(화이트)로그
                         const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
@@ -2084,18 +2175,53 @@ module.exports = (io) => {
                     }
                 }
 
+                let company_blockedNum;
+                for (var userId in roomTotalJson[0]["blackTeam"]["users"]){
+                    console.log("[On Monitoring] user id : ", userId);
+
+                    if (roomTotalJson[0]["blackTeam"]["users"][userId][attackJson.companyName]["IsBlocked"] == true){
+                        company_blockedNum += 1;
+                    }
+                }
+                console.log("[On Monitoring] company_blockedNum : ", company_blockedNum);
+                socket.to(socket.room+'true').emit("Blocked Num", company_blockedNum);
+                socket.emit('Blocked Num', company_blockedNum);
+
                 console.log(attacker, "의 userCompanyStatus : ", roomTotalJson[0]["blackTeam"]["users"][attacker]);
 
                 let responseProgress = []
-                for(var i in roomTotalJson[0][attackJson.companyName]){
-                    console.log("responseIndex : ", roomTotalJson[0][attackJson.companyName][i]);
-                    responseProgress.push(Number(Object.keys(roomTotalJson[0][attackJson.companyName][i])));
+                for(var i in roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"]){
+                    console.log("responseIndex : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"][i]);
+                    responseProgress.push(Number(Object.keys(roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"][i])));
                 }
                 
                 console.log("responseProgress", responseProgress);
 
-                socket.to(socket.room).emit('Load Response List', responseProgress);
+                console.log("Math.max(...responseProgress) ; ", Math.max(...responseProgress));
+                if (roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"].length == 0){
+                    step = 0;
+                } else {
+                    let maxAttack = Math.max(...responseProgress);
+                    if (0 <= maxAttack && maxAttack < 4){
+                        step = 1;
+                    } else if (maxAttack == 4){
+                        step = 2;
+                    } else if (maxAttack == 5){
+                        step = 3;
+                    } else if (maxAttack == 6){
+                        step = 4;
+                    } else if (7 <= maxAttack && maxAttack <= 10){
+                        step = 5;
+                    } else if (11 <= maxAttack && maxAttack <= 12){
+                        step = 6;
+                    }
+                }
+
+                socket.to(socket.room+'true').emit('Load Response List', responseProgress);
                 socket.emit('Load Response List', responseProgress);
+
+                socket.to(socket.room+'true').emit("Response Step", step - 1);
+                socket.emit("Response Step", step - 1);
 
                 roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"] = attackList;
 
@@ -2139,7 +2265,7 @@ module.exports = (io) => {
             //socket.to(socket.room).emit('WhiteLog', logArr);
             io.sockets.in(socket.room+'true').emit('addLog', logArr);
 
-        }, config["RESEARCH_" + (attackJson.attackIndex + 1)]["time"][cardLv] * 1000);
+        }, config["MONITORING_" + (attackJson.attackIndex + 1)]["time"][cardLv] * 1000);
     }
 
     // 공격은 수행하였지만 관제에서 무시되는 경우 warn만 +1
@@ -2154,7 +2280,7 @@ module.exports = (io) => {
                     roomTotalJson[0]["blackTeam"]["users"][socket.userID][attackJson.companyName]["warnCnt"] = 0;
                     roomTotalJson[0]["blackTeam"]["users"][socket.userID][attackJson.companyName]["IsBlocked"] = true;
                     socket.emit('OnNeutralization', true);
-                    console.log("You are Blockes!!!!");
+                    console.log("You are Blocked!!!!");
 
                     // [GameLog] 로그 추가 - 무력화(블랙) & 무력화 발견(화이트)로그
                     const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
@@ -2188,16 +2314,28 @@ module.exports = (io) => {
                 }
             }
 
+            let company_blockedNum;
+            for (var userId in roomTotalJson[0]["blackTeam"]["users"]){
+                console.log("[On Monitoring] user id : ", userId);
+
+                if (roomTotalJson[0]["blackTeam"]["users"][userId][attackJson.companyName]["IsBlocked"] == true){
+                    company_blockedNum += 1;
+                }
+            }
+            console.log("[On Monitoring] company_blockedNum : ", company_blockedNum);
+            socket.to(socket.room+'true').emit("Blocked Num", company_blockedNum);
+            socket.emit('Blocked Num', company_blockedNum);
+
             console.log(socket.userID, "의 userCompanyStatus : ", roomTotalJson[0]["blackTeam"]["users"][socket.userID]);
             await jsonStore.updatejson(roomTotalJson[0], socket.room);
             
             clearTimeout(monitoringTime);
-        }, config["RESEARCH_" + (attackJson.attackIndex + 1)]["time"][cardLv] * 1000);
+        }, config["MONITORING_" + (attackJson.attackIndex + 1)]["time"][cardLv] * 1000);
     }
 
-    // 대응 별 n초 후 공격 성공
+    // 대응 별 n초 후 대응 성공
     async function responseCount(socket, roomTotalJson, responseJson, cardLv){
-        var attackStepTime = setTimeout(async function(){
+        var responseStepTime = setTimeout(async function(){
 
             // response list에서 대응 성공한 공격 삭제
             var responseList = roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["response"]["progress"];
@@ -2227,7 +2365,6 @@ module.exports = (io) => {
             }
 
             console.log("Math.max(...responseList) ; ", Math.max(...responseProgress));
-            console.log("response lsit(before maxattack) : ", roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["response"]["progress"]);
             if (responseList.length == 0){
                 step = 0;
             } else {
@@ -2247,11 +2384,16 @@ module.exports = (io) => {
                 }
             }
 
-            socket.to(socket.room).emit('Load Response List', responseProgress);
+            socket.to(socket.room+'true').emit('Load Response List', responseProgress);
             socket.emit('Load Response List', responseProgress);            
 
-            socket.to(socket.room).emit("Response Step", step - 1);
+            socket.to(socket.room+'true').emit("Response Step", step - 1);
             socket.emit("Response Step", step - 1);
+
+            socket.to(socket.room+'false').emit("Attack Step", step);
+            socket.emit("Attack Step", step);
+
+            // 대응 되었음을 black에게 알림
 
             roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["response"]["progress"] = responseList;
             //roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attack"]["progress"] = attackList;
@@ -2294,9 +2436,37 @@ module.exports = (io) => {
             //socket.to(socket.room).emit('WhiteLog', logArr);
             io.sockets.in(socket.room+'true').emit('addLog', logArr);
 
-            clearTimeout(attackStepTime);
+            clearTimeout(responseStepTime);
 
-        }, config["ATTACK_" + (responseJson.attackIndex + 1)]["time"][cardLv] * 1000);
+        }, config["RESPONSE_" + (responseJson.attackIndex + 1)]["time"][cardLv] * 1000);
+
+        socket.on("Click Attack", async(attackData) => {
+            let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+
+            console.log("Click Attack jsonStr : ", attackData);
+            let attackJson = JSON.parse(attackData);
+
+            if (0 <= attackJson.attackIndex && attackJson.attackIndex < 4){
+                step = 1;
+            } else if (attackJson.attackIndex == 4){
+                step = 2;
+            } else if (attackJson.attackIndex == 5){
+                step = 3;
+            } else if (attackJson.attackIndex == 6){
+                step = 4;
+            } else if (7 <= attackJson.attackIndex && attackJson.attackIndex <= 10){
+                step = 5;
+            } else if (11 <= attackJson.attackIndex && attackJson.attackIndex <= 12){
+                step = 6;
+            }
+
+            if(roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["responseStep"] == (step - 1)){
+                console.log("대응됨! -> responseCount 중지");
+                clearTimeout(responseStepTime);
+                socket.to(socket.room+socket.team).emit("Stop Performing");
+                socket.emit("Stop Performing");
+            }
+        });
     }
     
 }

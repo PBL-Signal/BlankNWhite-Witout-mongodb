@@ -111,7 +111,7 @@ class redisListStore extends ListStore {
             namespace = namespace + String(args[i]) + ":"
         }
         // 만약 매개변수 하나면 value는 공백으로 간주
-        if (check == true){ // 값이 이미 있는 곳에 넣기
+        if (check == true){ // 키가 값이 이미 있는 곳에 넣기
             try {
                 await this.redisClient.rpushx(`hashtable${namespace}${key}`, value);
                 return true;
@@ -119,7 +119,7 @@ class redisListStore extends ListStore {
                 console.log(e.message);
                 return false;
             }
-        } else if (check == false){ // 아닌 곳에는 생성해서 넣기
+        } else if (check == false){ // 키가 아닌 곳에는 생성해서 넣기
             try {
                 await this.redisClient.rpush(`hashtable${namespace}${key}`, value);
                 return true;

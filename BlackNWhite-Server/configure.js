@@ -72,7 +72,9 @@ module.exports = {
     WHITE_INCOME : { pita : 100, time : 10 },
     
     // 방 생성 인원 기본 값
-    DEFAULT_ROOM : { maxPlayer : 4 } 
+    DEFAULT_ROOM : { maxPlayer : 4 },
+    // 대기룸 maxPlayer에 따른 UI 위치 
+    ALLOCATE_PLAYER_UI : { 2 : '1', 4 : '21', 6 : '321', 8 : '4321'}
 
     // const COMPANY_1 = { name : "" , sectionVuln=Rand_Vuln(sectionNum) }; // section 인덱스 = 영역 idx
     // const COMPANY_2 = { name : "" , section=["ATTACK_2", "ATTACK_3",  "ATTACK_1"] };

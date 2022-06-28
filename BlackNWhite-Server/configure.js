@@ -69,9 +69,11 @@ module.exports = {
     
     // 수입원
     BLACK_INCOME : { pita : 50, time : 10 },
-    WHITE_INCOME : { pita : 100, time : 10 }
+    WHITE_INCOME : { pita : 100, time : 10 },
     
-    
+    // 방 생성 인원 기본 값
+    DEFAULT_ROOM : { maxPlayer : 4 } 
+
     // const COMPANY_1 = { name : "" , sectionVuln=Rand_Vuln(sectionNum) }; // section 인덱스 = 영역 idx
     // const COMPANY_2 = { name : "" , section=["ATTACK_2", "ATTACK_3",  "ATTACK_1"] };
     

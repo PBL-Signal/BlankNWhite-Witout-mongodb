@@ -148,40 +148,17 @@ module.exports = (io) => {
         // [MainHome] 오픈 방 클릭시 
         socket.on("isValidRoom", async(room) => {
             console.log('[socket-isValidRoom] room:',room);
-            /*
-                < 로직 > 
-                1. 해당 룸 핀이 있는지 확인
-                2. 해당 룸에 들어갈 수 있는지 (full상태 확인)
-                3. permission 주기 (socket.room 저장, 방 상태 update 및 cnt ++)
-            */
+        
             var room_data = { 
-                permission: false
+                permission: await UpdatePermission(room)
             };
-
-            if(await UpdatePermission(room)){
-                console.log("permission True");
-                socket.room = room;
-                room_data.permission = true;
-                console.log("room_data.permission : ", room_data.permission );
-            }
 
             var roomJson = JSON.stringify(room_data);
             console.log('!!check roomJson : ', roomJson);
             socket.emit('room permission',roomJson);
 
-            // 기존 코드 -----------
-            // if (await redis_room.IsValidRoom(room)) { 
-            //     console.log("permission True");
-            //     socket.room = room;
-            //     room_data.permission = true;
-            //     console.log("room_data.permission : ", room_data.permission );
-            // }
-
-            // var roomJson = JSON.stringify(room_data);
-            // console.log('!!check roomJson : ', roomJson);
-            // socket.emit('room permission',roomJson);
-            //----------------------
         });
+
 
         // [MainHome] 랜덤 게임 시작 버튼 클릭시
         socket.on("randomGameStart", async() => {
@@ -198,7 +175,7 @@ module.exports = (io) => {
             console.log("publicRoomCnt : ", publicRoomCnt);
 
 
-            if(publicRoomCnt > 0){    // <코드 미정>
+            if(publicRoomCnt > 0){    
                 // 경우 1
                 var publicRoomList = await listStore.rangeList('publicRoom', 0, -1, 'roomManage');
                 console.log("! publicRoomList : ", publicRoomList);
@@ -219,11 +196,9 @@ module.exports = (io) => {
                 socket.emit('enterPublicRoom');
             }else {
                 // 경우 2
-                roomPin = await createRoom('public');
-                // await initRoom(roomPin);
+                roomPin = await createRoom('public', config.DEFAULT_ROOM.maxPlayer);
 
                 console.log("succesCreateRoom roomPin: " , roomPin);
-                
             }    
             socket.room = roomPin;
           
@@ -246,13 +221,10 @@ module.exports = (io) => {
                 // publicRooms[room] = await redis_room.RoomMembers_num(room)
                 publicRooms.push({
                     'roomPin' : room.toString(),
-                    'userCnt' : (await redis_room.RoomMembers_num(room)).toString()
-                });
+                    'userCnt' : (await redis_room.RoomMembers_num(room)).toString(),
+                    'maxPlayer' : JSON.parse(await redis_room.getRoomInfo(room)).maxPlayer
+                });               
             }   
-
-            // var publicRoomsJson = JSON.stringify(publicRooms);
-            // console.log(">>> publicRoomsJson : ", publicRoomsJson);
-            // socket.emit('loadPublicRooms', publicRoomsJson);
         
             console.log(">>> publicRooms : ", publicRooms);
             socket.emit('loadPublicRooms', publicRooms);
@@ -264,7 +236,7 @@ module.exports = (io) => {
             console.log('[socket-createRoom] room.roomType', room.roomType);
             // hashtableStore.storeHashTable("key", {"a":"f", 1:2}, 1, 2);
                
-            var roomPin = await createRoom(room.roomType);
+            var roomPin = await createRoom(room.roomType, room.maxPlayer);
             // await initRoom(roomPin);
 
             console.log("succesCreateRoom roomPin: " , roomPin);
@@ -468,7 +440,7 @@ module.exports = (io) => {
                     - 입장 시 random시 evenNumPlayer 따른 팀 자동 선택 변수 제어해야 될 듯
                 */
 
-                // 0. redis에서 room 정보 불러오기
+                // 0. redis에서 room 정보 불러오기s
                 // var roomInfoJson =  JSON.parse(await redis_room.getRoomInfo(socket.room));
                 // console.log('!!!~~룸정보', roomInfoJson);
                 var roomManageDict = await hashtableStore.getAllHashTable(room, 'roomManage'); // 딕셔너리 형태
@@ -1724,7 +1696,7 @@ module.exports = (io) => {
         console.log("check!! ", await hashtableStore.updateHashTableField(roomPin, userPlacementName, userPlacement, 'roomManage'));
     }
 
-    async function createRoom(roomType){
+    async function createRoom(roomType, maxPlayer){
         //  1. redis - room에 저장
         var roomPin = randomN();
         while (redis_room.checkRooms(roomPin))
@@ -1737,8 +1709,9 @@ module.exports = (io) => {
         var creationDate = nowDate();
 
         var room_info = {
-            'creationDate' : creationDate,
-            'roomType' : roomType,
+            creationDate : creationDate,
+            roomType : roomType,
+            maxPlayer : maxPlayer
         };
 
         await redis_room.createRoom(roomPin, room_info);
@@ -1747,6 +1720,7 @@ module.exports = (io) => {
         var room_info = {
             'roomType' : roomType,
             'creationDate' : creationDate,
+            'maxPlayer' : maxPlayer,
             'userCnt' : 0,
             'whiteUserCnt' : 0,
             'blackUserCnt' : 0,
@@ -1795,24 +1769,17 @@ module.exports = (io) => {
         // 1. 해당 룸 핀이 있는지 확인
         if (! await redis_room.IsValidRoom(roomPin)) { 
             console.log("permission False - no Room");
-            return false
+            return -1
         }
 
         // 2. 해당 룸에 들어갈 수 있는지 (full상태 확인)
         console.log("room_member 수", await redis_room.RoomMembers_num(roomPin))
-        // 바꿔야 함 << 수정 필요 >> 여기가 아닌 roomManage/key 의 cnt ++ -> 아니 필요없음
-        if (await redis_room.RoomMembers_num(roomPin) >= 8){
+        if (await redis_room.RoomMembers_num(roomPin) >= JSON.parse(await redis_room.getRoomInfo(roomPin)).maxPlayer){
             console.log("permission False - room Full");
-            return false
+            return 0
         }
 
-        // 바꿔야 함 << 수정 필요 >> -> 아니다 이건 add user에서 처리해줘야 함  --> 아니 필요없음
-        // 3. permission 주기 (, 방 상태 update 및 cnt ++)
-        // add user에서 cnt 변경하기
-        // roomManage/key 의 cnt ++
-        // socket.room 저장은 return 후 호출한 곳에서 해주자
-        
-        return true
+        return 1
        
     };
 

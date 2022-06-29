@@ -149,40 +149,25 @@ module.exports = (io) => {
         // [MainHome] 오픈 방 클릭시 
         socket.on("isValidRoom", async(room) => {
             console.log('[socket-isValidRoom] room:',room);
-            /*
-                < 로직 > 
-                1. 해당 룸 핀이 있는지 확인
-                2. 해당 룸에 들어갈 수 있는지 (full상태 확인)
-                3. permission 주기 (socket.room 저장, 방 상태 update 및 cnt ++)
-            */
-            var room_data = { 
-                permission: false
-            };
+        
+            // var room_data = { 
+            //     permission: await UpdatePermission(room)
+            // };
+            var permission = await UpdatePermission(room);
+            console.log('[socket-isValidRoom] permission: ', permission);
 
-            if(await UpdatePermission(room)){
-                console.log("permission True");
+            if(permission == 1){
+                console.log('[socket-isValidRoom] UpdatePermission: 1');
                 socket.room = room;
-                room_data.permission = true;
-                console.log("room_data.permission : ", room_data.permission );
             }
 
-            var roomJson = JSON.stringify(room_data);
-            console.log('!!check roomJson : ', roomJson);
-            socket.emit('room permission',roomJson);
-
-            // 기존 코드 -----------
-            // if (await redis_room.IsValidRoom(room)) { 
-            //     console.log("permission True");
-            //     socket.room = room;
-            //     room_data.permission = true;
-            //     console.log("room_data.permission : ", room_data.permission );
-            // }
-
+            socket.emit('room permission',permission);
             // var roomJson = JSON.stringify(room_data);
             // console.log('!!check roomJson : ', roomJson);
             // socket.emit('room permission',roomJson);
-            //----------------------
+
         });
+
 
         // [MainHome] 랜덤 게임 시작 버튼 클릭시
         socket.on("randomGameStart", async() => {
@@ -199,7 +184,7 @@ module.exports = (io) => {
             console.log("publicRoomCnt : ", publicRoomCnt);
 
 
-            if(publicRoomCnt > 0){    // <코드 미정>
+            if(publicRoomCnt > 0){    
                 // 경우 1
                 var publicRoomList = await listStore.rangeList('publicRoom', 0, -1, 'roomManage');
                 console.log("! publicRoomList : ", publicRoomList);
@@ -220,11 +205,9 @@ module.exports = (io) => {
                 socket.emit('enterPublicRoom');
             }else {
                 // 경우 2
-                roomPin = await createRoom('public');
-                // await initRoom(roomPin);
+                roomPin = await createRoom('public', config.DEFAULT_ROOM.maxPlayer);
 
                 console.log("succesCreateRoom roomPin: " , roomPin);
-                
             }    
             socket.room = roomPin;
           
@@ -247,13 +230,10 @@ module.exports = (io) => {
                 // publicRooms[room] = await redis_room.RoomMembers_num(room)
                 publicRooms.push({
                     'roomPin' : room.toString(),
-                    'userCnt' : (await redis_room.RoomMembers_num(room)).toString()
-                });
+                    'userCnt' : (await redis_room.RoomMembers_num(room)).toString(),
+                    'maxPlayer' : JSON.parse(await redis_room.getRoomInfo(room)).maxPlayer
+                });               
             }   
-
-            // var publicRoomsJson = JSON.stringify(publicRooms);
-            // console.log(">>> publicRoomsJson : ", publicRoomsJson);
-            // socket.emit('loadPublicRooms', publicRoomsJson);
         
             console.log(">>> publicRooms : ", publicRooms);
             socket.emit('loadPublicRooms', publicRooms);
@@ -265,7 +245,7 @@ module.exports = (io) => {
             console.log('[socket-createRoom] room.roomType', room.roomType);
             // hashtableStore.storeHashTable("key", {"a":"f", 1:2}, 1, 2);
                
-            var roomPin = await createRoom(room.roomType);
+            var roomPin = await createRoom(room.roomType, room.maxPlayer);
             // await initRoom(roomPin);
 
             console.log("succesCreateRoom roomPin: " , roomPin);
@@ -315,7 +295,7 @@ module.exports = (io) => {
             
 
             // 만약 현재 방 인원이 꽉 찾으면 list에서 삭제해주기
-            if (roomManageDict.userCnt > 7){
+            if (roomManageDict.userCnt >= roomManageDict.maxPlayer){
                 var redisroomKey =  roomManageDict.roomType +'Room';
                 listStore.delElementList(redisroomKey, 1, room, 'roomManage');
                 console.log("roomManage의 list에서 삭제됨");
@@ -327,14 +307,13 @@ module.exports = (io) => {
             roomManageDict.profileColors = roomManageDict.profileColors.replaceAt(rand_Color, '1');
             console.log("rand_Color : ",rand_Color ,"roomManageDict.profileColors : " , roomManageDict.profileColors);
             // const rand_Color = Math.floor(Math.random() * 12);
+            await hashtableStore.storeHashTable(room, roomManageDict, 'roomManage'); // 무조건 PlaceUser 위에 있어야 함!
             
             let playerInfo = { userID: socket.userID, nickname: socket.nickname, team: team, status: 0, color: rand_Color, place : await PlaceUser(room, team) };
             console.log("PlayersInfo : ", playerInfo);
 
             
-            // 3. 2번에서 만든 new user정보 저장(redis_room.addMember) 및 socket.join, socket.color
-            await hashtableStore.storeHashTable(room, roomManageDict, 'roomManage');
-            
+            // 3. socket.join, socket.color
             redis_room.addMember(socket.room, socket.userID, playerInfo);
             socket.team = team;
             socket.color = rand_Color;
@@ -351,7 +330,6 @@ module.exports = (io) => {
 
             console.log('!!!~~RoomMembersDict', RoomMembersDict);
 
-            
             var room_data = { 
                 room : room,
                 clientUserID : socket.userID,
@@ -370,7 +348,7 @@ module.exports = (io) => {
         
 
     
-        // [WaitingRoom] status 변경 시 
+        // [WaitingRoom] ready status 변경 시 
         socket.on('changeReadyStatus',  async(newStatus) =>{
             console.log('changeReadyStatus status : ', newStatus);
             
@@ -380,14 +358,34 @@ module.exports = (io) => {
             playerInfo.status = newStatus;
 
             await redis_room.updateMember(socket.room, socket.userID, playerInfo);
-            // rooms[socket.room].users[socket.id] = playerInfo;     // evenNumPlayer는 팀 정보
-            //console.log("수정후! : ",  rooms[socket.room].users[socket.id]);
 
-            // 2. 수정한 내용 client들에게 뿌리기
-            var playerJson = JSON.stringify(playerInfo);
+            // 2. ready한 경우 room_info 바꿔주기 
+            var roomInfo  = await hashtableStore.getHashTableFieldValue(socket.room, ['readyUserCnt', 'maxPlayer'], 'roomManage');
+            var readyUserCnt = parseInt(roomInfo[0]);
+            var maxPlayer =  parseInt(roomInfo[1]);
+            console.log("!readyUserCnt : ", readyUserCnt);
+            console.log("!maxPlayer : ", maxPlayer);
 
-            console.log('check playerJson : ', playerJson);
-            io.sockets.in(socket.room).emit('updateUI',playerJson);
+            if (newStatus == 1){
+                readyUserCnt += 1
+            }else {
+                readyUserCnt -= 1
+            }
+
+            console.log("!readyUserCnt : ", readyUserCnt);
+            await hashtableStore.updateHashTableField(socket.room, 'readyUserCnt', readyUserCnt, 'roomManage'); 
+           
+            // 3. 만약 모두가 ready한 상태라면 자동 game start
+           if(readyUserCnt == maxPlayer){
+                console.log("!모두 레디함!");
+                io.sockets.in(socket.room).emit('countGameStart');
+           }else{
+                // 47 수정한 내용 client들에게 뿌리기
+                var playerJson = JSON.stringify(playerInfo);
+
+                console.log('check playerJson : ', playerJson);
+                io.sockets.in(socket.room).emit('updateUI',playerJson);
+           }
 
         });
 
@@ -469,7 +467,7 @@ module.exports = (io) => {
                     - 입장 시 random시 evenNumPlayer 따른 팀 자동 선택 변수 제어해야 될 듯
                 */
 
-                // 0. redis에서 room 정보 불러오기
+                // 0. redis에서 room 정보 불러오기s
                 // var roomInfoJson =  JSON.parse(await redis_room.getRoomInfo(socket.room));
                 // console.log('!!!~~룸정보', roomInfoJson);
                 var roomManageDict = await hashtableStore.getAllHashTable(room, 'roomManage'); // 딕셔너리 형태
@@ -479,8 +477,8 @@ module.exports = (io) => {
                 // 경우 1-1 : 현재 white 팀 -> black 가능한지 확인
                 console.log("@roomManageDict.blackUserCnt : ", roomManageDict.blackUserCnt);
                 console.log("@roomManageDict.whiteUserCnt : ", roomManageDict.whiteUserCnt);
-
-                if ((prevTeam == true &&  roomManageDict.blackUserCnt <4) || (prevTeam == false && roomManageDict.whiteUserCnt <4))
+                var limitedUser = parseInt(roomManageDict.maxPlayer / 2);
+                if ((prevTeam == true &&  roomManageDict.blackUserCnt < limitedUser) || (prevTeam == false && roomManageDict.whiteUserCnt < limitedUser))
                 {                
                     // 1. room의 사용자 team 정보 바꾸기
                     // playerInfo.team = false;
@@ -623,6 +621,13 @@ module.exports = (io) => {
                         console.log('check : ', teamChangeInfo);
                         io.sockets.in(socket.room).emit('updateTeamChange',teamChangeInfo);
                     }
+                }
+                else{
+                     // 2. 바뀐 정보 클라쪽에 보내기
+                     var changeInfo = { 
+                        type : -1,
+                    };
+                    io.sockets.in(socket.room).emit('updateTeamChange',teamChangeInfo);
                 }
             }
             
@@ -1684,13 +1689,19 @@ module.exports = (io) => {
 
         var userPlacement =await hashtableStore.getHashTableFieldValue(roomPin, [userPlacementName], 'roomManage');
         console.log("userPlacement " , userPlacement);
+
+        if(!userPlacement)// 널처리
+        {
+            return -1
+        }
+
         userPlacement = userPlacement[0].split('');
-        // console.log("userPlacement.split() " , userPlacement);
+        console.log("userPlacement.split() " , userPlacement);
         var place =  userPlacement.pop();
 
-        userPlacement =  userPlacement.join('');
-        // console.log("AFTER! userPlacement.join('')" , userPlacement);
-        await hashtableStore.updateHashTableField(roomPin, userPlacementName, userPlacement, 'roomManage');
+        var newUserPlacement =  userPlacement.join('');
+        console.log("AFTER! userPlacement.join('')" , newUserPlacement);
+        await hashtableStore.updateHashTableField(roomPin, userPlacementName, newUserPlacement, 'roomManage');
 
 
         console.log("[PlaceUser] 반환 team : ", team, " place : ", place); 
@@ -1725,7 +1736,7 @@ module.exports = (io) => {
         console.log("check!! ", await hashtableStore.updateHashTableField(roomPin, userPlacementName, userPlacement, 'roomManage'));
     }
 
-    async function createRoom(roomType){
+    async function createRoom(roomType, maxPlayer){
         //  1. redis - room에 저장
         var roomPin = randomN();
         while (redis_room.checkRooms(roomPin))
@@ -1738,8 +1749,9 @@ module.exports = (io) => {
         var creationDate = nowDate();
 
         var room_info = {
-            'creationDate' : creationDate,
-            'roomType' : roomType,
+            creationDate : creationDate,
+            roomType : roomType,
+            maxPlayer : maxPlayer
         };
 
         await redis_room.createRoom(roomPin, room_info);
@@ -1748,11 +1760,13 @@ module.exports = (io) => {
         var room_info = {
             'roomType' : roomType,
             'creationDate' : creationDate,
+            'maxPlayer' : maxPlayer,
             'userCnt' : 0,
+            'readyUserCnt' : 0,
             'whiteUserCnt' : 0,
             'blackUserCnt' : 0,
-            'blackPlacement' : '4321',
-            'whitePlacement' : '4321',
+            'blackPlacement' : config.ALLOCATE_PLAYER_UI[maxPlayer],
+            'whitePlacement' : config.ALLOCATE_PLAYER_UI[maxPlayer],
             'toBlackUsers' : [],
             'toWhiteUsers' : [],
             'profileColors' : '000000000000'
@@ -1796,24 +1810,17 @@ module.exports = (io) => {
         // 1. 해당 룸 핀이 있는지 확인
         if (! await redis_room.IsValidRoom(roomPin)) { 
             console.log("permission False - no Room");
-            return false
+            return -1
         }
 
         // 2. 해당 룸에 들어갈 수 있는지 (full상태 확인)
         console.log("room_member 수", await redis_room.RoomMembers_num(roomPin))
-        // 바꿔야 함 << 수정 필요 >> 여기가 아닌 roomManage/key 의 cnt ++ -> 아니 필요없음
-        if (await redis_room.RoomMembers_num(roomPin) >= 8){
+        if (await redis_room.RoomMembers_num(roomPin) >= JSON.parse(await redis_room.getRoomInfo(roomPin)).maxPlayer){
             console.log("permission False - room Full");
-            return false
+            return 0
         }
 
-        // 바꿔야 함 << 수정 필요 >> -> 아니다 이건 add user에서 처리해줘야 함  --> 아니 필요없음
-        // 3. permission 주기 (, 방 상태 update 및 cnt ++)
-        // add user에서 cnt 변경하기
-        // roomManage/key 의 cnt ++
-        // socket.room 저장은 return 후 호출한 곳에서 해주자
-        
-        return true
+        return 1
        
     };
 

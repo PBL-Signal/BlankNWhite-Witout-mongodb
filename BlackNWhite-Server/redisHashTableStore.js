@@ -60,6 +60,7 @@ class redisHashTableStore extends HashTableStore {
         }
         if (await this.redisClient.hexists(`hashtable${namespace}${key}`, field) == 1){// 필드가 있는지 확인
             this.redisClient.hset(`hashtable${namespace}${key}`, field, value);
+            console.log("-------확인 " ,key, field);
             return true;
         } else {
             console.log(`해당 ${key}에 ${field}는 존재하지 않습니다.`);

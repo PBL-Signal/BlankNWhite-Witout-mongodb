@@ -57,7 +57,8 @@ module.exports = (io) => {
     let numPlayer = 1;
     let companyNameList = ["companyA", "companyB", "companyC", "companyD", "companyE"];
     let sectionNames = [["Area_DMZ", "Area_Interal", "Area_Sec"], ["Area_DMZ", "Area_Interal", "Area_Sec"],["Area_DMZ", "Area_Interal", "Area_Sec"],["Area_DMZ", "Area_Interal", "Area_Sec"],["Area_DMZ", "Area_Interal", "Area_Sec"]];
-    let vulnArray = ["Reconnaissance", "Credential Access", "Discovery", "Collection"];            
+    let vulnArray = ["Reconnaissance", "Credential Access", "Discovery", "Collection"];      
+    let attack_name_list = ["Reconnaissance", "Credential Access", "Discovery", "Collection", "Resource Development", "Initial Access", "Execution", "Privilege Escalation", "Persistence", "Defense Evasion", "Command and Control", "Exfiltration", "Impact"];      
 
     let timerId;
     let pitaTimerId;
@@ -2003,7 +2004,7 @@ module.exports = (io) => {
             let seconds = today.getSeconds();  // 초
             let now = hours+":"+minutes+":"+seconds;
             var companyIdx =  attackJson.companyName.charCodeAt(7) - 65;
-            var monitoringLog = {time: now, nickname: socket.nickname, targetCompany: attackJson.companyName, targetSection: sectionNames[companyIdx][attackJson.sectionIndex], actionType: "Attack", detail: attackJson.attackIndex.toString()+"공격이 수행되었습니다."};
+            var monitoringLog = {time: now, nickname: socket.nickname, targetCompany: attackJson.companyName, targetSection: sectionNames[companyIdx][attackJson.sectionIndex], actionType: "Attack", detail: attack_name_list[attackJson.attackIndex]+"공격이 수행되었습니다."};
 
             blackLogJson[0].push(monitoringLog);
             await jsonStore.updatejson(blackLogJson[0], socket.room+":blackLog");
@@ -2031,7 +2032,7 @@ module.exports = (io) => {
                 // socket.to(socket.room).emit("Section Destroy", destroyJson);
                 // socket.emit("Section Destroy", destroyJson);
 
-                io.sockets.in(socket.room+'false').emit('is_All_Sections_Destroyed', attackJson.companyName);
+                io.sockets.in(socket.room+'false').emit('is_All_Sections_Destroyed_Nickname', socket.nickname, attackJson.companyName);
                 // socket.to(socket.room).emit('is_All_Sections_Destroyed', attackJson.companyName);
                 // socket.emit('is_All_Sections_Destroyed', attackJson.companyName);
 

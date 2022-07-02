@@ -333,6 +333,7 @@ module.exports = (io) => {
             var room_data = { 
                 room : room,
                 clientUserID : socket.userID,
+                maxPlayer : roomManageDict.maxPlayer,
                 users : RoomMembersDict
             };
             var roomJson = JSON.stringify(room_data);

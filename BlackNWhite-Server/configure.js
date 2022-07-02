@@ -3,7 +3,7 @@ module.exports = {
     TOTAL_PITA : 100,
 
     // 공격
-    ATTACK_1 : { pita : [1, 2, 3, 4, 5], time : [8, 7, 6, 5, 4], name : "Reconnaissance"},
+    ATTACK_1 : { pita : [500, 2, 3, 4, 5], time : [8, 7, 6, 5, 4], name : "Reconnaissance"},
     ATTACK_2 : { pita : [1, 2, 3, 4, 5], time : [8, 7, 6, 5, 4], name : "Credential Access"},
     ATTACK_3 : { pita : [1, 2, 3, 4, 5], time : [8, 7, 6, 5, 4], name : "Discovery"},
     ATTACK_4 : { pita : [1, 2, 3, 4, 5], time : [8, 7, 6, 5, 4], name : "Collection"},

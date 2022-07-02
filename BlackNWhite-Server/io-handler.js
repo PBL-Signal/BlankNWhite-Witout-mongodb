@@ -1125,19 +1125,21 @@ module.exports = (io) => {
             let cardLv = roomTotalJson[0][attackJson.companyName]["penetrationTestingLV"][attackJson.attackIndex];
             let pitaNum;
             if (attackJson.teamName == true) {
-                pitaNum = roomTotalJson[0]['whiteTeam']['total_pita'] - config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][cardLv];
+                pitaNum = roomTotalJson[0]['whiteTeam']['total_pita'] - config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][cardLv - 1];
                 roomTotalJson[0]['whiteTeam']['total_pita'] = pitaNum;
 
                 console.log("[!!!!!] pita num : ", pitaNum);
 
             } else {
-                pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] - config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][cardLv];
+                pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] - config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][cardLv - 1];
                 roomTotalJson[0]['blackTeam']['total_pita'] = pitaNum;
 
                 console.log("[!!!!!] pita num : ", pitaNum);
             }
 
-            if (pitaNum > 0){
+            if (pitaNum >= 0){
+                socket.emit("Continue Event");
+
                 socket.to(socket.room + socket.team).emit('Update Pita', pitaNum);
                 socket.emit('Update Pita', pitaNum);
 
@@ -1224,13 +1226,13 @@ module.exports = (io) => {
                 socket.emit("Short of Money");
 
                 if (attackJson.teamName == true) {
-                    pitaNum = roomTotalJson[0]['whiteTeam']['total_pita'] + config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][cardLv];
+                    pitaNum = roomTotalJson[0]['whiteTeam']['total_pita'] + config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][cardLv - 1];
                     roomTotalJson[0]['whiteTeam']['total_pita'] = pitaNum;
     
                     console.log("[!!!!!] pita num : ", pitaNum);
     
                 } else {
-                    pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] + config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][cardLv];
+                    pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] + config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][cardLv - 1];
                     roomTotalJson[0]['blackTeam']['total_pita'] = pitaNum;
     
                     console.log("[!!!!!] pita num : ", pitaNum);
@@ -1263,11 +1265,13 @@ module.exports = (io) => {
 
             // pita 감소
             let pitaNum;
+            if (roomTotalJson[0]['blackTeam']['total_pita'] - config["RESPONSE_" + (responseJson.attackIndex + 1)]['pita'][cardLv - 1] >= 0){
+                socket.emit("Continue Event");
 
-            console.log("[!!!!!] pita num : ", pitaNum);
-            if (roomTotalJson[0]['blackTeam']['total_pita'] - config["RESPONSE_" + (attackJson.attackIndex + 1)]['pita'][cardLv] > 0){
-                pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] - config["RESPONSE_" + (attackJson.attackIndex + 1)]['pita'][cardLv];
+                pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] - config["RESPONSE_" + (responseJson.attackIndex + 1)]['pita'][cardLv - 1];
                 roomTotalJson[0]['blackTeam']['total_pita'] = pitaNum;
+                console.log("[!!!!!] pita num : ", pitaNum);
+
                 await responseCount(socket, roomTotalJson, responseJson, cardLv);
             } else {
                 console.log("방어 실패!! >> pita 부족")
@@ -1289,44 +1293,59 @@ module.exports = (io) => {
             if (socket.team == true) {
                 console.log("white team upgrade attack card");
                 cardLv = roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"][upgradeAttackInfo.attackIndex];
-                roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"][upgradeAttackInfo.attackIndex] += 1;
                 pitaNum = roomTotalJson[0]['whiteTeam']['total_pita'] - config["MONITORING_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv];
                 roomTotalJson[0]['whiteTeam']['total_pita'] = pitaNum;
 
                 console.log("[!!!!!] pita num : ", pitaNum);
-
-                socket.to(socket.room+'true').emit('Update Pita', pitaNum);
-                socket.emit('Update Pita', pitaNum);
             } else {
                 console.log("black team upgrade attack card");
                 cardLv = roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"][upgradeAttackInfo.attackIndex];
-                roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"][upgradeAttackInfo.attackIndex] += 1;
+                console.log("team total_pita : ", roomTotalJson[0]['blackTeam']['total_pita'], ", config pita : ", config["MONITORING_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv]);
                 pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] - config["MONITORING_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv];
                 roomTotalJson[0]['blackTeam']['total_pita'] = pitaNum;
 
                 console.log("[!!!!!] pita num : ", pitaNum);
+            }
 
-                socket.to(socket.room+'false').emit('Update Pita', pitaNum);
+            if (pitaNum >= 0){
+                socket.emit("Continue Event");
+                
+                socket.to(socket.room + socket.team).emit('Update Pita', pitaNum);
                 socket.emit('Update Pita', pitaNum);
-            }
 
-            console.log("Update card list roomTotalJson : ", roomTotalJson[0][upgradeAttackInfo.companyName]);
+                if (socket.team == true) {
+                    console.log("white team upgrade attack card");
+                    roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"][upgradeAttackInfo.attackIndex] += 1;
+                } else {
+                    console.log("black team upgrade attack card");
+                    roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"][upgradeAttackInfo.attackIndex] += 1;
+                }
 
-            await jsonStore.updatejson(roomTotalJson[0], socket.room);
-            roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-            console.log("Update card list update roomTotalJson : ", roomTotalJson);
-            let returnValue;
+                
 
-            if (socket.team == true) {
-                returnValue = roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"];
+                console.log("Update card list roomTotalJson : ", roomTotalJson[0][upgradeAttackInfo.companyName]);
+
+                await jsonStore.updatejson(roomTotalJson[0], socket.room);
+                roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+                console.log("Update card list update roomTotalJson : ", roomTotalJson);
+                let returnValue;
+
+                if (socket.team == true) {
+                    returnValue = roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"];
+                } else {
+                    returnValue = roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"];
+                }
+
+                // 나중에 white와 black 구분해서 보내기
+                console.log("Update Card List Return Value : ", returnValue);
+                socket.to(socket.room + socket.team).emit("Card List", upgradeAttackInfo.companyName, returnValue);
+                socket.emit("Card List", upgradeAttackInfo.companyName, returnValue);
             } else {
-                returnValue = roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"];
+                console.log("업그레이드 실패!! >> pita 부족");
+                socket.emit("Short of Money");
             }
 
-            // 나중에 white와 black 구분해서 보내기
-            console.log("Update Card List Return Value : ", returnValue);
-            socket.to(socket.room + socket.team).emit("Card List", upgradeAttackInfo.companyName, returnValue);
-            socket.emit("Card List", upgradeAttackInfo.companyName, returnValue);
+            
 
         });
 
@@ -2132,7 +2151,7 @@ module.exports = (io) => {
 
             clearTimeout(attackStepTime);
 
-        }, config["ATTACK_" + (attackJson.attackIndex + 1)]["time"][cardLv] * 1000);
+        }, config["ATTACK_" + (attackJson.attackIndex + 1)]["time"][cardLv - 1] * 1000);
 
         socket.on("Click Response", async(responseData) => {
             let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
@@ -2155,7 +2174,8 @@ module.exports = (io) => {
                 responseStep = 6;
             }
 
-            if (roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attackStep"] == (responseStep + 1)){
+            if (roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attackStep"] == (responseStep + 1) || 
+            roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attackStep"] == responseStep ){
                 console.log("대응됨! -> attackCount 중지");
                 clearTimeout(attackStepTime);
                 socket.to(socket.room+socket.team).emit("Stop Performing");
@@ -2443,7 +2463,7 @@ module.exports = (io) => {
             }
 
             socket.to(socket.room+'true').emit('Load Response List', responseJson.companyName, responseJson.sectionIndex, responseProgress, step - 1);
-            socket.emit('Load Response List', responseProgress);            
+            socket.emit('Load Response List', responseJson.companyName, responseJson.sectionIndex, responseProgress, step - 1); 
 
             // socket.to(socket.room+'true').emit("Response Step", step - 1);
             // socket.emit("Response Step", step - 1);
@@ -2496,7 +2516,7 @@ module.exports = (io) => {
 
             clearTimeout(responseStepTime);
 
-        }, config["RESPONSE_" + (responseJson.attackIndex + 1)]["time"][cardLv] * 1000);
+        }, config["RESPONSE_" + (responseJson.attackIndex + 1)]["time"][cardLv - 1] * 1000);
 
 
         // click attack이 호출되어도 이 socket 함수로 들어오지 않는 것으로 보임 -> 수정 필요

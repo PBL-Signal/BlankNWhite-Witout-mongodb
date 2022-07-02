@@ -72,7 +72,7 @@ module.exports = {
     WHITE_INCOME : { pita : 100, time : 10 },
     
     // 방 생성 인원 기본 값
-    DEFAULT_ROOM : { maxPlayer : 4 },
+    DEFAULT_ROOM : { maxPlayer : 8 },
     // 대기룸 maxPlayer에 따른 UI 위치 
     ALLOCATE_PLAYER_UI : { 2 : '1', 4 : '21', 6 : '321', 8 : '4321'}
 

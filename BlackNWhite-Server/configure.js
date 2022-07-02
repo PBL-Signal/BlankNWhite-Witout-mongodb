@@ -74,7 +74,19 @@ module.exports = {
     // 방 생성 인원 기본 값
     DEFAULT_ROOM : { maxPlayer : 8 },
     // 대기룸 maxPlayer에 따른 UI 위치 
-    ALLOCATE_PLAYER_UI : { 2 : '1', 4 : '21', 6 : '321', 8 : '4321'}
+    ALLOCATE_PLAYER_UI : { 2 : '1', 4 : '21', 6 : '321', 8 : '4321'},
+
+    // 게임 시작시 제출 호두
+    DUES_HODU : 100,
+
+    // 승리팀 획득 호두
+    WIN_HODU : 200,
+
+    // 패배팀 획득 호두
+    LOSE_HODU : 100,
+
+    // 승패 결정 기준(몰락된 회사 갯수)
+    BENCHMARK: 3
 
     // const COMPANY_1 = { name : "" , sectionVuln=Rand_Vuln(sectionNum) }; // section 인덱스 = 영역 idx
     // const COMPANY_2 = { name : "" , section=["ATTACK_2", "ATTACK_3",  "ATTACK_1"] };

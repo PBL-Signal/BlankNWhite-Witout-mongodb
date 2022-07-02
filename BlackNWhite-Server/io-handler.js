@@ -436,15 +436,16 @@ module.exports = (io) => {
         socket.on('changeTeamStatus',  async(changeStatus) =>{
             console.log("_____________________________________________________________________");
             console.log('!!!!changeTeamStatus changeStatus : ', changeStatus);
+            var room = socket.room;
 
-            // 1. 사용자 정보 수정 
-            var playerInfo = await redis_room.getMember(socket.room, socket.userID);
+            // 1. 사용자 정보 (status)수정  
+            var playerInfo = await redis_room.getMember(room, socket.userID);
             playerInfo.status = changeStatus;
             console.log("PlayersInfo : ", playerInfo);
 
-            var room = socket.room;
-            await redis_room.updateMember(room, socket.userID, playerInfo);// evenNumPlayer는 팀 정보
-     
+            await redis_room.updateMember(room, socket.userID, playerInfo);
+            io.sockets.in(socket.room).emit('updateUI',JSON.stringify(playerInfo));
+
 
             var prevTeam = playerInfo.team; // 팀 바꾸기 전 현재 사용자 팀 정보
             var prevPlace = playerInfo.place;
@@ -453,6 +454,25 @@ module.exports = (io) => {
             // 2. status 상황에 따라 행동 다르게
             // 0이면 teamChange Off
             if (changeStatus == 0){     
+                // 만약 대기에 있었다면 빼주기 
+                var myWaitingField, mywaitingList;
+                if(prevPlace){
+                    myWaitingField = 'toBlackUsers';
+                }else{
+                    myWaitingField = 'toWhiteUsers';
+                }
+                var myWaitingData = await hashtableStore.getHashTableFieldValue(room, [myWaitingField], 'roomManage');
+
+                // 널 처리
+                if (myWaitingData[0].length != 0){
+                    mywaitingList = myWaitingData[0].split(',');
+                    mywaitingList = mywaitingList.filter(function(userID) {
+                        return userID != socket.userID;
+                    });
+                    console.log("웨이팅 리스트에서 삭제함 : "+ myWaitingField + mywaitingList);
+                    await hashtableStore.updateHashTableField(room, myWaitingField, mywaitingList.join(','), 'roomManage');
+                }
+
                 // 2-1. 수정한 내용 client들에게 뿌리기
                 var playerJson = JSON.stringify(playerInfo);
                 console.log('check : ', playerJson);
@@ -469,20 +489,17 @@ module.exports = (io) => {
                 */
 
                 // 0. redis에서 room 정보 불러오기s
-                // var roomInfoJson =  JSON.parse(await redis_room.getRoomInfo(socket.room));
-                // console.log('!!!~~룸정보', roomInfoJson);
                 var roomManageDict = await hashtableStore.getAllHashTable(room, 'roomManage'); // 딕셔너리 형태
                 console.log('!!!~~룸정보 roomManage', roomManageDict);
 
 
-                // 경우 1-1 : 현재 white 팀 -> black 가능한지 확인
+                // 경우 1 : 다른 팀의 자리가 있어서 바로 변경 가능
                 console.log("@roomManageDict.blackUserCnt : ", roomManageDict.blackUserCnt);
                 console.log("@roomManageDict.whiteUserCnt : ", roomManageDict.whiteUserCnt);
                 var limitedUser = parseInt(roomManageDict.maxPlayer / 2);
                 if ((prevTeam == true &&  roomManageDict.blackUserCnt < limitedUser) || (prevTeam == false && roomManageDict.whiteUserCnt < limitedUser))
                 {                
                     // 1. room의 사용자 team 정보 바꾸기
-                    // playerInfo.team = false;
                     console.log("[case1] PlayersInfo : ", playerInfo);
                     playerInfo.team = !prevTeam;
                     socket.team = !prevTeam;;
@@ -496,7 +513,6 @@ module.exports = (io) => {
                         ++ roomManageDict.whiteUserCnt; 
                         -- roomManageDict.blackUserCnt ; 
                     }
-         
 
                     // 수정사항 REDIS 저장
                     await hashtableStore.storeHashTable(room, roomManageDict, 'roomManage');
@@ -514,71 +530,107 @@ module.exports = (io) => {
                     var changeInfo = { 
                         type : 1,
                         player1 : playerInfo, // 이전 ->수정 후 v3
-                        // player1 : rooms[socket.room].users[socket.id]  // 수정 후
-                        // player1 : await redis_room.getMember(socket.room, socket.userID) // 수정 후 v2
                     };
 
                     var teamChangeInfo = JSON.stringify(changeInfo);
                     console.log('check : ', teamChangeInfo);
                     io.sockets.in(socket.room).emit('updateTeamChange',teamChangeInfo);
+                }else{
 
+                    // 경우 2 : full 상태라 1:1로 팀 change를 해야되는 상황 
+                    console.log("[case2]  ");
 
+                    // 경우 2-1 : 상대팀에서 팀 변경 원하는 사람이 있는지 확인 
+                    var othersWaitingField, myWaitingField;
+                    if (prevTeam){ //현재 팀 바꾸길 원하는 사용자가 화이트->블랙이므로, toWhiteUsers가 있는지 확인하기 
+                        othersWaitingField = 'toWhiteUsers';
+                        myWaitingField = 'toBlackUsers';
+                    }
+                    else{ 
+                        othersWaitingField = 'toBlackUsers';
+                        myWaitingField = 'toWhiteUsers';
+                    }
 
-                    // // 1. room의 사용자 team 정보 바꾸기
-                    // // playerInfo.team = false;
-                    // console.log("[case1-1] PlayersInfo : ", playerInfo);
-                    // rooms[socket.room].users[socket.id].team = false;
-                    // rooms[socket.room].users[socket.id].status = 0; 
+                    var othersWaitingData = await hashtableStore.getHashTableFieldValue(room, [othersWaitingField], 'roomManage');
+                    var myWaitingData = await hashtableStore.getHashTableFieldValue(room, [myWaitingField], 'roomManage');
+                    console.log("othersWaitingListData : " , othersWaitingData);
+                    console.log("othersWaitingListData[0].length : " , othersWaitingData[0].length);
+                    console.log("myWaitingListData : " , myWaitingData);
+                    console.log("myWaitingListData[0].length : " , myWaitingData[0].length);
 
-                    // // UI 위치 할당
-                    // DeplaceUser(prevTeam, prevPlace);
-                    // rooms[socket.room].users[socket.id].place = PlaceUser(false);
-                    // -- rooms[socket.room].numWhiteUsers ; 
-                    // ++ rooms[socket.room].numBlackUsers ; 
+                    // 널처리
+                    var otherswaitingList;
+                    var mywaitingList;
 
-                    // // 2. 바뀐 정보 클라쪽에 보내기
-                    // var teamChangeStatus = JSON.stringify(playerInfo);
-                    // console.log('check : ', teamChangeStatus);
-                    // io.sockets.in(socket.room).emit('updateTeamChange',teamChangeStatus);
+                    if (othersWaitingData[0].length != 0){
+                        otherswaitingList = othersWaitingData[0].split(',');
+                    }else{
+                        otherswaitingList = []
+                    }
+
+                    if (myWaitingData[0].length != 0){
+                        mywaitingList = myWaitingData[0].split(',');
+                    } else{
+                        mywaitingList = []
+                    }
+           
+                    console.log("otherswaitingList : " , otherswaitingList);
+                    console.log("mywaitingList : " , mywaitingList);
+               
+                    // 맞교환할 사람이 없으면 웨이팅리스트에 추가
+                    if (otherswaitingList.length == 0){
+                        console.log("맞교환 X - 웨이팅리스트에 추가");
+                        mywaitingList.push(socket.userID);
+                        console.log("check mywaitingList : " , mywaitingList);
+                        await hashtableStore.updateHashTableField(room, myWaitingField, mywaitingList.join(','), 'roomManage');
+                    }else{
+                        // 맞교환 진행
+                        console.log("맞교환 O");
+                                 
+                        var mateUserID = otherswaitingList.shift();
+                        console.log("mateUserID : ", mateUserID);
+                        await hashtableStore.updateHashTableField(room, othersWaitingField, otherswaitingList.join(','), 'roomManage');
+                        
+                        var matePlayerInfo = await redis_room.getMember(room, mateUserID);
+                        console.log("mate 정보 : " , matePlayerInfo);
+                        console.log("나 정보 : " , playerInfo);
+                        
+                        // player간 자리 및 정보 교환
+                        var tmp_place = playerInfo.place;
+
+                        playerInfo.place = matePlayerInfo.place;
+                        playerInfo.team = !playerInfo.team ;
+                        playerInfo.status = 0;
+
+                        matePlayerInfo.place = tmp_place;
+                        matePlayerInfo.team = !matePlayerInfo.team ;
+                        matePlayerInfo.status = 0;
+
+                        await redis_room.updateMember(room, socket.userID, playerInfo);
+                        await redis_room.updateMember(room, mateUserID, matePlayerInfo);
+
+                        //  바뀐 정보 클라쪽에 보내기
+                        var changeInfo = { 
+                            type : 2,
+                            player1 : playerInfo, 
+                            player2 : matePlayerInfo
+                        };
+
+                        var teamChangeInfo = JSON.stringify(changeInfo);
+                        console.log('check : ', teamChangeInfo);
+                        io.sockets.in(socket.room).emit('updateTeamChange',teamChangeInfo);
+                        }
+
+                
+                /*
+                var userPlacement = JSON.parse(await jsonStore.getjson(socket.room))[0];
+                // 1. 대기열에 저장 
+                if (prevTeam == false){ // 현재 black이니까 white 팀으로 변경하고자 함
+                    userPlacement.toWhiteUsers.push(socket.id);
                 }
-
-                // // 경우 1-2 : 현재 black 팀 -> white 가능한지 확인
-                // if (prevTeam == false && rooms[socket.room].numWhiteUsers <4)
-                // {
-
-                //     // 1. room의 사용자 team 정보 바꾸기
-                //     // playerInfo.team = true;
-                //     console.log("[case1-2] PlayersInfo : ", playerInfo);
-                //     rooms[socket.room].users[socket.id].team = true;
-                //     rooms[socket.room].users[socket.id].status = 0;
-
-                //     // UI 위치 할당
-                //     DeplaceUser(prevTeam, prevPlace);
-                //     rooms[socket.room].users[socket.id].place = PlaceUser(true);
-                //     ++ rooms[socket.room].numWhiteUsers ; 
-                //     -- rooms[socket.room].numBlackUsers ; 
-
-                //     // 2. 바뀐 정보 클라쪽에 보내기
-                //     var teamChangeStatus = JSON.stringify(playerInfo);
-                //     console.log('check : ', teamChangeStatus);
-                //     io.sockets.in(socket.room).emit('updateTeamChange',teamChangeStatus);
-                // }
-
-
-                // 경우 2 : full 상태라 1:1로 팀 change를 해야되는 상황 
-                // 과정 1 : 대기열 큐에 ADD
-                //// <<<수정 필요>>
-                else if (roomInfoJson.numWhiteUsers >= 4 ||roomInfoJson.numBlackUsers >= 4) // 꽉 찬 상황이면 queue에 저장 (조정 : if문 걍 없애도 될듯)
-                {
-
-                    var userPlacement = JSON.parse(await jsonStore.getjson(socket.room))[0];
-                     // 1. 대기열에 저장 
-                    if (prevTeam == false){ // 현재 black이니까 white 팀으로 변경하고자 함
-                        userPlacement.toWhiteUsers.push(socket.id);
-                    }
-                    else{ // 현재 white이니까 black 팀으로 변경하고자 함
-                        userPlacement.toBlackUsers.push(socket.id);
-                    }
+                else{ // 현재 white이니까 black 팀으로 변경하고자 함
+                    userPlacement.toBlackUsers.                                      push(socket.id);
+                }
 
                     // 2. 매칭 하기
                     if (userPlacementuserPlacement.toBlackUsers.length > 0 && userPlacement.toWhiteUsers.length > 0 ){
@@ -630,8 +682,9 @@ module.exports = (io) => {
                     };
                     io.sockets.in(socket.room).emit('updateTeamChange',teamChangeInfo);
                 }
+                */
+                }
             }
-            
         });  
 
         // [WaitingRoom] WaitingRoom에서 나갈 시 (홈버튼 클릭)

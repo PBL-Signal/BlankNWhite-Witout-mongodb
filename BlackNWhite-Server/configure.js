@@ -3,7 +3,7 @@ module.exports = {
     TOTAL_PITA : 100,
 
     // 공격
-    ATTACK_1 : { pita : [1, 2, 3, 4, 5], time : [8, 7, 6, 5, 4], name : "Reconnaissance"},
+    ATTACK_1 : { pita : [500, 2, 3, 4, 5], time : [8, 7, 6, 5, 4], name : "Reconnaissance"},
     ATTACK_2 : { pita : [1, 2, 3, 4, 5], time : [8, 7, 6, 5, 4], name : "Credential Access"},
     ATTACK_3 : { pita : [1, 2, 3, 4, 5], time : [8, 7, 6, 5, 4], name : "Discovery"},
     ATTACK_4 : { pita : [1, 2, 3, 4, 5], time : [8, 7, 6, 5, 4], name : "Collection"},
@@ -72,7 +72,7 @@ module.exports = {
     WHITE_INCOME : { pita : 100, time : 10 },
     
     // 방 생성 인원 기본 값
-    DEFAULT_ROOM : { maxPlayer : 4 },
+    DEFAULT_ROOM : { maxPlayer : 8 },
     // 대기룸 maxPlayer에 따른 UI 위치 
     ALLOCATE_PLAYER_UI : { 2 : '1', 4 : '21', 6 : '321', 8 : '4321'},
 

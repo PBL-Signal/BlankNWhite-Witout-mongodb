@@ -309,7 +309,7 @@ module.exports = (io) => {
             // const rand_Color = Math.floor(Math.random() * 12);
             await hashtableStore.storeHashTable(room, roomManageDict, 'roomManage'); // 무조건 PlaceUser 위에 있어야 함!
             
-            let playerInfo = { userID: socket.userID, nickname: socket.nickname, team: team, status: 0, color: rand_Color, place : await PlaceUser(room, team) };
+            let playerInfo = { userID: socket.userID, nickname: socket.nickname, team: team, status: 0, color: rand_Color, place : await PlaceUser(room, team), socketID : socket.id };
             console.log("PlayersInfo : ", playerInfo);
 
             
@@ -411,7 +411,7 @@ module.exports = (io) => {
             }
             profileColors = profileColors.replaceAt(rand_Color, '1');
 
-
+            socket.color = rand_Color;
             console.log("rand_Color : ",rand_Color ,"profileColors : " , profileColors);
             await hashtableStore.updateHashTableField(socket.room, 'profileColors', profileColors, 'roomManage');
 
@@ -497,7 +497,7 @@ module.exports = (io) => {
                 console.log("@roomManageDict.blackUserCnt : ", roomManageDict.blackUserCnt);
                 console.log("@roomManageDict.whiteUserCnt : ", roomManageDict.whiteUserCnt);
                 var limitedUser = parseInt(roomManageDict.maxPlayer / 2);
-                if ((prevTeam == true &&  roomManageDict.blackUserCnt < limitedUser) || (prevTeam == false && roomManageDict.whiteUserCnt < limitedUser))
+                if ((prevTeam == true &&  parseInt(roomManageDict.blackUserCnt) < limitedUser) || (prevTeam == false && parseInt(roomManageDict.whiteUserCnt) < limitedUser))
                 {                
                     // 1. room의 사용자 team 정보 바꾸기
                     console.log("[case1] PlayersInfo : ", playerInfo);
@@ -581,6 +581,7 @@ module.exports = (io) => {
                     if (otherswaitingList.length == 0){
                         console.log("맞교환 X - 웨이팅리스트에 추가");
                         mywaitingList.push(socket.userID);
+                        // mywaitingList.push({ socketID : socket.id, userID : socket.userID});
                         console.log("check mywaitingList : " , mywaitingList);
                         await hashtableStore.updateHashTableField(room, myWaitingField, mywaitingList.join(','), 'roomManage');
                     }else{
@@ -601,6 +602,7 @@ module.exports = (io) => {
                         playerInfo.place = matePlayerInfo.place;
                         playerInfo.team = !playerInfo.team ;
                         playerInfo.status = 0;
+                        socket.team = playerInfo.team;
 
                         matePlayerInfo.place = tmp_place;
                         matePlayerInfo.team = !matePlayerInfo.team ;
@@ -619,73 +621,19 @@ module.exports = (io) => {
                         var teamChangeInfo = JSON.stringify(changeInfo);
                         console.log('check : ', teamChangeInfo);
                         io.sockets.in(socket.room).emit('updateTeamChange',teamChangeInfo);
-                        }
-
-                
-                /*
-                var userPlacement = JSON.parse(await jsonStore.getjson(socket.room))[0];
-                // 1. 대기열에 저장 
-                if (prevTeam == false){ // 현재 black이니까 white 팀으로 변경하고자 함
-                    userPlacement.toWhiteUsers.push(socket.id);
-                }
-                else{ // 현재 white이니까 black 팀으로 변경하고자 함
-                    userPlacement.toBlackUsers.                                      push(socket.id);
-                }
-
-                    // 2. 매칭 하기
-                    if (userPlacementuserPlacement.toBlackUsers.length > 0 && userPlacement.toWhiteUsers.length > 0 ){
-                        var matchPlayer1Id = userPlacement.toBlackUsers.shift();
-                        var matchPlayer2Id = userPlacement.toWhiteUsers.shift();
-                        // var matchPlayerId = userPlacement[room.roomPin].toWhiteUsers.Dequeue();
-
-                        var matchPlayer1 = rooms[socket.room].users[matchPlayer1Id];
-                        var matchPlayer2 = rooms[socket.room].users[matchPlayer2Id];
-
-
-                        // 3. 변수 바꾸기 (numWhite, toBlackUsers, playerInfo)
-                        console.log('변경전 rooms[socket.room].users[matchPlayer1Id] : ', matchPlayer1);
-                        console.log('변경전 rooms[socket.room].users[matchPlayer2Id] : ', matchPlayer2);
-                    
-                        // 2) place & team 변경
-                        DeplaceUser(room, matchPlayer1.team, matchPlayer1.place);
-                        DeplaceUser(room, matchPlayer2.team, matchPlayer2.place);
-
-                        matchPlayer1.team = !matchPlayer1.team
-                        matchPlayer2.team = !matchPlayer2.team
-
-                        matchPlayer1.place = PlaceUser(room, matchPlayer1.team);
-                        matchPlayer2.place = PlaceUser(room, matchPlayer2.team);
-
-                        // 3) 변경사항 저장
-                        rooms[socket.room].users[matchPlayer1Id] = matchPlayer1;
-                        rooms[socket.room].users[matchPlayer2Id] = matchPlayer2;
-
-                        console.log('변경후 rooms[socket.room].users[matchPlayer1Id] : ', rooms[socket.room].users[matchPlayer1Id]);
-                        console.log('변경후 rooms[socket.room].users[matchPlayer2Id] : ', rooms[socket.room].users[matchPlayer2Id]);
-
-
-                        var changeInfo = { 
-                            type : 2,
-                            player1 : rooms[socket.room].users[matchPlayer1Id], // player1
-                            player2 : rooms[socket.room].users[matchPlayer2Id]   // player2
-                        };
-
-                        var teamChangeInfo = JSON.stringify(changeInfo);
-                        console.log('check : ', teamChangeInfo);
-                        io.sockets.in(socket.room).emit('updateTeamChange',teamChangeInfo);
+                        
+                        // 상대방 socketID로 1:1로 보냄 
+                        io.to(matePlayerInfo.socketID).emit('onTeamChangeType2');
                     }
-                }
-                else{
-                     // 2. 바뀐 정보 클라쪽에 보내기
-                     var changeInfo = { 
-                        type : -1,
-                    };
-                    io.sockets.in(socket.room).emit('updateTeamChange',teamChangeInfo);
-                }
-                */
+
                 }
             }
         });  
+
+        socket.on('updateSocketTeam',async()=> {
+            socket.team = !socket.team;
+            console.log("updateSocketTeam : " ,socket.team);
+        });
 
         // [WaitingRoom] WaitingRoom에서 나갈 시 (홈버튼 클릭)
         socket.on('leaveRoom', async()=> {
@@ -1782,7 +1730,9 @@ module.exports = (io) => {
             clearInterval(pitaTimerId);
             console.log("[disconnect] 타이머 종료!");
 
-            await leaveRoom(socket, socket.room);
+            if (socket.room){
+                await leaveRoom(socket, socket.room);
+            }
             await sessionStore.deleteSession(socket.sessionID);
         });
     })
@@ -1863,7 +1813,7 @@ module.exports = (io) => {
 
     // [WaitingRoom] UI player 대응 컴포넌트 idx 제거
     async function DeplaceUser(roomPin, prevTeam, idx){
-        console.log("DeplaceUser 함수---!");
+        console.log("DeplaceUser 함수---! return idx : ", idx);
 
         // var roomPin = socket.room;
         var userPlacementName ;
@@ -1884,7 +1834,7 @@ module.exports = (io) => {
         // console.log("$$DeplaceUser  userPlacement : " ,userPlacement);
 
         userPlacement =  userPlacement.join('');
-        // console.log("AFTER! userPlacement.join('')" , userPlacement);
+        console.log("AFTER! userPlacement" , userPlacement);
         console.log("check!! ", await hashtableStore.updateHashTableField(roomPin, userPlacementName, userPlacement, 'roomManage'));
     }
 
@@ -1934,22 +1884,6 @@ module.exports = (io) => {
     };
 
 
-    // Init waitingroom   
-    // async function initRoom(roomPin){
-    //     var userPlacement = {
-    //         blackPlacement : [4,3,2,1], // Unity 자리 위치 할당 관리 큐
-    //         whitePlacement : [4,3,2,1],
-    //         toBlackUsers : [], // teamChange 대기 큐(사용자 고유 id 저장)
-    //         toWhiteUsers:  []
-    //     }
-
-    //     // redis에 저장
-    //     jsonStore.storejson(userPlacement, roomPin);
-    //     const userPlacement_Redis = await jsonStore.getjson(roomPin);
-    //     console.log("!@#!@#!@", JSON.parse(userPlacement_Redis));
-    // };
-
-
     // 공개방/비공개 방 들어갈 수 있는지 확인 (검증 : 룸 존재 여부, 룸 full 여부)
     async function UpdatePermission(roomPin){
          /*
@@ -1973,7 +1907,12 @@ module.exports = (io) => {
         }
 
         return 1
-       
+    };
+
+    // 팀 교체 함수 (type 1) 
+    async function switchTeamType1(socket, playerInfo){
+
+
     };
 
     // 방 나가는  함수
@@ -1988,52 +1927,129 @@ module.exports = (io) => {
             console.log('redisroomKey : ',redisroomKey, 'roomPin : ', roomPin);
             console.log('hashtableStore.deleteHashTable', hashtableStore.deleteHashTable(roomPin,'roomManage')); // 2) roomManage room 삭제
             console.log('listStore.delElementList : ', listStore.delElementList(redisroomKey[0] + 'Room', 0, roomPin, 'roomManage')); // 3) roomManage list에서 삭제
+              
+            // 2. 방에 emit하기 (나갈려고 하는 사용자에게 보냄)
+            socket.emit('logout'); 
+
+            // 3. 방에 emit하기 (그 외 다른 사용자들에게 나간 사람정보 보냄_
+            socket.broadcast.to(roomPin).emit('userLeaved',socket.userID);  
+    
+            // 4. (join삭제) 
+            socket.leave(roomPin);
         }
-        else{
+        else{  // 나중에 if에 return 추가해서 else는 없애주기 
             // 1) roomManage room 인원 수정
-            // userCnt, blackUserCnt/whiteUserCnt, blackPlacement/whitePlacement, profileColors 수정 필요
+            // userCnt, blackUserCnt/whiteUserCnt, blackPlacement/whitePlacement, profileColors  수정 필요
+
+            // 주의! DeplaceUser부터 해줘야함
+            var userInfo = await redis_room.getMember(socket.room, socket.userID);
+            console.log(" userInfo : " ,userInfo, userInfo.place);
+            if (socket.team){
+                await DeplaceUser(roomPin, socket.team, userInfo.place); // blackPlacement/whitePlacement  -> DeplaceUser
+            }else{
+                await DeplaceUser(roomPin, socket.team, userInfo.place);  // blackPlacement/whitePlacement  -> DeplaceUser
+            }
+            
             var roomManageInfo = await hashtableStore.getAllHashTable(roomPin, 'roomManage'); ;
-            console.log("roomManageInfo" , roomManageInfo);
+            console.log("[[[ 수정전 ]]] roomManageInfo" , roomManageInfo);
 
-            roomManageInfo.userCnt = roomManageInfo.userCnt - 1; // userCnt 변경
 
-            if (socket.team){ // profileColors, blackUserCnt/whiteUserCnt, blackPlacement/whitePlacement,   팀 변경
+            // userCnt 변경
+            roomManageInfo.userCnt = roomManageInfo.userCnt - 1;
+
+            // blackUserCnt/whiteUserCnt 변경
+            // toBlackUsers, toWhiteUsers 초기화
+            var othersWaitingField, myWaitingField;
+            if (socket.team){
                 roomManageInfo.whiteUserCnt = roomManageInfo.whiteUserCnt - 1;
-                await DeplaceUser(roomPin, socket.team, await redis_room.getMember(socket.room, socket.userID).place); // blackPlacement/whitePlacement  -> DeplaceUser
+                myWaitingField = 'toBlackUsers';
+                othersWaitingField = 'toWhiteUsers';
             }else{
                 roomManageInfo.blackUserCnt = roomManageInfo.blackUserCnt - 1;
-                await DeplaceUser(roomPin, socket.team, await redis_room.getMember(socket.room, socket.userID).place);  // blackPlacement/whitePlacement  -> DeplaceUser
+                myWaitingField = 'toWhiteUsers';
+                othersWaitingField = 'toBlackUsers';
+            }
+          
+            // 만약 해당 유저가 웨이팅리스트에 있었다면 삭제함
+            if(roomManageInfo[myWaitingField].length != 0){
+                console.log("나 - 웨이팅 리스트에서 삭제함");
+                var mywaitingList = roomManageInfo[myWaitingField].split(',');
+                roomManageInfo[myWaitingField] = mywaitingList.filter(function(userID) {
+                    return userID != socket.userID;
+                });
             }
 
+            // profileColor 변경 
+            console.log("socket.color ", socket.color);
+            roomManageInfo.profileColors = roomManageInfo.profileColors.replaceAt(socket.color, '0');
+            console.log("roomManageInfo.profileColors", roomManageInfo.profileColors);
+
+            // readycnt 변경 
+            if(userInfo.status == 1){
+                roomManageInfo.readyUserCnt -= 1 ;
+            }
+        
+            console.log("[[[수정 후 ]]] roomManageInfo" , roomManageInfo);
             await hashtableStore.storeHashTable(roomPin, roomManageInfo, 'roomManage');
 
 
             // 2)  Redis - room 인원에서 삭제
             redis_room.delMember(roomPin, socket.userID);
 
+            // 2. 방에 emit하기 (나갈려고 하는 사용자에게 보냄)
+            socket.emit('logout'); 
+
+            // 3. 방에 emit하기 (그 외 다른 사용자들에게 나간 사람정보 보냄_
+            socket.broadcast.to(roomPin).emit('userLeaved',socket.userID);  
+    
+            // 4. (join삭제) 
+            socket.leave(roomPin);
+
+            ////---------------- 후 처리
+            // 3) 다른 유저의 teamChange 가능한지 확인 후 정보 저장
+            var otherswaitingList;
+            if(roomManageInfo[othersWaitingField].length != 0){
+                console.log("다른유저 -팀 체인지 진행");
+                otherswaitingList = othersWaitingData[0].split(',');
+
+                console.log("otherswaitingList : " , otherswaitingList);
+
+                var mateUserID = otherswaitingList.shift();
+                var matePlayerInfo = await redis_room.getMember(room, mateUserID);
+                console.log("mate 정보 : " , matePlayerInfo);
+
+                matePlayerInfo.place = userInfo.place;
+                matePlayerInfo.team = userInfo.team ;
+                matePlayerInfo.status = 0;
+                await redis_room.updateMember(room, mateUserID, matePlayerInfo);
+
+                var teamChangeInfo = { 
+                    type : 1,
+                    player1 : matePlayerInfo
+                };
+                
+                // teamchange 정보 보내기 
+                console.log('JSON.stringify(changeInfo); : ', JSON.stringify(changeInfo));
+                io.sockets.in(socket.room).emit('updateTeamChange', JSON.stringify(teamChangeInfo));
+            }
 
             // 3) roomManage list 인원 확인 (함수로 따로 빼기)
             // 만약 해당 룸이 full이 아니면 list에 추가해주기
-            // console.log("!await listStore.lpopList(roomPin, 'roomManage', 'publicRoom') : ", !await listStore.lpopList(roomPin, 'roomManage', 'publicRoom'));
-            if (!await listStore.lpopList(roomPin, 'roomManage', 'publicRoom') && redis_room.RoomMembers_num(roomPin) < 8){
-                var redisroomKey =  roomManageInfo.roomType +'Room';
-                listStore.rpushList(redisroomKey, roomPin, true, 'roomManage');
+            var redisroomKey =  roomManageInfo.roomType + 'Room';
+            var publicRoomList = await listStore.rangeList(redisroomKey, 0, -1, 'roomManage');
+
+            if (!publicRoomList.includes(roomPin) && (await redis_room.RoomMembers_num(roomPin) <= JSON.parse(await redis_room.getRoomInfo(roomPin)).maxPlayer)){
+                await listStore.rpushList(redisroomKey, roomPin, false, 'roomManage');
                 console.log("roomManage의 list에 추가됨");
             }
             
         }
         
-        // 3. 방에 emit하기 (나갈려고 하는 사용자에게 보냄)
-        io.sockets.in(roomPin).emit('logout'); 
-        // 3. 방에 emit하기 (그 외 다른 사용자들에게 나간 사람정보 보냄_
-        socket.broadcast.to(roomPin).emit('userLeaved',socket.userID);  
-    
 
-        // 4. (join삭제) socket.leave(room) 
-        socket.leave(roomPin);
-
-        // 5. 나머지 room 관련 정보 socket에서 삭제해주기!!
-       // << 코드 미정 >>
+        // 5. 나머지 room 관련 정보 socket에서 삭제 및 빈 값으로 수정해주기!!
+       socket.room = null;
+       socket.team = null;
+       socket.color = null;
     };
 
 

@@ -85,6 +85,9 @@ module.exports = {
     // 패배팀 획득 호두
     LOSE_HODU : 100,
 
+    // 무승부 획득 호두
+    TIE_HODU : 150,
+
     // 승패 결정 기준(몰락된 회사 갯수)
     BENCHMARK: 3
 

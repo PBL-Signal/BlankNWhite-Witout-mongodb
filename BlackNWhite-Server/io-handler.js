@@ -821,6 +821,11 @@ module.exports = (io) => {
                     io.sockets.in(socket.room).emit('Timer END');
                     clearInterval(timerId);
                     clearInterval(pitaTimerId);
+
+                    // 게임종료 -> 점수 계산 함수 호출
+                    io.sockets.in(socket.room).emit('Load_ResultPage');
+                    socket.on('Finish_Load_ResultPage', ()=> { TimeOverGameOver(socket, roomTotalJson); });               
+                    
                 }
             }, 1000);
 
@@ -1704,6 +1709,11 @@ module.exports = (io) => {
                 io.sockets.in(socket.room+'false').emit('Company Status', abandonStatusList); // 블랙팀
                 io.sockets.in(socket.room+'true').emit('Company Status', abandonStatusList); // 화이트팀
                 // io.sockets.in(socket.room).emit('Company Status', abandonStatusList);
+
+
+                // 모든 회사가 몰락인지 확인
+                AllAbandon(socket, roomTotalJson);
+
             }
             
         });
@@ -1738,7 +1748,7 @@ module.exports = (io) => {
         socket.on('Get_Final_RoomTotal', async() => {
             // 타이머 종료
             io.sockets.in(socket.room).emit('Timer END');
-            socket.emit('Result_PAGE'); // 결과 페이지로 넘어가면 타이머, 로그 안보이게 하기
+            //socket.emit('Result_PAGE'); // 결과 페이지로 넘어가면 타이머, 로그 안보이게 하기
 
             // 양팀 남은 피타, 획득 호두, 승리팀
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
@@ -1747,6 +1757,7 @@ module.exports = (io) => {
                 whitePita : roomTotalJson[0].whiteTeam.total_pita,
                 winHodu : config.WIN_HODU,
                 loseHodu : config.LOSE_HODU,
+                tieHodu: config.TIE_HODU,
                 winTeam : false
             }         
 
@@ -1772,6 +1783,20 @@ module.exports = (io) => {
 
             socket.emit('playerInfo', blackUsersInfo, whiteUsersInfo, JSON.stringify(finalRoomTotal)); // 플리이어 정보(닉네임, 프로필 색) 배열, 양팀 피타, 호두, 승리팀 정보 전송
 
+        });
+
+        // [Result]
+        socket.on('All_abandon_test', async() => {
+            console.log("All_abandon_test called");
+            // 양팀 남은 피타, 획득 호두, 승리팀
+            const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+
+            for(let company of companyNameList){
+                roomTotalJson[0][company]["abandonStatus"] = true;
+            }
+            await jsonStore.updatejson(roomTotalJson[0], socket.room);
+
+            AllAbandon(socket, roomTotalJson);
         });
 
 // ===================================================================================================================
@@ -2427,7 +2452,7 @@ module.exports = (io) => {
             let now = hours+":"+minutes+":"+seconds;
             var companyIdx =  attackJson.companyName.charCodeAt(7) - 65;
             var monitoringLog = {time: now, nickname: "", targetCompany: attackJson.companyName, targetSection: sectionNames[companyIdx][attackJson.sectionIndex], actionType: "Detected", detail: attack_name_list[delIndex]+"공격이 탐지 되었습니다."};
-            var attackIdx = 
+            
             console.log("[GameLog] monitoringLog > ",monitoringLog);
             whiteLogJson[0].push(monitoringLog);
             await jsonStore.updatejson(whiteLogJson[0], socket.room+":whiteLog");
@@ -2594,7 +2619,7 @@ module.exports = (io) => {
 
             let today = new Date();   
             let hours = today.getHours(); // 시
-            let minutes = today.getMinutes();  // 분
+            let minutes = today.getMinutes();  // 분bandon CALLED
             let seconds = today.getSeconds();  // 초
             let now = hours+":"+minutes+":"+seconds;
 
@@ -2645,6 +2670,91 @@ module.exports = (io) => {
             }
         });
     }
+
+    // 모든 회사가 몰락인지 확인, 몰락이면 게임 종료
+    async function AllAbandon(socket, roomTotalJson){
+        console.log("AllAbandon CALLED");
+        var gameover = true;
+        for(let company of companyNameList){
+            console.log("AllAbandon abandonStatus : ", roomTotalJson[0][company]["abandonStatus"]);
+            if(roomTotalJson[0][company]["abandonStatus"] == false){
+                gameover = false;
+                break;
+            }
+        }
+        console.log("AllAbandon CALLED", gameover);
+        
+        var winTeam = false;
+        if(gameover){
+            clearInterval(timerId);
+            clearInterval(pitaTimerId);
+            io.sockets.in(socket.room).emit('Load_ResultPage');
+            //io.sockets.in(socket.room).emit('Load_ResultPage');
+            socket.on('Finish_Load_ResultPage', ()=> { 
+                // 남은 피타
+                var blackPitaNum = roomTotalJson[0]["blackTeam"]["total_pita"];
+                var whitePitaNum = roomTotalJson[0]["whiteTeam"]["total_pita"];
+
+
+                // 점수 계산 
+                // 화이트팀 : (남은 회사 * 1000) + 남은 피타
+                // 블랙팀 : (파괴한 회사 * 1000) + 남은 피타
+                var whiteScore = whitePitaNum;
+                var blackScore = (5 * 1000) + blackPitaNum;
+
+                if(whiteScore > blackScore){
+                    winTeam = true;
+                } else if (whiteScore < blackScore){
+                    winTeam = false;
+                } else {
+                    // 무승부
+                    winTeam = null;
+                }
+                io.sockets.in(socket.room).emit('Abandon_Gameover', winTeam, blackScore, whiteScore);
+            });
+            
+        }
+
+    }
+
+    // 타임오버로 인한 게임 종료 -> 점수계산
+    async function TimeOverGameOver(socket, roomTotalJson){
+        console.log("TimeOverGameOver CALLED");
+        
+        // 살아남은 회사수
+        var aliveCnt = 0;
+        for(let company of companyNameList){
+            if(roomTotalJson[0][company]["abandonStatus"] == false){
+                aliveCnt++;
+            }
+        }
+
+        // 남은 피타
+        var blackPitaNum = roomTotalJson[0]["blackTeam"]["total_pita"];
+        var whitePitaNum = roomTotalJson[0]["whiteTeam"]["total_pita"];
+
+
+        // 점수 계산 
+        // 화이트팀 : (남은 회사 * 1000) + 남은 피타
+        // 블랙팀 : (파괴한 회사 * 1000) + 남은 피타
+        var whiteScore = (aliveCnt * 1000) + whitePitaNum;
+        var blackScore = ((5-aliveCnt) * 1000) + blackPitaNum;
+
+        if(whiteScore > blackScore){
+            var winTeam = true;
+        } else if (whiteScore < blackScore){
+            var winTeam = false;
+        } else {
+            // 무승부
+            winTeam = null;
+        }
+        
+        console.log("TimeOverGameOver END");
+        //socket.in(socket.room).emit("Timeout_Gameover", winTeam);
+        io.sockets.in(socket.room).emit('Timeout_Gameover', winTeam, blackScore, whiteScore);
+        //socket.in(socket.room+'false').emit("Timeout_Gameover", winTeam);
+    }   
+    
     
 }
 

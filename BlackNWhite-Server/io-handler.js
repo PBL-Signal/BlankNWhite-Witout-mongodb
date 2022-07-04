@@ -1196,8 +1196,6 @@ module.exports = (io) => {
             }
 
             if (pitaNum >= 0){
-                socket.emit("Continue Event");
-
                 socket.to(socket.room + socket.team).emit('Update Pita', pitaNum);
                 socket.emit('Update Pita', pitaNum);
 
@@ -1209,15 +1207,42 @@ module.exports = (io) => {
                         var attackList = roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"];
                         var responseList = roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"];
                         var existAttack = false;
+                        var buff = 0;
                         for(var i = 0; i < attackList.length; i++){ 
                             console.log("공격 수행 여부 attackList[i] : ", attackList[i]);
-                            if (Object.keys(attackList[i]) == attackJson.attackIndex || Object.keys(responseList[i]) == attackJson.attackIndex) { 
+                            if (Object.keys(attackList[i]) == attackJson.attackIndex) { 
                                 existAttack = true;
-                                break;
+                            }
+
+                            // 8 ~ 10 사이의 공격이 선행된 경우 버프를 받아 공격 성공의 1초씩 감소함
+                            if (8 <= Object.keys(attackList[i]) && Object.keys(attackList[i]) <= 10){
+                                buff += 1;
                             }
                         }
 
+                        for(var i = 0; i < responseList.length; i++){ 
+                            console.log("공격 수행 여부 responseList[i] : ", responseList[i]);
+                            if (Object.keys(responseList[i]) == attackJson.attackIndex) { 
+                                existAttack = true;
+                            }
+
+                            // 8 ~ 10 사이의 공격이 선행된 경우 버프를 받아 공격 성공의 1초씩 감소함
+                            if (8 <= Object.keys(responseList[i]) && Object.keys(responseList[i]) <= 10){
+                                buff += 1;
+                            }
+                        }
+
+                        console.log("buff num : ", buff)
+
                         console.log("공격 수행 여부 : ", existAttack);
+
+                        var cooltime = config["ATTACK_" + (attackJson.attackIndex + 1)]["time"][cardLv - 1];
+                        if (buff > 0 && (11 <= attackJson.attackIndex && attackJson.attackIndex <= 12)) {
+                            console.log("버프 발생! >> buff : ", buff, "초 감소");
+                            cooltime -= buff;
+                        }
+
+                        socket.emit("Continue Event", cooltime);
 
                         if (!existAttack){
                             let json = new Object();
@@ -1227,7 +1252,8 @@ module.exports = (io) => {
                             step = 1;
                 
                             console.log("결정된 인덱스 별 step : ", 1);
-                            await attackCount(socket, roomTotalJson, attackJson, cardLv, 1);
+
+                            await attackCount(socket, roomTotalJson, attackJson, 1, cooltime);
                             await monitoringCount(socket, roomTotalJson, attackJson, cardLv);
                         } else {
                             console.log("이미 수행한 공격입니다.");
@@ -1247,8 +1273,10 @@ module.exports = (io) => {
                         step = 3;
                     } else if (attackJson.attackIndex == 6){
                         step = 4;
-                    } else if (7 <= attackJson.attackIndex && attackJson.attackIndex <= 10){
+                    } else if (7 == attackJson.attackIndex){
                         step = 5;
+                    } else if (8 <= attackJson.attackIndex && attackJson.attackIndex <= 10){
+                        // 필요 없을 수도 (공격의 시간을 줄여줌)
                     } else if (11 <= attackJson.attackIndex && attackJson.attackIndex <= 12){
                         step = 6;
                     }
@@ -1256,23 +1284,53 @@ module.exports = (io) => {
                     var attackList = roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"];
                     var responseList = roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"];
                     var existAttack = false;
+                    var buff = 0;
                     for(var i = 0; i < attackList.length; i++){ 
-                        if (Object.keys(attackList[i]) == attackJson.attackIndex || Object.keys(responseList[i]) == attackJson.attackIndex) { 
+                        console.log("공격 수행 여부 attackList[i] : ", attackList[i]);
+                        if (Object.keys(attackList[i]) == attackJson.attackIndex) { 
                             existAttack = true;
-                            break;
+                        }
+
+                        // 8 ~ 10 사이의 공격이 선행된 경우 버프를 받아 공격 성공의 1초씩 감소함
+                        if (8 <= Object.keys(attackList[i]) && Object.keys(attackList[i]) <= 10){
+                            buff += 1;
                         }
                     }
 
-                    if (!existAttack){
+                    for(var i = 0; i < responseList.length; i++){ 
+                        console.log("공격 수행 여부 responseList[i] : ", responseList[i]);
+                        if (Object.keys(responseList[i]) == attackJson.attackIndex) { 
+                            existAttack = true;
+                        }
 
-                            let json = new Object();
-                            json[attackJson.attackIndex] = socket.userID;
-                            roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"].push(json);
-                            roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["last"] = attackJson.attackIndex;
-                    
-                            console.log("결정된 인덱스 별 step : ", step);
-                            await attackCount(socket, roomTotalJson, attackJson, cardLv, step);
-                            await monitoringCount(socket, roomTotalJson, attackJson, cardLv);
+                        // 8 ~ 10 사이의 공격이 선행된 경우 버프를 받아 공격 성공의 1초씩 감소함
+                        if (8 <= Object.keys(responseList[i]) && Object.keys(responseList[i]) <= 10){
+                            buff += 1;
+                        }
+                    }
+
+                    console.log("buff num : ", buff)
+
+                    var cooltime = config["ATTACK_" + (attackJson.attackIndex + 1)]["time"][cardLv - 1];
+                    if (buff > 0 && (11 <= attackJson.attackIndex && attackJson.attackIndex <= 12)) {
+                        console.log("buff attackjson.attackIndex : ", attackJson.attackIndex);
+                        console.log("버프 발생! >> buff : ", buff, "초 감소");
+                        cooltime -= buff;
+                    }
+
+                    socket.emit("Continue Event", cooltime);
+
+                    console.log("이미 수행된 공격인가? existAttack : ", existAttack);
+                    if (!existAttack){
+                        let json = new Object();
+                        json[attackJson.attackIndex] = socket.userID;
+                        roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"].push(json);
+                        roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["last"] = attackJson.attackIndex;
+                
+                        console.log("결정된 인덱스 별 step : ", step);
+
+                        await attackCount(socket, roomTotalJson, attackJson, step, cooltime);
+                        await monitoringCount(socket, roomTotalJson, attackJson, cardLv);
                     } else {
                         console.log("이미 수행한 공격입니다.");
                         await monitoringCountBlocked(socket, roomTotalJson, attackJson, cardLv);
@@ -1324,11 +1382,13 @@ module.exports = (io) => {
             // pita 감소
             let pitaNum;
             if (roomTotalJson[0]['blackTeam']['total_pita'] - config["RESPONSE_" + (responseJson.attackIndex + 1)]['pita'][cardLv - 1] >= 0){
-                socket.emit("Continue Event");
 
                 pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] - config["RESPONSE_" + (responseJson.attackIndex + 1)]['pita'][cardLv - 1];
                 roomTotalJson[0]['blackTeam']['total_pita'] = pitaNum;
                 console.log("[!!!!!] pita num : ", pitaNum);
+                
+                socket.to(socket.room + socket.team).emit('Update Pita', pitaNum);
+                socket.emit('Update Pita', pitaNum);
 
                 await responseCount(socket, roomTotalJson, responseJson, cardLv);
             } else {
@@ -1365,9 +1425,7 @@ module.exports = (io) => {
                 console.log("[!!!!!] pita num : ", pitaNum);
             }
 
-            if (pitaNum >= 0){
-                socket.emit("Continue Event");
-                
+            if (pitaNum >= 0){                
                 socket.to(socket.room + socket.team).emit('Update Pita', pitaNum);
                 socket.emit('Update Pita', pitaNum);
 
@@ -1378,8 +1436,6 @@ module.exports = (io) => {
                     console.log("black team upgrade attack card");
                     roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"][upgradeAttackInfo.attackIndex] += 1;
                 }
-
-                
 
                 console.log("Update card list roomTotalJson : ", roomTotalJson[0][upgradeAttackInfo.companyName]);
 
@@ -2176,7 +2232,7 @@ module.exports = (io) => {
     
 
     // 공격 별 n초 후 공격 성공
-    async function attackCount(socket, roomTotalJson, attackJson, cardLv, step){
+    async function attackCount(socket, roomTotalJson, attackJson, step, cooltime){
         var attackStepTime = setTimeout(async function(){
             socket.to(socket.room+'false').emit("Attack Step", attackJson.companyName, attackJson.sectionIndex, step);
             socket.emit("Attack Step", attackJson.companyName, attackJson.sectionIndex, step);
@@ -2271,7 +2327,7 @@ module.exports = (io) => {
 
             clearTimeout(attackStepTime);
 
-        }, config["ATTACK_" + (attackJson.attackIndex + 1)]["time"][cardLv - 1] * 1000);
+        }, cooltime * 1000);
 
         socket.on("Click Response", async(responseData) => {
             let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
@@ -2288,7 +2344,7 @@ module.exports = (io) => {
                 responseStep = 3;
             } else if (responseJson.attackIndex == 6){
                 responseStep = 4;
-            } else if (7 <= responseJson.attackIndex && responseJson.attackIndex <= 10){
+            } else if (responseJson.attackIndex == 7){
                 responseStep = 5;
             } else if (11 <= responseJson.attackIndex && responseJson.attackIndex <= 12){
                 responseStep = 6;
@@ -2411,7 +2467,7 @@ module.exports = (io) => {
                         step = 3;
                     } else if (maxAttack == 6){
                         step = 4;
-                    } else if (7 <= maxAttack && maxAttack <= 10){
+                    } else if (maxAttack == 7){
                         step = 5;
                     } else if (11 <= maxAttack && maxAttack <= 12){
                         step = 6;
@@ -2534,6 +2590,8 @@ module.exports = (io) => {
 
     // 대응 별 n초 후 대응 성공
     async function responseCount(socket, roomTotalJson, responseJson, cardLv){
+        socket.emit("Continue Event", config["RESPONSE_" + (responseJson.attackIndex + 1)]['time'][cardLv - 1]);
+
         var responseStepTime = setTimeout(async function(){
 
             // response list에서 대응 성공한 공격 삭제
@@ -2576,7 +2634,7 @@ module.exports = (io) => {
                     step = 3;
                 } else if (maxAttack == 6){
                     step = 4;
-                } else if (7 <= maxAttack && maxAttack <= 10){
+                } else if (maxAttack == 7){
                     step = 5;
                 } else if (11 <= maxAttack && maxAttack <= 12){
                     step = 6;
@@ -2656,7 +2714,7 @@ module.exports = (io) => {
                 step = 3;
             } else if (attackJson.attackIndex == 6){
                 step = 4;
-            } else if (7 <= attackJson.attackIndex && attackJson.attackIndex <= 10){
+            } else if (attackJson.attackIndex == 7){
                 step = 5;
             } else if (11 <= attackJson.attackIndex && attackJson.attackIndex <= 12){
                 step = 6;

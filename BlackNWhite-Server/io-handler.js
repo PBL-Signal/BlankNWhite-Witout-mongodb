@@ -1522,6 +1522,7 @@ module.exports = (io) => {
                 // 최대 레벨 확인
                 if(roomTotalJson[0][corpName].sections[sectionIdx].level >= config.MAX_LEVEL){
                     console.log("섹션 최대 레벨");
+                    socket.emit("Out of Level");
                 } else {
                     // json 변경 - pita 감소
                     var newTotalPita = white_total_pita - config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level]; //pita 감소
@@ -1612,6 +1613,7 @@ module.exports = (io) => {
             
             if( roomTotalJson[0][corpName].sections[sectionIdx].vulnActive == true){
                 console.log("이미 취약점확인됨" + roomTotalJson[0][corpName].sections[sectionIdx].vulnActive.toString());
+                socket.emit("already done");
             }
             else if(black_total_pita - config.EXPLORE_INFO.pita < 0)
             {
@@ -1657,6 +1659,7 @@ module.exports = (io) => {
                 //socket.emit('BlackLog', logArr);
                 //socket.to(socket.room).emit('BlackLog', logArr);
                 io.sockets.in(socket.room+'false').emit('addLog', logArr);
+                console.log("EXPLORE ADD LOG");
             }
         });
 

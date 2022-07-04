@@ -3,19 +3,19 @@ module.exports = {
     TOTAL_PITA : 100,
 
     // 공격
-    ATTACK_1 : { pita : [1, 2, 3, 4, 5], time : [8, 7, 6, 5, 4], name : "Reconnaissance"},
-    ATTACK_2 : { pita : [1, 2, 3, 4, 5], time : [8, 7, 6, 5, 4], name : "Credential Access"},
-    ATTACK_3 : { pita : [1, 2, 3, 4, 5], time : [8, 7, 6, 5, 4], name : "Discovery"},
-    ATTACK_4 : { pita : [1, 2, 3, 4, 5], time : [8, 7, 6, 5, 4], name : "Collection"},
-    ATTACK_5 : { pita : [3, 4, 5, 6, 7], time : [8, 7, 6, 5, 4], name : "Resouce Development"},
-    ATTACK_6 : { pita : [3, 4, 5, 6, 7], time : [8, 7, 6, 5, 4], name : "Initial Access"},
-    ATTACK_7 : { pita : [2, 3, 4, 5, 6], time : [8, 7, 6, 5, 4], name : "Execution"},
-    ATTACK_8 : { pita : [4, 5, 6, 7, 8], time : [8, 7, 6, 5, 4], name : "Privilege Escalation"},
-    ATTACK_9 : { pita : [2, 3, 4, 5, 6], time : [8, 7, 6, 5, 4], name : "Persistence"},
-    ATTACK_10 : { pita : [2, 3, 4, 5, 6], time : [8, 7, 6, 5, 4], name : "Defense Evasion"},
-    ATTACK_11 : { pita : [2, 3, 4, 5, 6], time : [8, 7, 6, 5, 4], name : "Command and Control"},
-    ATTACK_12 : { pita : [5, 6, 7, 8, 9], time : [8, 7, 6, 5, 4], name : "Exfiltration"},
-    ATTACK_13 : { pita : [5, 6, 7, 8, 9], time : [8, 7, 6, 5, 4], name : "Impact"},
+    ATTACK_1 : { pita : [1, 2, 3, 4, 5], time : [9, 7, 6, 5, 4], name : "Reconnaissance"},
+    ATTACK_2 : { pita : [1, 2, 3, 4, 5], time : [9, 7, 6, 5, 4], name : "Credential Access"},
+    ATTACK_3 : { pita : [1, 2, 3, 4, 5], time : [9, 7, 6, 5, 4], name : "Discovery"},
+    ATTACK_4 : { pita : [1, 2, 3, 4, 5], time : [9, 7, 6, 5, 4], name : "Collection"},
+    ATTACK_5 : { pita : [3, 4, 5, 6, 7], time : [9, 7, 6, 5, 4], name : "Resouce Development"},
+    ATTACK_6 : { pita : [3, 4, 5, 6, 7], time : [9, 7, 6, 5, 4], name : "Initial Access"},
+    ATTACK_7 : { pita : [2, 3, 4, 5, 6], time : [9, 7, 6, 5, 4], name : "Execution"},
+    ATTACK_8 : { pita : [4, 5, 6, 7, 8], time : [9, 7, 6, 5, 4], name : "Privilege Escalation"},
+    ATTACK_9 : { pita : [2, 3, 4, 5, 6], time : [9, 7, 6, 5, 4], name : "Persistence"},
+    ATTACK_10 : { pita : [2, 3, 4, 5, 6], time : [9, 7, 6, 5, 4], name : "Defense Evasion"},
+    ATTACK_11 : { pita : [2, 3, 4, 5, 6], time : [9, 7, 6, 5, 4], name : "Command and Control"},
+    ATTACK_12 : { pita : [5, 6, 7, 8, 9], time : [9, 7, 6, 5, 4], name : "Exfiltration"},
+    ATTACK_13 : { pita : [5, 6, 7, 8, 9], time : [9, 7, 6, 5, 4], name : "Impact"},
 
     //대응
     RESPONSE_1 : { pita : [1, 2, 3, 4, 5], time : [6, 5, 4, 3, 2], name : "Reconnaissance"},
@@ -33,19 +33,19 @@ module.exports = {
     RESPONSE_13 : { pita : [5, 6, 7, 8, 9], time : [6, 5, 4, 3, 2], name : "Impact"},
     
     // 관제 시간
-    MONITORING_1 : { pita : [1, 2, 3, 4, 5], time : [3, 3, 2, 1, 1], name : "Reconnaissance"},
-    MONITORING_2 : { pita : [1, 2, 3, 4, 5], time : [3, 3, 2, 1, 1], name : "Credential Access"},
-    MONITORING_3 : { pita : [1, 2, 3, 4, 5], time : [3, 3, 2, 1, 1], name : "Discovery"},
-    MONITORING_4 : { pita : [1, 2, 3, 4, 5], time : [3, 3, 2, 1, 1], name : "Collection"},
-    MONITORING_5 : { pita : [3, 4, 5, 6, 7], time : [3, 3, 2, 1, 1], name : "Resouce Development"},
-    MONITORING_6 : { pita : [3, 4, 5, 6, 7], time : [3, 3, 2, 1, 1], name : "Initial Access"},
-    MONITORING_7 : { pita : [2, 3, 4, 5, 6], time : [3, 3, 2, 1, 1], name : "Execution"},
-    MONITORING_8 : { pita : [4, 5, 6, 7, 8], time : [3, 3, 2, 1, 1], name : "Privilege Escalation"},
-    MONITORING_9 : { pita : [2, 3, 4, 5, 6], time : [3, 3, 2, 1, 1], name : "Persistence"},
-    MONITORING_10 : { pita : [2, 3, 4, 5, 6], time : [3, 3, 2, 1, 1], name : "Defense Evasion"},
-    MONITORING_11 : { pita : [2, 3, 4, 5, 6], time : [3, 3, 2, 1, 1], name : "Command and Control"},
-    MONITORING_12 : { pita : [5, 6, 7, 8, 9], time : [3, 3, 2, 1, 1], name : "Exfiltration"},
-    MONITORING_13 : { pita : [5, 6, 7, 8, 9], time : [3, 3, 2, 1, 1], name : "Impact"},
+    MONITORING_1 : { pita : [1, 2, 3, 4, 5], time : [3, 3, 2, 1, 1, 1], name : "Reconnaissance"},
+    MONITORING_2 : { pita : [1, 2, 3, 4, 5], time : [3, 3, 2, 1, 1, 1], name : "Credential Access"},
+    MONITORING_3 : { pita : [1, 2, 3, 4, 5], time : [3, 3, 2, 1, 1, 1], name : "Discovery"},
+    MONITORING_4 : { pita : [1, 2, 3, 4, 5], time : [3, 3, 2, 1, 1, 1], name : "Collection"},
+    MONITORING_5 : { pita : [3, 4, 5, 6, 7], time : [3, 3, 2, 1, 1, 1], name : "Resouce Development"},
+    MONITORING_6 : { pita : [3, 4, 5, 6, 7], time : [3, 3, 2, 1, 1, 1], name : "Initial Access"},
+    MONITORING_7 : { pita : [2, 3, 4, 5, 6], time : [3, 3, 2, 1, 1, 1], name : "Execution"},
+    MONITORING_8 : { pita : [4, 5, 6, 7, 8], time : [3, 3, 2, 1, 1, 1], name : "Privilege Escalation"},
+    MONITORING_9 : { pita : [2, 3, 4, 5, 6], time : [3, 3, 2, 1, 1, 1], name : "Persistence"},
+    MONITORING_10 : { pita : [2, 3, 4, 5, 6], time : [3, 3, 2, 1, 1, 1], name : "Defense Evasion"},
+    MONITORING_11 : { pita : [2, 3, 4, 5, 6], time : [3, 3, 2, 1, 1, 1], name : "Command and Control"},
+    MONITORING_12 : { pita : [5, 6, 7, 8, 9], time : [3, 3, 2, 1, 1, 1], name : "Exfiltration"},
+    MONITORING_13 : { pita : [5, 6, 7, 8, 9], time : [3, 3, 2, 1, 1, 1], name : "Impact"},
     
     GAME_TIME : 30, // 현재 단위 분, 추후 수정
     MAX_LEVEL : 5,
@@ -84,6 +84,9 @@ module.exports = {
 
     // 패배팀 획득 호두
     LOSE_HODU : 100,
+
+    // 무승부 획득 호두
+    TIE_HODU : 150,
 
     // 승패 결정 기준(몰락된 회사 갯수)
     BENCHMARK: 3

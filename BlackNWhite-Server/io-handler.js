@@ -3112,24 +3112,24 @@ module.exports = (io) => {
                     }
                 } else {
                     // 공격자 탐지 로그
-                    gameLogger.info("game:detect black", {
-                        server : 'server1',
-                        userIP : '192.0.0.1',
-                        sessionID : socket.sessionID,
-                        userID : socket.userId,
-                        nickname : socket.nickname,
-                        data : 	{
-                            roomID : "sdfsdfb124gvv",
-                            team : socket.team,
-                            companyName : attackJson.companyName,
-                            section : attackJson.sectionIndex,
-                            attackType : attackJson.attackIndex,
-                            nickname : socket.nickname,
-                            userId : socket.userId,
-                            cost : 0,
-                            totalPita : roomTotalJson[0].whiteTeam.total_pita
-                        },
-                    });
+                    // gameLogger.info("game:detect black", {
+                    //     server : 'server1',
+                    //     userIP : '192.0.0.1',
+                    //     sessionID : socket.sessionID,
+                    //     userID : socket.userId,
+                    //     nickname : socket.nickname,
+                    //     data : 	{
+                    //         roomID : "sdfsdfb124gvv",
+                    //         team : socket.team,
+                    //         companyName : attackJson.companyName,
+                    //         section : attackJson.sectionIndex,
+                    //         attackType : attackJson.attackIndex,
+                    //         nickname : socket.nickname,
+                    //         userId : socket.userId,
+                    //         cost : 0,
+                    //         totalPita : roomTotalJson[0].whiteTeam.total_pita
+                    //     },
+                    // });
                 }
 
                 let company_blockedNum = 0;

@@ -2,7 +2,8 @@ const express = require("express");
 const http = require("http");
 const cors = require("cors");
 const bodyPaser = require('body-parser');
-const REDIS_PORT = 6380;
+const REDIS_PORT = 6379
+const REDIS_URL = "redis-test.i187of.ng.0001.use1.cache.amazonaws.com"
 
 // const mongoose = require('mongoose');
 const socketio = require("socket.io");
@@ -11,7 +12,8 @@ const socketredis = require("socket.io-redis");
 
 
 const app = express();
-const redisClient = new Redis(REDIS_PORT);
+// const redisClient = new Redis(REDIS_PORT);
+const redisClient = new Redis(REDIS_PORT, REDIS_URL);
 const server = http.createServer(app);
 // const options = {
 //     cors: true,
@@ -19,18 +21,25 @@ const server = http.createServer(app);
 // };
 // const io = socketio(server, options);
 
+// const io = socketio(server,{
+//     cors: {
+//         // origin: 'http://localhost:7000',
+//         origin: ['http://localhost:5693'],
+//         methods: ["GET", "POST"]
+//     },
+   
+//     transport: ["websocket"]
+// });
+// io.adapter(socketredis({host: 'localhost', port: 6380}));
+
 const io = socketio(server,{
     cors: {
-        // origin: 'http://localhost:7000',
-        origin: ['http://localhost:5693'],
-        methods: ["GET", "POST"]
+        origin: "*",
     },
-   
+
     transport: ["websocket"]
 });
-
-io.adapter(socketredis({host: 'localhost', port: 6380}));
-
+io.adapter(socketredis({host: REDIS_URL, port: REDIS_PORT}));
 
 const { setupWorker } = require("@socket.io/sticky");
 const crypto = require("crypto");

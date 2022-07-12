@@ -36,7 +36,7 @@ const Company = require("./schemas/roomTotal/Company");
 const Section = require("./schemas/roomTotal/Section");
 const Progress = require("./schemas/roomTotal/Progress");
 
-const {lobbyLogger, gameLogger} = require('./logConfig'); 
+// const {lobbyLogger, gameLogger} = require('./logConfig'); 
 const os = require( 'os' );
 var networkInterfaces = os.networkInterfaces( );
 var server_ip = networkInterfaces['Wi-Fi'][1].address;
@@ -262,37 +262,37 @@ module.exports = (io) => {
                 console.log("socket.room", socket.room);
                 socket.emit('enterPublicRoom');
 
-                lobbyLogger.info('mainHome:enter_room', {
-                    server : server_ip,
-                    userIP : '192.0.0.1',
-                    sessionID : socket.sessionID,
-                    userID : socket.userID,
-                    nickname : socket.nickname,
-                    data : {
-                        type : 'randomGameStart', 
-                        room : roomPin,
-                        status : 1
-                  },
-                });
+                // lobbyLogger.info('mainHome:enter_room', {
+                //     server : server_ip,
+                //     userIP : '192.0.0.1',
+                //     sessionID : socket.sessionID,
+                //     userID : socket.userID,
+                //     nickname : socket.nickname,
+                //     data : {
+                //         type : 'randomGameStart', 
+                //         room : roomPin,
+                //         status : 1
+                //   },
+                // });
             }else {
                 // 경우 2
                 var room_info = await createRoom('public', config.DEFAULT_ROOM.maxPlayer);
                 
-                lobbyLogger.info('mainHome:create_room', {
-                    server : server_ip,
-                    userIP : '192.0.0.1',
-                    sessionID : socket.sessionID,
-                    userID : socket.userID,
-                    nickname : socket.nickname,
-                    data : {
-                        type : "randomGameStart",
-                        roomID : room_info.roomID,
-                        room : room_info.roomPin,
-                        roomType : room_info.roomType,
-                        maxPlayer : room_info.maxPlayer,
-                        status : 1
-                  },
-                });
+                // lobbyLogger.info('mainHome:create_room', {
+                //     server : server_ip,
+                //     userIP : '192.0.0.1',
+                //     sessionID : socket.sessionID,
+                //     userID : socket.userID,
+                //     nickname : socket.nickname,
+                //     data : {
+                //         type : "randomGameStart",
+                //         roomID : room_info.roomID,
+                //         room : room_info.roomPin,
+                //         roomType : room_info.roomType,
+                //         maxPlayer : room_info.maxPlayer,
+                //         status : 1
+                //   },
+                // });
 
                 console.log("succesCreateRoom roomPin: " , room_info.roomPin);
             }    
@@ -343,21 +343,21 @@ module.exports = (io) => {
                 roomPin: room_info.roomPin.toString()
             });
 
-            lobbyLogger.info('mainHome:create_room', {
-                server : server_ip,
-                userIP : '192.0.0.1',
-                sessionID : socket.sessionID,
-                userID : socket.userID,
-                nickname : socket.nickname,
-                data : {
-                    type : "createRoom",
-                    roomID : room_info.roomID,
-                    room : room_info.roomPin,
-                    roomType : room_info.roomType,
-                    maxPlayer : room_info.maxPlayer,
-                    status : 1
-              },
-            });
+            // lobbyLogger.info('mainHome:create_room', {
+            //     server : server_ip,
+            //     userIP : '192.0.0.1',
+            //     sessionID : socket.sessionID,
+            //     userID : socket.userID,
+            //     nickname : socket.nickname,
+            //     data : {
+            //         type : "createRoom",
+            //         roomID : room_info.roomID,
+            //         room : room_info.roomPin,
+            //         roomType : room_info.roomType,
+            //         maxPlayer : room_info.maxPlayer,
+            //         status : 1
+            //   },
+            // });
         
         });
 
@@ -449,24 +449,24 @@ module.exports = (io) => {
             socket.broadcast.to(room).emit('user joined', JSON.stringify(playerInfo));
 
 
-            lobbyLogger.info('waitingRoom:add_user', {
-                server : server_ip,
-                userIP : '192.0.0.1',
-                sessionID : socket.sessionID,
-                userID : socket.userID,
-                nickname : socket.nickname,
-                data : 
-                    {
-                        // roomID : "sdfsdfb124gvv" (string),
-                        room : room,
-                        team: playerInfo.team,
-                        color:playerInfo.color,
-                        place : playerInfo.place,
-                        status: playerInfo.status,
-                        userCnt : roomManageDict.userCnt,
-                        maxPlayer : roomManageDict.maxPlayer,
-                },
-            });
+            // lobbyLogger.info('waitingRoom:add_user', {
+            //     server : server_ip,
+            //     userIP : '192.0.0.1',
+            //     sessionID : socket.sessionID,
+            //     userID : socket.userID,
+            //     nickname : socket.nickname,
+            //     data : 
+            //         {
+            //             // roomID : "sdfsdfb124gvv" (string),
+            //             room : room,
+            //             team: playerInfo.team,
+            //             color:playerInfo.color,
+            //             place : playerInfo.place,
+            //             status: playerInfo.status,
+            //             userCnt : roomManageDict.userCnt,
+            //             maxPlayer : roomManageDict.maxPlayer,
+            //     },
+            // });
 
         });
         
@@ -507,47 +507,47 @@ module.exports = (io) => {
             console.log('check playerJson : ', playerJson);
             io.sockets.in(socket.room).emit('updateUI',playerJson);
 
-            lobbyLogger.info('waitingRoom:change_status', {
-                server : server_ip,
-                userIP : '192.0.0.1',
-                sessionID : socket.sessionID,
-                userID : socket.userID,
-                nickname : socket.nickname,
-                data : 
-                    {
-                        // roomID : "sdfsdfb124gvv" (string),
-                        room : socket.room,
-                        team: playerInfo.team,
-                        color:playerInfo.color,
-                        place : playerInfo.place,
-                        status: playerInfo.status,
-                        readyUserCnt: readyUserCnt
-                },
-            });
+            // lobbyLogger.info('waitingRoom:change_status', {
+            //     server : server_ip,
+            //     userIP : '192.0.0.1',
+            //     sessionID : socket.sessionID,
+            //     userID : socket.userID,
+            //     nickname : socket.nickname,
+            //     data : 
+            //         {
+            //             // roomID : "sdfsdfb124gvv" (string),
+            //             room : socket.room,
+            //             team: playerInfo.team,
+            //             color:playerInfo.color,
+            //             place : playerInfo.place,
+            //             status: playerInfo.status,
+            //             readyUserCnt: readyUserCnt
+            //     },
+            // });
 
             // 3. 만약 모두가 ready한 상태라면 자동 game start
            if(readyUserCnt == maxPlayer){
                 console.log("!모두 레디함!");
                 io.sockets.in(socket.room).emit('countGameStart');
 
-                lobbyLogger.info('waitingRoom:count_game_start ', {
-                    server : server_ip,
-                    userIP : '192.0.0.1',
-                    sessionID : socket.sessionID,
-                    userID : socket.userID,
-                    nickname : socket.nickname,
-                    data : 
-                        {
-                            readyUserCnt: readyUserCnt
-                            // detail : "teamChange On1",
-                            // // roomID : "sdfsdfb124gvv" (string),
-                            // room : socket.room,
-                            // team: playerInfo.team,
-                            // color:playerInfo.color,
-                            // place : playerInfo.place,
-                            // status: playerInfo.status
-                    },
-                });
+                // lobbyLogger.info('waitingRoom:count_game_start ', {
+                //     server : server_ip,
+                //     userIP : '192.0.0.1',
+                //     sessionID : socket.sessionID,
+                //     userID : socket.userID,
+                //     nickname : socket.nickname,
+                //     data : 
+                //         {
+                //             readyUserCnt: readyUserCnt
+                //             // detail : "teamChange On1",
+                //             // // roomID : "sdfsdfb124gvv" (string),
+                //             // room : socket.room,
+                //             // team: playerInfo.team,
+                //             // color:playerInfo.color,
+                //             // place : playerInfo.place,
+                //             // status: playerInfo.status
+                //     },
+                // });
 
            }else{
               
@@ -597,22 +597,22 @@ module.exports = (io) => {
             io.sockets.in(socket.room).emit('updateUI',playerJson); // 모든 사람에게 뿌림
 
 
-            lobbyLogger.info('waitingRoom:change_profile', {
-                server : server_ip,
-                userIP : '192.0.0.1',
-                sessionID : socket.sessionID,
-                userID : socket.userID,
-                nickname : socket.nickname,
-                data : 
-                    {
-                        // roomID : "sdfsdfb124gvv" (string),
-                        room : socket.room,
-                        team: playerInfo.team,
-                        color:playerInfo.color,
-                        place : playerInfo.place,
-                        status: playerInfo.status
-                },
-            });
+            // lobbyLogger.info('waitingRoom:change_profile', {
+            //     server : server_ip,
+            //     userIP : '192.0.0.1',
+            //     sessionID : socket.sessionID,
+            //     userID : socket.userID,
+            //     nickname : socket.nickname,
+            //     data : 
+            //         {
+            //             // roomID : "sdfsdfb124gvv" (string),
+            //             room : socket.room,
+            //             team: playerInfo.team,
+            //             color:playerInfo.color,
+            //             place : playerInfo.place,
+            //             status: playerInfo.status
+            //     },
+            // });
         });  
 
 
@@ -663,23 +663,23 @@ module.exports = (io) => {
                 console.log('check : ', playerJson);
                 socket.broadcast.to(socket.room).emit('updateUI', playerJson);
 
-                lobbyLogger.info('waitingRoom:switch_team ', {
-                    server : server_ip,
-                    userIP : '192.0.0.1',
-                    sessionID : socket.sessionID,
-                    userID : socket.userID,
-                    nickname : socket.nickname,
-                    data : 
-                        {
-                            detail : "teamChange Off",
-                            // roomID : "sdfsdfb124gvv" (string),
-                            room : socket.room,
-                            team: playerInfo.team,
-                            color:playerInfo.color,
-                            place : playerInfo.place,
-                            status: playerInfo.status
-                    },
-                });
+                // lobbyLogger.info('waitingRoom:switch_team ', {
+                //     server : server_ip,
+                //     userIP : '192.0.0.1',
+                //     sessionID : socket.sessionID,
+                //     userID : socket.userID,
+                //     nickname : socket.nickname,
+                //     data : 
+                //         {
+                //             detail : "teamChange Off",
+                //             // roomID : "sdfsdfb124gvv" (string),
+                //             room : socket.room,
+                //             team: playerInfo.team,
+                //             color:playerInfo.color,
+                //             place : playerInfo.place,
+                //             status: playerInfo.status
+                //     },
+                // });
 
             }
             // 2이면 teamChange On
@@ -740,23 +740,23 @@ module.exports = (io) => {
                     console.log('check : ', teamChangeInfo);
                     io.sockets.in(socket.room).emit('updateTeamChange',teamChangeInfo);
 
-                    lobbyLogger.info('waitingRoom:switch_team ', {
-                        server : server_ip,
-                        userIP : '192.0.0.1',
-                        sessionID : socket.sessionID,
-                        userID : socket.userID,
-                        nickname : socket.nickname,
-                        data : 
-                            {
-                                detail : "teamChange On1",
-                                // roomID : "sdfsdfb124gvv" (string),
-                                room : socket.room,
-                                team: playerInfo.team,
-                                color:playerInfo.color,
-                                place : playerInfo.place,
-                                status: playerInfo.status
-                        },
-                    });
+                    // lobbyLogger.info('waitingRoom:switch_team ', {
+                    //     server : server_ip,
+                    //     userIP : '192.0.0.1',
+                    //     sessionID : socket.sessionID,
+                    //     userID : socket.userID,
+                    //     nickname : socket.nickname,
+                    //     data : 
+                    //         {
+                    //             detail : "teamChange On1",
+                    //             // roomID : "sdfsdfb124gvv" (string),
+                    //             room : socket.room,
+                    //             team: playerInfo.team,
+                    //             color:playerInfo.color,
+                    //             place : playerInfo.place,
+                    //             status: playerInfo.status
+                    //     },
+                    // });
                 }else{
 
                     // 경우 2 : full 상태라 1:1로 팀 change를 해야되는 상황 
@@ -807,23 +807,23 @@ module.exports = (io) => {
                         console.log("check mywaitingList : " , mywaitingList);
                         await hashtableStore.updateHashTableField(room, myWaitingField, mywaitingList.join(','), 'roomManage');
                         
-                        lobbyLogger.info('waitingRoom:switch_team ', {
-                            server : server_ip,
-                            userIP : '192.0.0.1',
-                            sessionID : socket.sessionID,
-                            userID : socket.userID,
-                            nickname : socket.nickname,
-                            data : 
-                                {
-                                    detail : "teamChange Wait",
-                                    // roomID : "sdfsdfb124gvv" (string),
-                                    room : socket.room,
-                                    team: playerInfo.team,
-                                    color:playerInfo.color,
-                                    place : playerInfo.place,
-                                    status: playerInfo.status
-                            },
-                        });
+                        // lobbyLogger.info('waitingRoom:switch_team ', {
+                        //     server : server_ip,
+                        //     userIP : '192.0.0.1',
+                        //     sessionID : socket.sessionID,
+                        //     userID : socket.userID,
+                        //     nickname : socket.nickname,
+                        //     data : 
+                        //         {
+                        //             detail : "teamChange Wait",
+                        //             // roomID : "sdfsdfb124gvv" (string),
+                        //             room : socket.room,
+                        //             team: playerInfo.team,
+                        //             color:playerInfo.color,
+                        //             place : playerInfo.place,
+                        //             status: playerInfo.status
+                        //     },
+                        // });
                     
                     }else{
                         // 맞교환 진행
@@ -866,23 +866,23 @@ module.exports = (io) => {
                         // 상대방 socketID로 1:1로 보냄 
                         io.to(matePlayerInfo.socketID).emit('onTeamChangeType2');
 
-                        lobbyLogger.info('waitingRoom:switch_team ', {
-                            server : server_ip,
-                            userIP : '192.0.0.1',
-                            sessionID : socket.sessionID,
-                            userID : socket.userID,
-                            nickname : socket.nickname,
-                            data : 
-                                {
-                                    detail : "teamChange On2",
-                                    // roomID : "sdfsdfb124gvv" (string),
-                                    room : socket.room,
-                                    team: playerInfo.team,
-                                    color:playerInfo.color,
-                                    place : playerInfo.place,
-                                    status: playerInfo.status
-                            },
-                        });
+                        // lobbyLogger.info('waitingRoom:switch_team ', {
+                        //     server : server_ip,
+                        //     userIP : '192.0.0.1',
+                        //     sessionID : socket.sessionID,
+                        //     userID : socket.userID,
+                        //     nickname : socket.nickname,
+                        //     data : 
+                        //         {
+                        //             detail : "teamChange On2",
+                        //             // roomID : "sdfsdfb124gvv" (string),
+                        //             room : socket.room,
+                        //             team: playerInfo.team,
+                        //             color:playerInfo.color,
+                        //             place : playerInfo.place,
+                        //             status: playerInfo.status
+                        //     },
+                        // });
                     }
 
                 }
@@ -893,23 +893,23 @@ module.exports = (io) => {
             socket.team = !socket.team;
             console.log("updateSocketTeam : " ,socket.team);
 
-            lobbyLogger.info('waitingRoom:switch_team ', {
-                server : server_ip,
-                userIP : '192.0.0.1',
-                sessionID : socket.sessionID,
-                userID : socket.userID,
-                nickname : socket.nickname,
-                data : 
-                    {
-                        detail : "teamChange On2",
-                        // roomID : "sdfsdfb124gvv" (string),
-                        room : socket.room,
-                        team: socket.team,
-                        color:socket.color,
-                        // place : socket.place,
-                        // status: socket.status
-                },
-            });
+            // lobbyLogger.info('waitingRoom:switch_team ', {
+            //     server : server_ip,
+            //     userIP : '192.0.0.1',
+            //     sessionID : socket.sessionID,
+            //     userID : socket.userID,
+            //     nickname : socket.nickname,
+            //     data : 
+            //         {
+            //             detail : "teamChange On2",
+            //             // roomID : "sdfsdfb124gvv" (string),
+            //             room : socket.room,
+            //             team: socket.team,
+            //             color:socket.color,
+            //             // place : socket.place,
+            //             // status: socket.status
+            //     },
+            // });
         });
 
         // [WaitingRoom] WaitingRoom에서 나갈 시 (홈버튼 클릭)
@@ -958,24 +958,24 @@ module.exports = (io) => {
             // socket.broadcast.to(socket.room).emit('onGameStart');  //ver0
             io.sockets.in(socket.room).emit('onGameStart'); // ver1/
 
-            lobbyLogger.info('waitingRoom:game_start', {
-                server : server_ip,
-                userIP : '192.0.0.1',
-                sessionID : socket.sessionID,
-                userID : socket.userID,
-                nickname : socket.nickname,
-                data : 
-                    {
-                        // readyUserCnt: readyUserCnt
-                        // detail : "teamChange On1",
-                        // // roomID : "sdfsdfb124gvv" (string),
-                        // room : socket.room,
-                        // team: playerInfo.team,
-                        // color:playerInfo.color,
-                        // place : playerInfo.place,
-                        // status: playerInfo.status
-                },
-            });
+            // lobbyLogger.info('waitingRoom:game_start', {
+            //     server : server_ip,
+            //     userIP : '192.0.0.1',
+            //     sessionID : socket.sessionID,
+            //     userID : socket.userID,
+            //     nickname : socket.nickname,
+            //     data : 
+            //         {
+            //             // readyUserCnt: readyUserCnt
+            //             // detail : "teamChange On1",
+            //             // // roomID : "sdfsdfb124gvv" (string),
+            //             // room : socket.room,
+            //             // team: playerInfo.team,
+            //             // color:playerInfo.color,
+            //             // place : playerInfo.place,
+            //             // status: playerInfo.status
+            //     },
+            // });
         });
 
         //  [WaitingRoom] GameStart로 모든 클라이언트의 on을 받는 함수로 팀별로 room join하여 씬 이동함 
@@ -989,24 +989,24 @@ module.exports = (io) => {
             // io.sockets.in(socket.room+'false').emit('onBlackGameStart');// ver2
             // io.sockets.in(socket.room+'true').emit('onWhiteGameStart');// ver2
         
-            lobbyLogger.info('waitingRoom:game_start_join_team', {
-                server : server_ip,
-                userIP : '192.0.0.1',
-                sessionID : socket.sessionID,
-                userID : socket.userID,
-                nickname : socket.nickname,
-                data : 
-                    {
-                        // readyUserCnt: readyUserCnt
-                        // detail : "teamChange On1",
-                        // // roomID : "sdfsdfb124gvv" (string),
-                        // room : socket.room,
-                        // team: playerInfo.team,
-                        // color:playerInfo.color,
-                        // place : playerInfo.place,
-                        // status: playerInfo.status
-                },
-            });
+            // lobbyLogger.info('waitingRoom:game_start_join_team', {
+            //     server : server_ip,
+            //     userIP : '192.0.0.1',
+            //     sessionID : socket.sessionID,
+            //     userID : socket.userID,
+            //     nickname : socket.nickname,
+            //     data : 
+            //         {
+            //             // readyUserCnt: readyUserCnt
+            //             // detail : "teamChange On1",
+            //             // // roomID : "sdfsdfb124gvv" (string),
+            //             // room : socket.room,
+            //             // team: playerInfo.team,
+            //             // color:playerInfo.color,
+            //             // place : playerInfo.place,
+            //             // status: playerInfo.status
+            //     },
+            // });
         
         });
 
@@ -1458,24 +1458,24 @@ module.exports = (io) => {
             }
 
             // 공격 시도 로그
-            gameLogger.info("game:attack attempt", {
-                server : 'server1',
-                userIP : '192.0.0.1',
-                sessionID : socket.sessionID,
-                userID : socket.userId,
-                nickname : socket.nickname,
-                data : 	{
-                    roomID : "sdfsdfb124gvv",
-                    team : socket.team,
-                    companyName : attackJson.companyName,
-                    section : attackJson.sectionIndex,
-                    state : "attempnt",
-                    attackType : attackJson.attackIndex,
-                    attackLevel : cardLv,
-                    cost : config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][cardLv - 1],
-                    totalPita : pitaNum
-                },
-            });
+            // gameLogger.info("game:attack attempt", {
+            //     server : 'server1',
+            //     userIP : '192.0.0.1',
+            //     sessionID : socket.sessionID,
+            //     userID : socket.userId,
+            //     nickname : socket.nickname,
+            //     data : 	{
+            //         roomID : "sdfsdfb124gvv",
+            //         team : socket.team,
+            //         companyName : attackJson.companyName,
+            //         section : attackJson.sectionIndex,
+            //         state : "attempnt",
+            //         attackType : attackJson.attackIndex,
+            //         attackLevel : cardLv,
+            //         cost : config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][cardLv - 1],
+            //         totalPita : pitaNum
+            //     },
+            // });
 
             if (pitaNum >= 0){
                 socket.to(socket.room + socket.team).emit('Update Pita', pitaNum);
@@ -1611,25 +1611,25 @@ module.exports = (io) => {
                 }
 
                 // 공격 실패 - 피타 부족
-                gameLogger.info("game:attack fail", {
-                    server : 'server1',
-                    userIP : '192.0.0.1',
-                    sessionID : socket.sessionID,
-                    userID : socket.userId,
-                    nickname : socket.nickname,
-                    data : 	{
-                        roomID : "sdfsdfb124gvv",
-                        team : socket.team,
-                        companyName : attackJson.companyName,
-                        section : attackJson.sectionIndex,
-                        state : "fail",
-                        cause : "pita",
-                        attackType : attackJson.attackIndex,
-                        attackLevel : cardLv,
-                        cost : 0,
-                        totalPita : pitaNum
-                    },
-                });
+                // gameLogger.info("game:attack fail", {
+                //     server : 'server1',
+                //     userIP : '192.0.0.1',
+                //     sessionID : socket.sessionID,
+                //     userID : socket.userId,
+                //     nickname : socket.nickname,
+                //     data : 	{
+                //         roomID : "sdfsdfb124gvv",
+                //         team : socket.team,
+                //         companyName : attackJson.companyName,
+                //         section : attackJson.sectionIndex,
+                //         state : "fail",
+                //         cause : "pita",
+                //         attackType : attackJson.attackIndex,
+                //         attackLevel : cardLv,
+                //         cost : 0,
+                //         totalPita : pitaNum
+                //     },
+                // });
             }
 
             // step = roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attackStep"];
@@ -1697,50 +1697,50 @@ module.exports = (io) => {
                 await responseCount(socket, responseJson, indexStep, (cooltimeLV - 1));
 
                 // 대응 시도
-                gameLogger.info("game:response attempt", {
-                    server : 'server1',
-                    userIP : '192.0.0.1',
-                    sessionID : socket.sessionID,
-                    userID : socket.userId,
-                    nickname : socket.nickname,
-                    data : 	{
-                        roomID : "sdfsdfb124gvv",
-                        team : socket.team,
-                        companyName : responseJson.companyName,
-                        section : responseJson.sectionIndex,
-                        state : "attempt",
-                        responseType : responseJson.attackIndex,
-                        responseLevel : cardLv,
-                        sectionLevel : roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["level"],
-                        cost : config["RESPONSE_" + (responseJson.attackIndex + 1)]['pita'][cardLv - 1],
-                        totalPita : pitaNum
-                    },
-                });
+                // gameLogger.info("game:response attempt", {
+                //     server : 'server1',
+                //     userIP : '192.0.0.1',
+                //     sessionID : socket.sessionID,
+                //     userID : socket.userId,
+                //     nickname : socket.nickname,
+                //     data : 	{
+                //         roomID : "sdfsdfb124gvv",
+                //         team : socket.team,
+                //         companyName : responseJson.companyName,
+                //         section : responseJson.sectionIndex,
+                //         state : "attempt",
+                //         responseType : responseJson.attackIndex,
+                //         responseLevel : cardLv,
+                //         sectionLevel : roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["level"],
+                //         cost : config["RESPONSE_" + (responseJson.attackIndex + 1)]['pita'][cardLv - 1],
+                //         totalPita : pitaNum
+                //     },
+                // });
             } else {
                 console.log("방어 실패!! >> pita 부족")
                 socket.emit("Short of Money");
 
                 // 대응 실패 - pita 부족
-                gameLogger.info("game:response fail", {
-                    server : 'server1',
-                    userIP : '192.0.0.1',
-                    sessionID : socket.sessionID,
-                    userID : socket.userId,
-                    nickname : socket.nickname,
-                    data : 	{
-                        roomID : "sdfsdfb124gvv",
-                        team : socket.team,
-                        companyName : responseJson.companyName,
-                        section : responseJson.sectionIndex,
-                        state : "fail",
-                        cause : "pita",
-                        responseType : responseJson.attackIndex,
-                        responseLevel : cardLv,
-                        sectionLevel : roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["level"],
-                        cost : 0,
-                        totalPita : pitaNum
-                    },
-                });
+                // gameLogger.info("game:response fail", {
+                //     server : 'server1',
+                //     userIP : '192.0.0.1',
+                //     sessionID : socket.sessionID,
+                //     userID : socket.userId,
+                //     nickname : socket.nickname,
+                //     data : 	{
+                //         roomID : "sdfsdfb124gvv",
+                //         team : socket.team,
+                //         companyName : responseJson.companyName,
+                //         section : responseJson.sectionIndex,
+                //         state : "fail",
+                //         cause : "pita",
+                //         responseType : responseJson.attackIndex,
+                //         responseLevel : cardLv,
+                //         sectionLevel : roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["level"],
+                //         cost : 0,
+                //         totalPita : pitaNum
+                //     },
+                // });
             }
             
             await jsonStore.updatejson(roomTotalJson[0], socket.room);
@@ -1804,95 +1804,95 @@ module.exports = (io) => {
                 socket.to(socket.room + socket.team).emit("Card List", upgradeAttackInfo.companyName, returnValue);
                 socket.emit("Card List", upgradeAttackInfo.companyName, returnValue);
 
-                if (socket.team == true){
-                    // 모의해킹(대응 업그레이드) 성공 로그
-                    gameLogger.info("game:penetraion testing success", {
-                        server : 'server1',
-                        userIP : '192.0.0.1',
-                        sessionID : socket.sessionID,
-                        userID : socket.userId,
-                        nickname : socket.nickname,
-                        data : 	{
-                            roomID : "sdfsdfb124gvv",
-                            team : socket.team,
-                            companyName : upgradeAttackInfo.companyName,
-                            section : upgradeAttackInfo.sectionIndex,
-                            state : "success",
-                            responseType : upgradeAttackInfo.attackIndex,
-                            responseLevel : cardLv,
-                            cost : config["RESPONSE_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv - 1],
-                            totalPita : pitaNum
-                        },
-                    });
-                } else {
-                    // 연구(공격 업그레이드) 성공 로그
-                    gameLogger.info("game:research success", {
-                        server : 'server1',
-                        userIP : '192.0.0.1',
-                        sessionID : socket.sessionID,
-                        userID : socket.userId,
-                        nickname : socket.nickname,
-                        data : 	{
-                            roomID : "sdfsdfb124gvv",
-                            team : socket.team,
-                            companyName : upgradeAttackInfo.companyName,
-                            section : upgradeAttackInfo.sectionIndex,
-                            state : "success",
-                            attackType : upgradeAttackInfo.attackIndex,
-                            attackLevel : cardLv,
-                            cost : config["RESPONSE_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv - 1],
-                            totalPita : pitaNum
-                        },
-                    });
-                }
+                // if (socket.team == true){
+                //     // 모의해킹(대응 업그레이드) 성공 로그
+                //     gameLogger.info("game:penetraion testing success", {
+                //         server : 'server1',
+                //         userIP : '192.0.0.1',
+                //         sessionID : socket.sessionID,
+                //         userID : socket.userId,
+                //         nickname : socket.nickname,
+                //         data : 	{
+                //             roomID : "sdfsdfb124gvv",
+                //             team : socket.team,
+                //             companyName : upgradeAttackInfo.companyName,
+                //             section : upgradeAttackInfo.sectionIndex,
+                //             state : "success",
+                //             responseType : upgradeAttackInfo.attackIndex,
+                //             responseLevel : cardLv,
+                //             cost : config["RESPONSE_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv - 1],
+                //             totalPita : pitaNum
+                //         },
+                //     });
+                // } else {
+                //     // 연구(공격 업그레이드) 성공 로그
+                //     gameLogger.info("game:research success", {
+                //         server : 'server1',
+                //         userIP : '192.0.0.1',
+                //         sessionID : socket.sessionID,
+                //         userID : socket.userId,
+                //         nickname : socket.nickname,
+                //         data : 	{
+                //             roomID : "sdfsdfb124gvv",
+                //             team : socket.team,
+                //             companyName : upgradeAttackInfo.companyName,
+                //             section : upgradeAttackInfo.sectionIndex,
+                //             state : "success",
+                //             attackType : upgradeAttackInfo.attackIndex,
+                //             attackLevel : cardLv,
+                //             cost : config["RESPONSE_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv - 1],
+                //             totalPita : pitaNum
+                //         },
+                //     });
+                // }
                 
             } else {
                 console.log("업그레이드 실패!! >> pita 부족");
                 socket.emit("Short of Money");
 
-                if (socket.team = true){
-                    // 연구(공격 업그레이드) 실패 로그
-                    gameLogger.info("game:penetraion tesing fail", {
-                        server : 'server1',
-                        userIP : '192.0.0.1',
-                        sessionID : socket.sessionID,
-                        userID : socket.userId,
-                        nickname : socket.nickname,
-                        data : 	{
-                            roomID : "sdfsdfb124gvv",
-                            team : socket.team,
-                            companyName : upgradeAttackInfo.companyName,
-                            section : upgradeAttackInfo.sectionIndex,
-                            state : "fail",
-                            cause : "pita",
-                            responseType : upgradeAttackInfo.attackIndex,
-                            responseLevel : cardLv,
-                            cost : 0,
-                            totalPita : pitaNum
-                        },
-                    });
-                } else {
-                    // 연구(공격 업그레이드) 실패 로그
-                    gameLogger.info("game:research fail", {
-                        server : 'server1',
-                        userIP : '192.0.0.1',
-                        sessionID : socket.sessionID,
-                        userID : socket.userId,
-                        nickname : socket.nickname,
-                        data : 	{
-                            roomID : "sdfsdfb124gvv",
-                            team : socket.team,
-                            companyName : upgradeAttackInfo.companyName,
-                            section : upgradeAttackInfo.sectionIndex,
-                            state : "fail",
-                            cause : "pita",
-                            attackType : upgradeAttackInfo.attackIndex,
-                            attackLevel : cardLv,
-                            cost : 0,
-                            totalPita : pitaNum
-                        },
-                    });
-                }
+                // if (socket.team = true){
+                //     // 연구(공격 업그레이드) 실패 로그
+                //     gameLogger.info("game:penetraion tesing fail", {
+                //         server : 'server1',
+                //         userIP : '192.0.0.1',
+                //         sessionID : socket.sessionID,
+                //         userID : socket.userId,
+                //         nickname : socket.nickname,
+                //         data : 	{
+                //             roomID : "sdfsdfb124gvv",
+                //             team : socket.team,
+                //             companyName : upgradeAttackInfo.companyName,
+                //             section : upgradeAttackInfo.sectionIndex,
+                //             state : "fail",
+                //             cause : "pita",
+                //             responseType : upgradeAttackInfo.attackIndex,
+                //             responseLevel : cardLv,
+                //             cost : 0,
+                //             totalPita : pitaNum
+                //         },
+                //     });
+                // } else {
+                //     // 연구(공격 업그레이드) 실패 로그
+                //     gameLogger.info("game:research fail", {
+                //         server : 'server1',
+                //         userIP : '192.0.0.1',
+                //         sessionID : socket.sessionID,
+                //         userID : socket.userId,
+                //         nickname : socket.nickname,
+                //         data : 	{
+                //             roomID : "sdfsdfb124gvv",
+                //             team : socket.team,
+                //             companyName : upgradeAttackInfo.companyName,
+                //             section : upgradeAttackInfo.sectionIndex,
+                //             state : "fail",
+                //             cause : "pita",
+                //             attackType : upgradeAttackInfo.attackIndex,
+                //             attackLevel : cardLv,
+                //             cost : 0,
+                //             totalPita : pitaNum
+                //         },
+                //     });
+                // }
             }
 
             
@@ -1948,69 +1948,69 @@ module.exports = (io) => {
             var sectionIdx = data.areaIdx;
 
             // 개발자 로그 - 유지보수(영역 업그레이드) 시도
-            gameLogger.info("DetailCompany:Maintenance attempt", {
-                server : 'server1',
-                userIP : '192.0.0.1',
-                sessionID : socket.sessionID,
-                userID : socket.userID,
-                nickname : socket.nickname,
-                data : 	{
-                    roomID : socket.room,
-                    team : true, 
-                    companyName : corpName, 
-                    section : sectionIdx,
-                    state : "attempt",
-                    sectionLevel : roomTotalJson[0][corpName].sections[sectionIdx].level,
-                    cost : 0,
-                    totalPita : white_total_pita
-                },
-            });
+            // gameLogger.info("DetailCompany:Maintenance attempt", {
+            //     server : 'server1',
+            //     userIP : '192.0.0.1',
+            //     sessionID : socket.sessionID,
+            //     userID : socket.userID,
+            //     nickname : socket.nickname,
+            //     data : 	{
+            //         roomID : socket.room,
+            //         team : true, 
+            //         companyName : corpName, 
+            //         section : sectionIdx,
+            //         state : "attempt",
+            //         sectionLevel : roomTotalJson[0][corpName].sections[sectionIdx].level,
+            //         cost : 0,
+            //         totalPita : white_total_pita
+            //     },
+            // });
             
             if(white_total_pita - config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level] < 0)
             {
                 socket.emit("Short of Money");
                 // 개발자 로그 - 유지보수(영역 업그레이드) 실패(피타 부족)
-                gameLogger.info("DetailCompany:Maintenance fail", {
-                    server : 'server1',
-                    userIP : '192.0.0.1',
-                    sessionID : socket.sessionID,
-                    userID : socket.userID,
-                    nickname : socket.nickname,
-                    data : 	{
-                        roomID : socket.room,
-                        team : true, 
-                        companyName : corpName, 
-                        section : sectionIdx,
-                        state : "fail",
-                        cause : "pita",
-                        sectionLevel : roomTotalJson[0][corpName].sections[sectionIdx].level,
-                        cost : 0,
-                        totalPita : white_total_pita
-                    },
-                });
+                // gameLogger.info("DetailCompany:Maintenance fail", {
+                //     server : 'server1',
+                //     userIP : '192.0.0.1',
+                //     sessionID : socket.sessionID,
+                //     userID : socket.userID,
+                //     nickname : socket.nickname,
+                //     data : 	{
+                //         roomID : socket.room,
+                //         team : true, 
+                //         companyName : corpName, 
+                //         section : sectionIdx,
+                //         state : "fail",
+                //         cause : "pita",
+                //         sectionLevel : roomTotalJson[0][corpName].sections[sectionIdx].level,
+                //         cost : 0,
+                //         totalPita : white_total_pita
+                //     },
+                // });
             } else {
                 // 최대 레벨 확인
                 if(roomTotalJson[0][corpName].sections[sectionIdx].level >= config.MAX_LEVEL){
                     socket.emit("Out of Level");
                     // 개발자 로그 - 유지보수(영역 업그레이드) 실패(최대 레벨)
-                    gameLogger.info("DetailCompany:Maintenance fail", {
-                        server : 'server1',
-                        userIP : '192.0.0.1',
-                        sessionID : socket.sessionID,
-                        userID : socket.userID,
-                        nickname : socket.nickname,
-                        data : 	{
-                            roomID : socket.room,
-                            team : true, 
-                            companyName : corpName, 
-                            section : sectionIdx,
-                            state : "fail",
-                            cause : "max level",
-                            sectionLevel : roomTotalJson[0][corpName].sections[sectionIdx].level,
-                            cost : 0,
-                            totalPita : white_total_pita
-                        },
-                    });
+                    // gameLogger.info("DetailCompany:Maintenance fail", {
+                    //     server : 'server1',
+                    //     userIP : '192.0.0.1',
+                    //     sessionID : socket.sessionID,
+                    //     userID : socket.userID,
+                    //     nickname : socket.nickname,
+                    //     data : 	{
+                    //         roomID : socket.room,
+                    //         team : true, 
+                    //         companyName : corpName, 
+                    //         section : sectionIdx,
+                    //         state : "fail",
+                    //         cause : "max level",
+                    //         sectionLevel : roomTotalJson[0][corpName].sections[sectionIdx].level,
+                    //         cost : 0,
+                    //         totalPita : white_total_pita
+                    //     },
+                    // });
                 } else {
                     // json 변경 - pita 감소
                     var newTotalPita = white_total_pita - config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level]; //pita 감소
@@ -2023,23 +2023,23 @@ module.exports = (io) => {
                     io.sockets.in(socket.room+'true').emit('Update Pita', newTotalPita); // 화이트팀
 
                     // 개발자 로그 - 유지보수(영역 업그레이드) 성공
-                    gameLogger.info("DetailCompany:Maintenance success", {
-                        server : 'server1',
-                        userIP : '192.0.0.1',
-                        sessionID : socket.sessionID,
-                        userID : socket.userID,
-                        nickname : socket.nickname,
-                        data : 	{
-                            roomID : socket.room,
-                            team : false, 
-                            companyName : corpName, 
-                            section : sectionIdx,
-                            state : "success",
-                            sectionLevel : roomTotalJson[0][corpName].sections[sectionIdx].level,
-                            cost :  config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level],
-                            totalPita : newTotalPita
-                        },
-                    });
+                    // gameLogger.info("DetailCompany:Maintenance success", {
+                    //     server : 'server1',
+                    //     userIP : '192.0.0.1',
+                    //     sessionID : socket.sessionID,
+                    //     userID : socket.userID,
+                    //     nickname : socket.nickname,
+                    //     data : 	{
+                    //         roomID : socket.room,
+                    //         team : false, 
+                    //         companyName : corpName, 
+                    //         section : sectionIdx,
+                    //         state : "success",
+                    //         sectionLevel : roomTotalJson[0][corpName].sections[sectionIdx].level,
+                    //         cost :  config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level],
+                    //         totalPita : newTotalPita
+                    //     },
+                    // });
                 }
             }
         });
@@ -2080,68 +2080,68 @@ module.exports = (io) => {
             var vulnIdx =  roomTotalJson[0][corpName].sections[sectionIdx].vuln;
 
             // 개발자 로그 - 취약점 탐색 시도
-            gameLogger.info("DetailCompany:Explore attempt", {
-                server : 'server1',
-                userIP : '192.0.0.1',
-                sessionID : socket.sessionID,
-                userID : socket.userID,
-                nickname : socket.nickname,
-                data : 	{
-                    roomID : socket.room,
-                    team : false, 
-                    companyName : corpName, 
-                    section : sectionIdx,
-                    state : "attempt",
-                    cost : 0,
-                    totalPita : black_total_pita
-                },
-            });
+            // gameLogger.info("DetailCompany:Explore attempt", {
+            //     server : 'server1',
+            //     userIP : '192.0.0.1',
+            //     sessionID : socket.sessionID,
+            //     userID : socket.userID,
+            //     nickname : socket.nickname,
+            //     data : 	{
+            //         roomID : socket.room,
+            //         team : false, 
+            //         companyName : corpName, 
+            //         section : sectionIdx,
+            //         state : "attempt",
+            //         cost : 0,
+            //         totalPita : black_total_pita
+            //     },
+            // });
 
             
             if( roomTotalJson[0][corpName].sections[sectionIdx].vulnActive == true){
                 socket.emit("already done");
 
                 // 개발자 로그 - 취약점 탐색 실패(이미 완료됨)
-                gameLogger.info("DetailCompany:Explore fail", {
-                    server : 'server1',
-                    userIP : '192.0.0.1',
-                    sessionID : socket.sessionID,
-                    userID : socket.userID,
-                    nickname : socket.nickname,
-                    data : 	{
-                        roomID : socket.room,
-                        team : false, 
-                        companyName : corpName, 
-                        section : sectionIdx,
-                        state : "fail",
-                        cause : "already done",
-                        cost : 0,
-                        totalPita : black_total_pita
-                    },
-                });
+                // gameLogger.info("DetailCompany:Explore fail", {
+                //     server : 'server1',
+                //     userIP : '192.0.0.1',
+                //     sessionID : socket.sessionID,
+                //     userID : socket.userID,
+                //     nickname : socket.nickname,
+                //     data : 	{
+                //         roomID : socket.room,
+                //         team : false, 
+                //         companyName : corpName, 
+                //         section : sectionIdx,
+                //         state : "fail",
+                //         cause : "already done",
+                //         cost : 0,
+                //         totalPita : black_total_pita
+                //     },
+                // });
             }
             else if(black_total_pita - config.EXPLORE_INFO.pita < 0)
             {
                 socket.emit("Short of Money");
 
                 // 개발자 로그 - 취약점 탐색 실패(피타 부족)
-                gameLogger.info("DetailCompany:Explore fail", {
-                    server : 'server1',
-                    userIP : '192.0.0.1',
-                    sessionID : socket.sessionID,
-                    userID : socket.userID,
-                    nickname : socket.nickname,
-                    data : 	{
-                        roomID : socket.room,
-                        team : false, 
-                        companyName : corpName, 
-                        section : sectionIdx,
-                        state : "fail",
-                        cause : "pita",
-                        cost : 0,
-                        totalPita : black_total_pita
-                    },
-                });
+                // gameLogger.info("DetailCompany:Explore fail", {
+                //     server : 'server1',
+                //     userIP : '192.0.0.1',
+                //     sessionID : socket.sessionID,
+                //     userID : socket.userID,
+                //     nickname : socket.nickname,
+                //     data : 	{
+                //         roomID : socket.room,
+                //         team : false, 
+                //         companyName : corpName, 
+                //         section : sectionIdx,
+                //         state : "fail",
+                //         cause : "pita",
+                //         cost : 0,
+                //         totalPita : black_total_pita
+                //     },
+                // });
             } else {
                 // json 변경
                 var newTotalPita = black_total_pita - config.EXPLORE_INFO.pita; // pita 감소
@@ -2176,23 +2176,23 @@ module.exports = (io) => {
                     io.sockets.in(socket.room+'false').emit('addLog', logArr);
 
                     // 개발자 로그 - 취약점 탐색 성공
-                    gameLogger.info("DetailCompany:Explore success", {
-                        server : 'server1',
-                        userIP : '192.0.0.1',
-                        sessionID : socket.sessionID,
-                        userID : socket.userID,
-                        nickname : socket.nickname,
-                        data : 	{
-                            roomID : socket.room,
-                            team : false, 
-                            companyName : corpName, 
-                            section : sectionIdx,
-                            state : "success",
-                            vuln : vulnIdx,
-                            cost : config.EXPLORE_INFO.pita,
-                            totalPita : newTotalPita
-                        },
-                    });
+                    // gameLogger.info("DetailCompany:Explore success", {
+                    //     server : 'server1',
+                    //     userIP : '192.0.0.1',
+                    //     sessionID : socket.sessionID,
+                    //     userID : socket.userID,
+                    //     nickname : socket.nickname,
+                    //     data : 	{
+                    //         roomID : socket.room,
+                    //         team : false, 
+                    //         companyName : corpName, 
+                    //         section : sectionIdx,
+                    //         state : "success",
+                    //         vuln : vulnIdx,
+                    //         cost : config.EXPLORE_INFO.pita,
+                    //         totalPita : newTotalPita
+                    //     },
+                    // });
                 }, config.EXPLORE_INFO.time * 1000);
             }
         });
@@ -2287,17 +2287,17 @@ module.exports = (io) => {
                 // 모든 회사가 몰락인지 확인
                 AllAbandon(socket, roomTotalJson);
 
-                gameLogger.info("game:destroy company", {
-                    server : 'server1',
-                    userIP : '192.0.0.1',
-                    sessionID : socket.sessionID,
-                    userID : socket.userId,
-                    nickname : socket.nickname,
-                    data : 	{
-                        roomID : "sdfsdfb124gvv",
-                        companyName : corpName
-                    },
-                });
+                // gameLogger.info("game:destroy company", {
+                //     server : 'server1',
+                //     userIP : '192.0.0.1',
+                //     sessionID : socket.sessionID,
+                //     userID : socket.userId,
+                //     nickname : socket.nickname,
+                //     data : 	{
+                //         roomID : "sdfsdfb124gvv",
+                //         companyName : corpName
+                //     },
+                // });
 
             }
             
@@ -2939,24 +2939,24 @@ module.exports = (io) => {
             console.log("[attackcount - after setTimeout] attack step after edit json : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attackStep"]);
 
             // 공격 시도 로그
-            gameLogger.info("game:attack success", {
-                server : 'server1',
-                userIP : '192.0.0.1',
-                sessionID : socket.sessionID,
-                userID : socket.userId,
-                nickname : socket.nickname,
-                data : 	{
-                    roomID : "sdfsdfb124gvv",
-                    team : socket.team,
-                    companyName : attackJson.companyName,
-                    section : attackJson.sectionIndex,
-                    state : "success",
-                    attackType : attackJson.attackIndex,
-                    attackLevel : roomTotalJson[0][attackJson.companyName]["attackLV"][attackJson.attackIndex],
-                    cost : 0,
-                    totalPita : roomTotalJson[0].blackTeam.total_pita
-                },
-            });
+            // gameLogger.info("game:attack success", {
+            //     server : 'server1',
+            //     userIP : '192.0.0.1',
+            //     sessionID : socket.sessionID,
+            //     userID : socket.userId,
+            //     nickname : socket.nickname,
+            //     data : 	{
+            //         roomID : "sdfsdfb124gvv",
+            //         team : socket.team,
+            //         companyName : attackJson.companyName,
+            //         section : attackJson.sectionIndex,
+            //         state : "success",
+            //         attackType : attackJson.attackIndex,
+            //         attackLevel : roomTotalJson[0][attackJson.companyName]["attackLV"][attackJson.attackIndex],
+            //         cost : 0,
+            //         totalPita : roomTotalJson[0].blackTeam.total_pita
+            //     },
+            // });
 
             clearTimeout(attackStepTime);
 
@@ -3013,23 +3013,23 @@ module.exports = (io) => {
                 roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"].push(json);
                 roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["last"] = attackJson.attackIndex;
 
-                // 관제 성공 로그
-                gameLogger.info("game:monitoring attack", {
-                    server : 'server1',
-                    userIP : '192.0.0.1',
-                    sessionID : socket.sessionID,
-                    userID : socket.userId,
-                    nickname : socket.nickname,
-                    data : 	{
-                        roomID : "sdfsdfb124gvv",
-                        team : socket.team,
-                        companyName : attackJson.companyName,
-                        section : attackJson.sectionIndex,
-                        attackType : attackJson.attackIndex,
-                        cost : 0,
-                        totalPita : roomTotalJson[0].blackTeam.total_pita
-                    },
-                });
+                // // 관제 성공 로그
+                // gameLogger.info("game:monitoring attack", {
+                //     server : 'server1',
+                //     userIP : '192.0.0.1',
+                //     sessionID : socket.sessionID,
+                //     userID : socket.userId,
+                //     nickname : socket.nickname,
+                //     data : 	{
+                //         roomID : "sdfsdfb124gvv",
+                //         team : socket.team,
+                //         companyName : attackJson.companyName,
+                //         section : attackJson.sectionIndex,
+                //         attackType : attackJson.attackIndex,
+                //         cost : 0,
+                //         totalPita : roomTotalJson[0].blackTeam.total_pita
+                //     },
+                // });
 
                 // 나중에 1단계에서 취약점 외의 공격들도 감지할 수 있도록 수정하기
                 roomTotalJson[0]["blackTeam"]["users"][attacker][attackJson.companyName]["detectCnt"][attackJson.sectionIndex] += 1;
@@ -3043,24 +3043,24 @@ module.exports = (io) => {
                         console.log("You are Blocked!!!!");
 
                         // 공격자 무력화 로그
-                        gameLogger.info("game:blocked black", {
-                            server : 'server1',
-                            userIP : '192.0.0.1',
-                            sessionID : socket.sessionID,
-                            userID : socket.userId,
-                            nickname : socket.nickname,
-                            data : 	{
-                                roomID : "sdfsdfb124gvv",
-                                team : socket.team,
-                                companyName : attackJson.companyName,
-                                section : attackJson.sectionIndex,
-                                attackType : attackJson.attackIndex,
-                                nickname : socket.nickname,
-                                userId : socket.userId,
-                                cost : 0,
-                                totalPita : roomTotalJson[0].whiteTeam.total_pita
-                            },
-                        });
+                        // gameLogger.info("game:blocked black", {
+                        //     server : 'server1',
+                        //     userIP : '192.0.0.1',
+                        //     sessionID : socket.sessionID,
+                        //     userID : socket.userId,
+                        //     nickname : socket.nickname,
+                        //     data : 	{
+                        //         roomID : "sdfsdfb124gvv",
+                        //         team : socket.team,
+                        //         companyName : attackJson.companyName,
+                        //         section : attackJson.sectionIndex,
+                        //         attackType : attackJson.attackIndex,
+                        //         nickname : socket.nickname,
+                        //         userId : socket.userId,
+                        //         cost : 0,
+                        //         totalPita : roomTotalJson[0].whiteTeam.total_pita
+                        //     },
+                        // });
 
                         // [GameLog] 로그 추가 - 무력화(블랙) & 무력화 발견(화이트)로그
                         const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
@@ -3089,24 +3089,24 @@ module.exports = (io) => {
                         io.sockets.in(socket.room+'true').emit('addLog', logArr);
                     } else {
                         // 공격자 경고 로그
-                        gameLogger.info("game:warn black", {
-                            server : 'server1',
-                            userIP : '192.0.0.1',
-                            sessionID : socket.sessionID,
-                            userID : socket.userId,
-                            nickname : socket.nickname,
-                            data : 	{
-                                roomID : "sdfsdfb124gvv",
-                                team : socket.team,
-                                companyName : attackJson.companyName,
-                                section : attackJson.sectionIndex,
-                                attackType : attackJson.attackIndex,
-                                nickname : socket.nickname,
-                                userId : socket.userId,
-                                cost : 0,
-                                totalPita : roomTotalJson[0].whiteTeam.total_pita
-                            },
-                        });
+                        // gameLogger.info("game:warn black", {
+                        //     server : 'server1',
+                        //     userIP : '192.0.0.1',
+                        //     sessionID : socket.sessionID,
+                        //     userID : socket.userId,
+                        //     nickname : socket.nickname,
+                        //     data : 	{
+                        //         roomID : "sdfsdfb124gvv",
+                        //         team : socket.team,
+                        //         companyName : attackJson.companyName,
+                        //         section : attackJson.sectionIndex,
+                        //         attackType : attackJson.attackIndex,
+                        //         nickname : socket.nickname,
+                        //         userId : socket.userId,
+                        //         cost : 0,
+                        //         totalPita : roomTotalJson[0].whiteTeam.total_pita
+                        //     },
+                        // });
                     }
                 } else {
                     // 공격자 탐지 로그
@@ -3239,24 +3239,24 @@ module.exports = (io) => {
                     console.log("You are Blocked!!!!");
 
                     // 공격자 무력화 로그
-                    gameLogger.info("game:blocked black", {
-                        server : 'server1',
-                        userIP : '192.0.0.1',
-                        sessionID : socket.sessionID,
-                        userID : socket.userId,
-                        nickname : socket.nickname,
-                        data : 	{
-                            roomID : "sdfsdfb124gvv",
-                            team : socket.team,
-                            companyName : attackJson.companyName,
-                            section : attackJson.sectionIndex,
-                            attackType : attackJson.attackIndex,
-                            nickname : socket.nickname,
-                            userId : socket.userId,
-                            cost : 0,
-                            totalPita : roomTotalJson[0].whiteTeam.total_pita
-                        },
-                    });
+                    // gameLogger.info("game:blocked black", {
+                    //     server : 'server1',
+                    //     userIP : '192.0.0.1',
+                    //     sessionID : socket.sessionID,
+                    //     userID : socket.userId,
+                    //     nickname : socket.nickname,
+                    //     data : 	{
+                    //         roomID : "sdfsdfb124gvv",
+                    //         team : socket.team,
+                    //         companyName : attackJson.companyName,
+                    //         section : attackJson.sectionIndex,
+                    //         attackType : attackJson.attackIndex,
+                    //         nickname : socket.nickname,
+                    //         userId : socket.userId,
+                    //         cost : 0,
+                    //         totalPita : roomTotalJson[0].whiteTeam.total_pita
+                    //     },
+                    // });
 
                     // [GameLog] 로그 추가 - 무력화(블랙) & 무력화 발견(화이트)로그
                     const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
@@ -3289,45 +3289,45 @@ module.exports = (io) => {
                     io.sockets.in(socket.room+'true').emit('addLog', logArr);
                 } else {
                     // 공격자 경고 로그
-                    gameLogger.info("game:warn black", {
-                        server : 'server1',
-                        userIP : '192.0.0.1',
-                        sessionID : socket.sessionID,
-                        userID : socket.userId,
-                        nickname : socket.nickname,
-                        data : 	{
-                            roomID : "sdfsdfb124gvv",
-                            team : socket.team,
-                            companyName : attackJson.companyName,
-                            section : attackJson.sectionIndex,
-                            attackType : attackJson.attackIndex,
-                            nickname : socket.nickname,
-                            userId : socket.userId,
-                            cost : 0,
-                            totalPita : roomTotalJson[0].whiteTeam.total_pita
-                        },
-                    });
+                    // gameLogger.info("game:warn black", {
+                    //     server : 'server1',
+                    //     userIP : '192.0.0.1',
+                    //     sessionID : socket.sessionID,
+                    //     userID : socket.userId,
+                    //     nickname : socket.nickname,
+                    //     data : 	{
+                    //         roomID : "sdfsdfb124gvv",
+                    //         team : socket.team,
+                    //         companyName : attackJson.companyName,
+                    //         section : attackJson.sectionIndex,
+                    //         attackType : attackJson.attackIndex,
+                    //         nickname : socket.nickname,
+                    //         userId : socket.userId,
+                    //         cost : 0,
+                    //         totalPita : roomTotalJson[0].whiteTeam.total_pita
+                    //     },
+                    // });
                 }
             } else {
                 // 공격자 탐지 로그
-                gameLogger.info("game:detect black", {
-                    server : 'server1',
-                    userIP : '192.0.0.1',
-                    sessionID : socket.sessionID,
-                    userID : socket.userId,
-                    nickname : socket.nickname,
-                    data : 	{
-                        roomID : "sdfsdfb124gvv",
-                        team : socket.team,
-                        companyName : attackJson.companyName,
-                        section : attackJson.sectionIndex,
-                        attackType : attackJson.attackIndex,
-                        nickname : socket.nickname,
-                        userId : socket.userId,
-                        cost : 0,
-                        totalPita : roomTotalJson[0].whiteTeam.total_pita
-                    },
-                });
+                // gameLogger.info("game:detect black", {
+                //     server : 'server1',
+                //     userIP : '192.0.0.1',
+                //     sessionID : socket.sessionID,
+                //     userID : socket.userId,
+                //     nickname : socket.nickname,
+                //     data : 	{
+                //         roomID : "sdfsdfb124gvv",
+                //         team : socket.team,
+                //         companyName : attackJson.companyName,
+                //         section : attackJson.sectionIndex,
+                //         attackType : attackJson.attackIndex,
+                //         nickname : socket.nickname,
+                //         userId : socket.userId,
+                //         cost : 0,
+                //         totalPita : roomTotalJson[0].whiteTeam.total_pita
+                //     },
+                // });
             }
 
             let company_blockedNum = 0;
@@ -3475,25 +3475,25 @@ module.exports = (io) => {
                 io.sockets.in(socket.room+'true').emit('addLog', logArr);
 
                 // 대응 성공
-                gameLogger.info("game:response success", {
-                    server : 'server1',
-                    userIP : '192.0.0.1',
-                    sessionID : socket.sessionID,
-                    userID : socket.userId,
-                    nickname : socket.nickname,
-                    data : 	{
-                        roomID : "sdfsdfb124gvv",
-                        team : socket.team,
-                        companyName : responseJson.companyName,
-                        section : responseJson.sectionIndex,
-                        state : "success",
-                        responseType : responseJson.attackIndex,
-                        responseLevel : roomTotalJson[0][responseJson.companyName]["penetrationTestingLV"][responseJson.attackIndex],
-                        sectionLevel : roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["level"],
-                        cost : 0,
-                        totalPita : roomTotalJson[0].whiteTeam.total_pita
-                    },
-                });
+                // gameLogger.info("game:response success", {
+                //     server : 'server1',
+                //     userIP : '192.0.0.1',
+                //     sessionID : socket.sessionID,
+                //     userID : socket.userId,
+                //     nickname : socket.nickname,
+                //     data : 	{
+                //         roomID : "sdfsdfb124gvv",
+                //         team : socket.team,
+                //         companyName : responseJson.companyName,
+                //         section : responseJson.sectionIndex,
+                //         state : "success",
+                //         responseType : responseJson.attackIndex,
+                //         responseLevel : roomTotalJson[0][responseJson.companyName]["penetrationTestingLV"][responseJson.attackIndex],
+                //         sectionLevel : roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["level"],
+                //         cost : 0,
+                //         totalPita : roomTotalJson[0].whiteTeam.total_pita
+                //     },
+                // });
             }
 
             clearTimeout(responseStepTime);
@@ -3536,23 +3536,23 @@ module.exports = (io) => {
                 io.sockets.in(socket.room).emit('Abandon_Gameover', winTeam, blackScore, whiteScore);
 
                 // 개발자 로그 - 게임 종료(모든 회사 몰락)
-                gameLogger.info("Result:Game Over", {
-                    server : 'server1',
-                    userIP : '192.0.0.1',
-                    sessionID : socket.sessionID,
-                    userID : socket.userID,
-                    nickname : socket.nickname,
-                    data : 	{
-                        roomID : socket.room,
-                        winTeam : false, 
-                        cause : "AllDestroyed", 
-                        blackScore : blackScore,
-                        whiteScore : whiteScore,
-                        blackPita : blackPitaNum,
-                        whitePita : whitePitaNum,
-                        remainCompanyNum : 0,
-                    },
-                });
+                // gameLogger.info("Result:Game Over", {
+                //     server : 'server1',
+                //     userIP : '192.0.0.1',
+                //     sessionID : socket.sessionID,
+                //     userID : socket.userID,
+                //     nickname : socket.nickname,
+                //     data : 	{
+                //         roomID : socket.room,
+                //         winTeam : false, 
+                //         cause : "AllDestroyed", 
+                //         blackScore : blackScore,
+                //         whiteScore : whiteScore,
+                //         blackPita : blackPitaNum,
+                //         whitePita : whitePitaNum,
+                //         remainCompanyNum : 0,
+                //     },
+                // });
             });
         }
     }
@@ -3588,23 +3588,23 @@ module.exports = (io) => {
         io.sockets.in(socket.room).emit('Timeout_Gameover', winTeam, blackScore, whiteScore);
 
         // 개발자 로그 - 게임 종료(시간종료)
-        gameLogger.info("Result:Game Over", {
-            server : 'server1',
-            userIP : '192.0.0.1',
-            sessionID : socket.sessionID,
-            userID : socket.userID,
-            nickname : socket.nickname,
-            data : 	{
-                roomID : socket.room,
-                winTeam : winTeam, 
-                cause : "Timeout", 
-                blackScore : blackScore,
-                whiteScore : whiteScore,
-                blackPita : blackPitaNum,
-                whitePita : whitePitaNum,
-                remainCompanyNum : aliveCnt,
-            },
-        });
+        // gameLogger.info("Result:Game Over", {
+        //     server : 'server1',
+        //     userIP : '192.0.0.1',
+        //     sessionID : socket.sessionID,
+        //     userID : socket.userID,
+        //     nickname : socket.nickname,
+        //     data : 	{
+        //         roomID : socket.room,
+        //         winTeam : winTeam, 
+        //         cause : "Timeout", 
+        //         blackScore : blackScore,
+        //         whiteScore : whiteScore,
+        //         blackPita : blackPitaNum,
+        //         whitePita : whitePitaNum,
+        //         remainCompanyNum : aliveCnt,
+        //     },
+        // });
     }   
     
     

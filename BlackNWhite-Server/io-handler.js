@@ -36,6 +36,11 @@ const Company = require("./schemas/roomTotal/Company");
 const Section = require("./schemas/roomTotal/Section");
 const Progress = require("./schemas/roomTotal/Progress");
 
+const {lobbyLogger, gameLogger} = require('./logConfig'); 
+const os = require( 'os' );
+var networkInterfaces = os.networkInterfaces( );
+var server_ip = networkInterfaces['Wi-Fi'][1].address;
+
 // 자바스크립트는 특정 문자열 인덱스 수정 불가라, 이를 대체하기 위해 가져온 함수
 String.prototype.replaceAt = function(index, replacement) {
     if (index >= this.length) {
@@ -62,10 +67,37 @@ module.exports = (io) => {
 
     let timerId;
     let pitaTimerId;
+
+    /*
+    // !! 로그 저장 예시 !!
+    lobbyLogger.error('mainHome:login', {
+        server : 'server1',
+        userIP : '192.0.0.1',
+        sessionID : 'b8dscb35vjm2ki81d5x',
+        userID : 'ucsseqerb14ned321b',
+        nickname : "hyeMin",
+        data : {status : 1} 
+    });
+
+    gameLogger.info("mainHome:create room", {
+        server : 'server1',
+        userIP : '192.0.0.1',
+        sessionID : 'b8dscb35vjm2ki81d5x',
+        userID : 'ucsseqerb14ned321b',
+        nickname : "hyeMin",
+        data : 	{
+            roomID : "sdfsdfb124gvv",
+            room : "23012", 
+            roomType : "public", 
+            maxPlayer : 5,
+            status : 1,
+      },
+    });
+    */
+    
     
     io.use(async (socket, next) => {
-        console.log("io.use");
-
+        // console.log("io.use");
         const sessionID = socket.handshake.auth.sessionID;
         // 가장 먼저 CONNECTION들어가기 전에 SESSIONID 있는지 확인
         //finding existing session
@@ -85,7 +117,7 @@ module.exports = (io) => {
             return next(new Error("invalid username")); // 새로운 세션 계속 안생기게 해주는 것
             // USERNAME 입력시에만 세션이 만들어짐 
         }
-        console.log("io.use 세션 새로 생성", username);
+        // console.log("io.use 세션 새로 생성", username);
         //create new session
         socket.sessionID = randomId();
         socket.userID = randomId();
@@ -100,15 +132,15 @@ module.exports = (io) => {
 
 
     io.on('connection', async(socket) => {
-        console.log("io-handler.js socket connect!!");
-        console.log("socketid : "+ socket.id); 
+        // console.log("io-handler.js socket connect!!");
+        // console.log("socketid : "+ socket.id); 
      
         // console.log("sessionID : "+ socket.sessionID); 
         // console.log("userID : "+ socket.userID); 
  
-        console.log("session 설정 확인 - sessionID", socket.sessionID);
-        console.log("session 설정 확인 - userID", socket.userID);
-        console.log("session 설정 확인 - username", socket.nickname);
+        // console.log("session 설정 확인 - sessionID", socket.sessionID);
+        // console.log("session 설정 확인 - userID", socket.userID);
+        // console.log("session 설정 확인 - username", socket.nickname);
 
         
     
@@ -121,14 +153,30 @@ module.exports = (io) => {
             function (error) {
             console.log('catch handler', error);
             });
-
+            // console.log("connect: saveSession");
+            // lobbyLogger.info('mainHome:login', {
+            //     server : server_ip,
+            //     userIP : '192.0.0.1',
+            //     sessionID : socket.sessionID,
+            //     userID : socket.userID,
+            //     nickname : socket.nickname,
+            //     data : {status : 1} 
+            // });
         }catch(error){
             console.log("ERROR! ", error);
+            console.log("connect: saveSession");
+            // lobbyLogger.error('mainHome:login', {
+            //     server : server_ip,
+            //     userIP : '192.0.0.1',
+            //     sessionID : socket.sessionID,
+            //     userID : socket.userID,
+            //     nickname : socket.nickname,
+            //     data : {status : -1} 
+            // });
         }
 
         console.log("connect: saveSession");
-
-
+     
 
          // [MainHome] 사용자 정보(session) 확인 
         socket.on('checkSession', () => {
@@ -162,9 +210,19 @@ module.exports = (io) => {
             }
 
             socket.emit('room permission',permission);
-            // var roomJson = JSON.stringify(room_data);
-            // console.log('!!check roomJson : ', roomJson);
-            // socket.emit('room permission',roomJson);
+
+            // lobbyLogger.info('mainHome:enter_room', {
+            //     server : server_ip,
+            //     userIP : '192.0.0.1',
+            //     sessionID : socket.sessionID,
+            //     userID : socket.userID,
+            //     nickname : socket.nickname,
+            //     data : {
+            //         type : 'clickRoom', 
+            //         room : room,
+            //         status : permission
+            //   },
+            // });
 
         });
 
@@ -172,7 +230,7 @@ module.exports = (io) => {
         // [MainHome] 랜덤 게임 시작 버튼 클릭시
         socket.on("randomGameStart", async() => {
             console.log('[randomGameStart]');
-            var roomPin; 
+            var roomPin, roomID; 
             /*
              - 경우 1 : 공개방 O -> public이고 isnotfull인 방 키 return 
              - 경우 2 : 공개방 X -> 새 공개방 만들고 입장하기 
@@ -203,13 +261,42 @@ module.exports = (io) => {
                 socket.room = roomPin;
                 console.log("socket.room", socket.room);
                 socket.emit('enterPublicRoom');
+
+                lobbyLogger.info('mainHome:enter_room', {
+                    server : server_ip,
+                    userIP : '192.0.0.1',
+                    sessionID : socket.sessionID,
+                    userID : socket.userID,
+                    nickname : socket.nickname,
+                    data : {
+                        type : 'randomGameStart', 
+                        room : roomPin,
+                        status : 1
+                  },
+                });
             }else {
                 // 경우 2
-                roomPin = await createRoom('public', config.DEFAULT_ROOM.maxPlayer);
+                var room_info = await createRoom('public', config.DEFAULT_ROOM.maxPlayer);
+                
+                lobbyLogger.info('mainHome:create_room', {
+                    server : server_ip,
+                    userIP : '192.0.0.1',
+                    sessionID : socket.sessionID,
+                    userID : socket.userID,
+                    nickname : socket.nickname,
+                    data : {
+                        type : "randomGameStart",
+                        roomID : room_info.roomID,
+                        room : room_info.roomPin,
+                        roomType : room_info.roomType,
+                        maxPlayer : room_info.maxPlayer,
+                        status : 1
+                  },
+                });
 
-                console.log("succesCreateRoom roomPin: " , roomPin);
+                console.log("succesCreateRoom roomPin: " , room_info.roomPin);
             }    
-            socket.room = roomPin;
+            socket.room = room_info.roomPin;
           
             console.log("socket.room", socket.room);
             socket.emit('enterPublicRoom');
@@ -245,15 +332,31 @@ module.exports = (io) => {
             console.log('[socket-createRoom] room.roomType', room.roomType);
             // hashtableStore.storeHashTable("key", {"a":"f", 1:2}, 1, 2);
                
-            var roomPin = await createRoom(room.roomType, room.maxPlayer);
+            var room_info= await createRoom(room.roomType, room.maxPlayer);
             // await initRoom(roomPin);
 
-            console.log("succesCreateRoom roomPin: " , roomPin);
-            socket.room = roomPin;
+            console.log("succesCreateRoom roomPin: " , room_info.roomPin);
+            socket.room = room_info.roomPin;
 
 
             socket.emit('succesCreateRoom', {
-                roomPin: roomPin.toString()
+                roomPin: room_info.roomPin.toString()
+            });
+
+            lobbyLogger.info('mainHome:create_room', {
+                server : server_ip,
+                userIP : '192.0.0.1',
+                sessionID : socket.sessionID,
+                userID : socket.userID,
+                nickname : socket.nickname,
+                data : {
+                    type : "createRoom",
+                    roomID : room_info.roomID,
+                    room : room_info.roomPin,
+                    roomType : room_info.roomType,
+                    maxPlayer : room_info.maxPlayer,
+                    status : 1
+              },
             });
         
         });
@@ -345,6 +448,26 @@ module.exports = (io) => {
             // 5. new user외의 사용자들에게 new user정보 보냄
             socket.broadcast.to(room).emit('user joined', JSON.stringify(playerInfo));
 
+
+            lobbyLogger.info('waitingRoom:add_user', {
+                server : server_ip,
+                userIP : '192.0.0.1',
+                sessionID : socket.sessionID,
+                userID : socket.userID,
+                nickname : socket.nickname,
+                data : 
+                    {
+                        // roomID : "sdfsdfb124gvv" (string),
+                        room : room,
+                        team: playerInfo.team,
+                        color:playerInfo.color,
+                        place : playerInfo.place,
+                        status: playerInfo.status,
+                        userCnt : roomManageDict.userCnt,
+                        maxPlayer : roomManageDict.maxPlayer,
+                },
+            });
+
         });
         
 
@@ -376,17 +499,61 @@ module.exports = (io) => {
             console.log("!readyUserCnt : ", readyUserCnt);
             await hashtableStore.updateHashTableField(socket.room, 'readyUserCnt', readyUserCnt, 'roomManage'); 
            
+
+
+            // 47 수정한 내용 client들에게 뿌리기
+            var playerJson = JSON.stringify(playerInfo);
+
+            console.log('check playerJson : ', playerJson);
+            io.sockets.in(socket.room).emit('updateUI',playerJson);
+
+            lobbyLogger.info('waitingRoom:change_status', {
+                server : server_ip,
+                userIP : '192.0.0.1',
+                sessionID : socket.sessionID,
+                userID : socket.userID,
+                nickname : socket.nickname,
+                data : 
+                    {
+                        // roomID : "sdfsdfb124gvv" (string),
+                        room : socket.room,
+                        team: playerInfo.team,
+                        color:playerInfo.color,
+                        place : playerInfo.place,
+                        status: playerInfo.status,
+                        readyUserCnt: readyUserCnt
+                },
+            });
+
             // 3. 만약 모두가 ready한 상태라면 자동 game start
            if(readyUserCnt == maxPlayer){
                 console.log("!모두 레디함!");
                 io.sockets.in(socket.room).emit('countGameStart');
-           }else{
-                // 47 수정한 내용 client들에게 뿌리기
-                var playerJson = JSON.stringify(playerInfo);
 
-                console.log('check playerJson : ', playerJson);
-                io.sockets.in(socket.room).emit('updateUI',playerJson);
+                lobbyLogger.info('waitingRoom:count_game_start ', {
+                    server : server_ip,
+                    userIP : '192.0.0.1',
+                    sessionID : socket.sessionID,
+                    userID : socket.userID,
+                    nickname : socket.nickname,
+                    data : 
+                        {
+                            readyUserCnt: readyUserCnt
+                            // detail : "teamChange On1",
+                            // // roomID : "sdfsdfb124gvv" (string),
+                            // room : socket.room,
+                            // team: playerInfo.team,
+                            // color:playerInfo.color,
+                            // place : playerInfo.place,
+                            // status: playerInfo.status
+                    },
+                });
+
+           }else{
+              
            }
+
+          
 
         });
 
@@ -428,6 +595,24 @@ module.exports = (io) => {
             console.log('check : ', playerJson);
             // socket.broadcast.to(socket.room).emit('updateUI', playerJson);
             io.sockets.in(socket.room).emit('updateUI',playerJson); // 모든 사람에게 뿌림
+
+
+            lobbyLogger.info('waitingRoom:change_profile', {
+                server : server_ip,
+                userIP : '192.0.0.1',
+                sessionID : socket.sessionID,
+                userID : socket.userID,
+                nickname : socket.nickname,
+                data : 
+                    {
+                        // roomID : "sdfsdfb124gvv" (string),
+                        room : socket.room,
+                        team: playerInfo.team,
+                        color:playerInfo.color,
+                        place : playerInfo.place,
+                        status: playerInfo.status
+                },
+            });
         });  
 
 
@@ -477,6 +662,25 @@ module.exports = (io) => {
                 var playerJson = JSON.stringify(playerInfo);
                 console.log('check : ', playerJson);
                 socket.broadcast.to(socket.room).emit('updateUI', playerJson);
+
+                lobbyLogger.info('waitingRoom:switch_team ', {
+                    server : server_ip,
+                    userIP : '192.0.0.1',
+                    sessionID : socket.sessionID,
+                    userID : socket.userID,
+                    nickname : socket.nickname,
+                    data : 
+                        {
+                            detail : "teamChange Off",
+                            // roomID : "sdfsdfb124gvv" (string),
+                            room : socket.room,
+                            team: playerInfo.team,
+                            color:playerInfo.color,
+                            place : playerInfo.place,
+                            status: playerInfo.status
+                    },
+                });
+
             }
             // 2이면 teamChange On
             else if(changeStatus == 2){
@@ -535,6 +739,24 @@ module.exports = (io) => {
                     var teamChangeInfo = JSON.stringify(changeInfo);
                     console.log('check : ', teamChangeInfo);
                     io.sockets.in(socket.room).emit('updateTeamChange',teamChangeInfo);
+
+                    lobbyLogger.info('waitingRoom:switch_team ', {
+                        server : server_ip,
+                        userIP : '192.0.0.1',
+                        sessionID : socket.sessionID,
+                        userID : socket.userID,
+                        nickname : socket.nickname,
+                        data : 
+                            {
+                                detail : "teamChange On1",
+                                // roomID : "sdfsdfb124gvv" (string),
+                                room : socket.room,
+                                team: playerInfo.team,
+                                color:playerInfo.color,
+                                place : playerInfo.place,
+                                status: playerInfo.status
+                        },
+                    });
                 }else{
 
                     // 경우 2 : full 상태라 1:1로 팀 change를 해야되는 상황 
@@ -584,6 +806,25 @@ module.exports = (io) => {
                         // mywaitingList.push({ socketID : socket.id, userID : socket.userID});
                         console.log("check mywaitingList : " , mywaitingList);
                         await hashtableStore.updateHashTableField(room, myWaitingField, mywaitingList.join(','), 'roomManage');
+                        
+                        lobbyLogger.info('waitingRoom:switch_team ', {
+                            server : server_ip,
+                            userIP : '192.0.0.1',
+                            sessionID : socket.sessionID,
+                            userID : socket.userID,
+                            nickname : socket.nickname,
+                            data : 
+                                {
+                                    detail : "teamChange Wait",
+                                    // roomID : "sdfsdfb124gvv" (string),
+                                    room : socket.room,
+                                    team: playerInfo.team,
+                                    color:playerInfo.color,
+                                    place : playerInfo.place,
+                                    status: playerInfo.status
+                            },
+                        });
+                    
                     }else{
                         // 맞교환 진행
                         console.log("맞교환 O");
@@ -624,6 +865,24 @@ module.exports = (io) => {
                         
                         // 상대방 socketID로 1:1로 보냄 
                         io.to(matePlayerInfo.socketID).emit('onTeamChangeType2');
+
+                        lobbyLogger.info('waitingRoom:switch_team ', {
+                            server : server_ip,
+                            userIP : '192.0.0.1',
+                            sessionID : socket.sessionID,
+                            userID : socket.userID,
+                            nickname : socket.nickname,
+                            data : 
+                                {
+                                    detail : "teamChange On2",
+                                    // roomID : "sdfsdfb124gvv" (string),
+                                    room : socket.room,
+                                    team: playerInfo.team,
+                                    color:playerInfo.color,
+                                    place : playerInfo.place,
+                                    status: playerInfo.status
+                            },
+                        });
                     }
 
                 }
@@ -633,6 +892,24 @@ module.exports = (io) => {
         socket.on('updateSocketTeam',async()=> {
             socket.team = !socket.team;
             console.log("updateSocketTeam : " ,socket.team);
+
+            lobbyLogger.info('waitingRoom:switch_team ', {
+                server : server_ip,
+                userIP : '192.0.0.1',
+                sessionID : socket.sessionID,
+                userID : socket.userID,
+                nickname : socket.nickname,
+                data : 
+                    {
+                        detail : "teamChange On2",
+                        // roomID : "sdfsdfb124gvv" (string),
+                        room : socket.room,
+                        team: socket.team,
+                        color:socket.color,
+                        // place : socket.place,
+                        // status: socket.status
+                },
+            });
         });
 
         // [WaitingRoom] WaitingRoom에서 나갈 시 (홈버튼 클릭)
@@ -674,16 +951,31 @@ module.exports = (io) => {
             var monitoringLog = [];
             jsonStore.storejson(monitoringLog, socket.room+":blackLog");
             jsonStore.storejson(monitoringLog, socket.room+":whiteLog");
-            // var test = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"))[0];
-            // console.log("monitoringLog INIT test >> ", test);
-
-            var monitoringLog2 = {time: "12:34:56", nickname: "test1", targetCompany: "companyA", targetSection: "Area_DMZ", actionType: "monitoring", detail: "dddd 공격을 수행했습니다."};
-
+       
             // redis에 저징
             jsonStore.storejson(roomTotalJson, socket.room);
 
             // socket.broadcast.to(socket.room).emit('onGameStart');  //ver0
             io.sockets.in(socket.room).emit('onGameStart'); // ver1/
+
+            lobbyLogger.info('waitingRoom:game_start', {
+                server : server_ip,
+                userIP : '192.0.0.1',
+                sessionID : socket.sessionID,
+                userID : socket.userID,
+                nickname : socket.nickname,
+                data : 
+                    {
+                        // readyUserCnt: readyUserCnt
+                        // detail : "teamChange On1",
+                        // // roomID : "sdfsdfb124gvv" (string),
+                        // room : socket.room,
+                        // team: playerInfo.team,
+                        // color:playerInfo.color,
+                        // place : playerInfo.place,
+                        // status: playerInfo.status
+                },
+            });
         });
 
         //  [WaitingRoom] GameStart로 모든 클라이언트의 on을 받는 함수로 팀별로 room join하여 씬 이동함 
@@ -696,6 +988,26 @@ module.exports = (io) => {
             socket.emit('loadMainGame', socket.team.toString()); //ver3
             // io.sockets.in(socket.room+'false').emit('onBlackGameStart');// ver2
             // io.sockets.in(socket.room+'true').emit('onWhiteGameStart');// ver2
+        
+            lobbyLogger.info('waitingRoom:game_start_join_team', {
+                server : server_ip,
+                userIP : '192.0.0.1',
+                sessionID : socket.sessionID,
+                userID : socket.userID,
+                nickname : socket.nickname,
+                data : 
+                    {
+                        // readyUserCnt: readyUserCnt
+                        // detail : "teamChange On1",
+                        // // roomID : "sdfsdfb124gvv" (string),
+                        // room : socket.room,
+                        // team: playerInfo.team,
+                        // color:playerInfo.color,
+                        // place : playerInfo.place,
+                        // status: playerInfo.status
+                },
+            });
+        
         });
 
 
@@ -753,7 +1065,7 @@ module.exports = (io) => {
             socket.emit('Visible LimitedTime', socket.team.toString()); // actionbar
 
             // Timer 시작
-            var time = 600; //600=10분, 1분 -> 60
+            var time = 10; //600=10분, 1분 -> 60
             var min = "";
             var sec = "";
 
@@ -1129,7 +1441,8 @@ module.exports = (io) => {
             let step = roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attackStep"];
 
             // buff가 있는지 확인한 후 쿨타임 클라이언트에게 보내기
-            let cardLv = roomTotalJson[0][attackJson.companyName]["penetrationTestingLV"][attackJson.attackIndex];
+            let cardLv = roomTotalJson[0][attackJson.companyName]["attackLV"][attackJson.attackIndex];
+            console.log("[click attack] cardLv", cardLv);
             let pitaNum;
             if (attackJson.teamName == true) {
                 pitaNum = roomTotalJson[0]['whiteTeam']['total_pita'] - config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][cardLv - 1];
@@ -1143,6 +1456,26 @@ module.exports = (io) => {
 
                 console.log("[!!!!!] pita num : ", pitaNum);
             }
+
+            // 공격 시도 로그
+            gameLogger.info("game:attack attempt", {
+                server : 'server1',
+                userIP : '192.0.0.1',
+                sessionID : socket.sessionID,
+                userID : socket.userId,
+                nickname : socket.nickname,
+                data : 	{
+                    roomID : "sdfsdfb124gvv",
+                    team : socket.team,
+                    companyName : attackJson.companyName,
+                    section : attackJson.sectionIndex,
+                    state : "attempnt",
+                    attackType : attackJson.attackIndex,
+                    attackLevel : cardLv,
+                    cost : config["ATTACK_" + (attackJson.attackIndex + 1)]['pita'][cardLv - 1],
+                    totalPita : pitaNum
+                },
+            });
 
             if (pitaNum >= 0){
                 socket.to(socket.room + socket.team).emit('Update Pita', pitaNum);
@@ -1203,28 +1536,26 @@ module.exports = (io) => {
                             step = 1;
                 
                             console.log("결정된 인덱스 별 step : ", 1);
+                            roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attackStep"] = step;
+                            roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["responseStep"] = step;
 
                             console.log("attackcount param cooltime : ", cooltime);
 
-                            // // 만약 유지보수 레벨이 0이면 관제 및 blocked에 대한 기능이 모두 수행되지 않음
-                            // if (roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["level"] != 0){
-
-                            // }
-
                             await attackCount(socket, attackJson, cooltime);
-                            await monitoringCount(socket, attackJson, cardLv);
+
+                            // // 만약 유지보수 레벨이 0이면 관제 및 blocked에 대한 기능이 모두 수행되지 않음
+                            await monitoringCount(socket, attackJson);
                         } else {
                             console.log("이미 수행한 공격입니다.");
-                            await monitoringCountBlocked(socket, attackJson, cardLv);
+                            // // 만약 유지보수 레벨이 0이면 관제 및 blocked에 대한 기능이 모두 수행되지 않음
+                            await monitoringCountBlocked(socket, attackJson);
+                            
                         }
                         
                     } else {
                         console.log("취약점이 아닌 공격입니다.");
                         // // 만약 유지보수 레벨이 0이면 관제 및 blocked에 대한 기능이 모두 수행되지 않음
-                        // if (roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["level"] != 0){
-
-                        // }
-                        await monitoringCountBlocked(socket, attackJson, cardLv);
+                        await monitoringCountBlocked(socket, attackJson);
                     }
                 } else {
                     if (attackJson.attackIndex == 4){
@@ -1249,21 +1580,16 @@ module.exports = (io) => {
                         roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["last"] = attackJson.attackIndex;
                 
                         console.log("결정된 인덱스 별 step : ", step);
+                        roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attackStep"] = step;
+                        roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["responseStep"] = step;
 
-                        // // 만약 유지보수 레벨이 0이면 관제 및 blocked에 대한 기능이 모두 수행되지 않음
-                        // if (roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["level"] != 0){
-
-                        // }
                         await attackCount(socket, attackJson, cooltime);
-                        await monitoringCount(socket, attackJson, cardLv);
+
+                        await monitoringCount(socket, attackJson);
                     } else {
                         console.log("이미 수행한 공격입니다.");
 
-                        // // 만약 유지보수 레벨이 0이면 관제 및 blocked에 대한 기능이 모두 수행되지 않음
-                        // if (roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["level"] != 0){
-
-                        // }
-                        await monitoringCountBlocked(socket, attackJson, cardLv);
+                        await monitoringCountBlocked(socket, attackJson);
                     }
                     
                 }
@@ -1283,10 +1609,28 @@ module.exports = (io) => {
     
                     console.log("[!!!!!] pita num : ", pitaNum);
                 }
-            }
 
-            roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attackStep"] = step;
-            roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["responseStep"] = step;
+                // 공격 실패 - 피타 부족
+                gameLogger.info("game:attack fail", {
+                    server : 'server1',
+                    userIP : '192.0.0.1',
+                    sessionID : socket.sessionID,
+                    userID : socket.userId,
+                    nickname : socket.nickname,
+                    data : 	{
+                        roomID : "sdfsdfb124gvv",
+                        team : socket.team,
+                        companyName : attackJson.companyName,
+                        section : attackJson.sectionIndex,
+                        state : "fail",
+                        cause : "pita",
+                        attackType : attackJson.attackIndex,
+                        attackLevel : cardLv,
+                        cost : 0,
+                        totalPita : pitaNum
+                    },
+                });
+            }
 
             // step = roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attackStep"];
             console.log("roomTotalJson[0][attackJson.companyName]['sections'][attackJson.sectionIndex] : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]);
@@ -1325,7 +1669,6 @@ module.exports = (io) => {
 
                 socket.emit("Continue Event", config["RESPONSE_" + (responseJson.attackIndex + 1)]['time'][cardLv - 1]);
 
-                let step = roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["responseStep"];
                 let indexStep = 0;
                 if (0 <= responseJson.attackIndex && responseJson.attackIndex <= 3){
                     indexStep = 1;
@@ -1341,10 +1684,63 @@ module.exports = (io) => {
                     indexStep = 6;
                 }
 
-                await responseCount(socket, responseJson, indexStep, cardLv);
+                var cooltimeLV;
+                if (cardLv > roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["level"]){
+                    console.log("특정 영역 보안 레벨이 대응 레벨보다 낮음 >> 특정 영역 보안 레벨로 쿨타임 적용");
+                    cooltimeLV = roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["level"];
+                } else {
+                    console.log("특정 영역 보안 레벨이 대응 레벨과 같거나 낮음 >> 대응의 레벨로 쿨타임 적용");
+                    cooltimeLV = cardLv;
+                }
+
+                console.log("[Click Response] cooltimeLV", cooltimeLV);
+                await responseCount(socket, responseJson, indexStep, (cooltimeLV - 1));
+
+                // 대응 시도
+                gameLogger.info("game:response attempt", {
+                    server : 'server1',
+                    userIP : '192.0.0.1',
+                    sessionID : socket.sessionID,
+                    userID : socket.userId,
+                    nickname : socket.nickname,
+                    data : 	{
+                        roomID : "sdfsdfb124gvv",
+                        team : socket.team,
+                        companyName : responseJson.companyName,
+                        section : responseJson.sectionIndex,
+                        state : "attempt",
+                        responseType : responseJson.attackIndex,
+                        responseLevel : cardLv,
+                        sectionLevel : roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["level"],
+                        cost : config["RESPONSE_" + (responseJson.attackIndex + 1)]['pita'][cardLv - 1],
+                        totalPita : pitaNum
+                    },
+                });
             } else {
                 console.log("방어 실패!! >> pita 부족")
                 socket.emit("Short of Money");
+
+                // 대응 실패 - pita 부족
+                gameLogger.info("game:response fail", {
+                    server : 'server1',
+                    userIP : '192.0.0.1',
+                    sessionID : socket.sessionID,
+                    userID : socket.userId,
+                    nickname : socket.nickname,
+                    data : 	{
+                        roomID : "sdfsdfb124gvv",
+                        team : socket.team,
+                        companyName : responseJson.companyName,
+                        section : responseJson.sectionIndex,
+                        state : "fail",
+                        cause : "pita",
+                        responseType : responseJson.attackIndex,
+                        responseLevel : cardLv,
+                        sectionLevel : roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["level"],
+                        cost : 0,
+                        totalPita : pitaNum
+                    },
+                });
             }
             
             await jsonStore.updatejson(roomTotalJson[0], socket.room);
@@ -1364,15 +1760,15 @@ module.exports = (io) => {
             if (socket.team == true) {
                 console.log("white team upgrade attack card");
                 cardLv = roomTotalJson[0][upgradeAttackInfo.companyName]["penetrationTestingLV"][upgradeAttackInfo.attackIndex];
-                pitaNum = roomTotalJson[0]['whiteTeam']['total_pita'] - config["MONITORING_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv];
+                pitaNum = roomTotalJson[0]['whiteTeam']['total_pita'] - config["RESPONSE_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv];
                 roomTotalJson[0]['whiteTeam']['total_pita'] = pitaNum;
 
                 console.log("[!!!!!] pita num : ", pitaNum);
             } else {
                 console.log("black team upgrade attack card");
                 cardLv = roomTotalJson[0][upgradeAttackInfo.companyName]["attackLV"][upgradeAttackInfo.attackIndex];
-                console.log("team total_pita : ", roomTotalJson[0]['blackTeam']['total_pita'], ", config pita : ", config["MONITORING_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv]);
-                pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] - config["MONITORING_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv];
+                console.log("team total_pita : ", roomTotalJson[0]['blackTeam']['total_pita'], ", config pita : ", config["RESPONSE_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv]);
+                pitaNum = roomTotalJson[0]['blackTeam']['total_pita'] - config["RESPONSE_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv];
                 roomTotalJson[0]['blackTeam']['total_pita'] = pitaNum;
 
                 console.log("[!!!!!] pita num : ", pitaNum);
@@ -1407,9 +1803,96 @@ module.exports = (io) => {
                 console.log("Update Card List Return Value : ", returnValue);
                 socket.to(socket.room + socket.team).emit("Card List", upgradeAttackInfo.companyName, returnValue);
                 socket.emit("Card List", upgradeAttackInfo.companyName, returnValue);
+
+                if (socket.team == true){
+                    // 모의해킹(대응 업그레이드) 성공 로그
+                    gameLogger.info("game:penetraion testing success", {
+                        server : 'server1',
+                        userIP : '192.0.0.1',
+                        sessionID : socket.sessionID,
+                        userID : socket.userId,
+                        nickname : socket.nickname,
+                        data : 	{
+                            roomID : "sdfsdfb124gvv",
+                            team : socket.team,
+                            companyName : upgradeAttackInfo.companyName,
+                            section : upgradeAttackInfo.sectionIndex,
+                            state : "success",
+                            responseType : upgradeAttackInfo.attackIndex,
+                            responseLevel : cardLv,
+                            cost : config["RESPONSE_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv - 1],
+                            totalPita : pitaNum
+                        },
+                    });
+                } else {
+                    // 연구(공격 업그레이드) 성공 로그
+                    gameLogger.info("game:research success", {
+                        server : 'server1',
+                        userIP : '192.0.0.1',
+                        sessionID : socket.sessionID,
+                        userID : socket.userId,
+                        nickname : socket.nickname,
+                        data : 	{
+                            roomID : "sdfsdfb124gvv",
+                            team : socket.team,
+                            companyName : upgradeAttackInfo.companyName,
+                            section : upgradeAttackInfo.sectionIndex,
+                            state : "success",
+                            attackType : upgradeAttackInfo.attackIndex,
+                            attackLevel : cardLv,
+                            cost : config["RESPONSE_" + (upgradeAttackInfo.attackIndex + 1)]['pita'][cardLv - 1],
+                            totalPita : pitaNum
+                        },
+                    });
+                }
+                
             } else {
                 console.log("업그레이드 실패!! >> pita 부족");
                 socket.emit("Short of Money");
+
+                if (socket.team = true){
+                    // 연구(공격 업그레이드) 실패 로그
+                    gameLogger.info("game:penetraion tesing fail", {
+                        server : 'server1',
+                        userIP : '192.0.0.1',
+                        sessionID : socket.sessionID,
+                        userID : socket.userId,
+                        nickname : socket.nickname,
+                        data : 	{
+                            roomID : "sdfsdfb124gvv",
+                            team : socket.team,
+                            companyName : upgradeAttackInfo.companyName,
+                            section : upgradeAttackInfo.sectionIndex,
+                            state : "fail",
+                            cause : "pita",
+                            responseType : upgradeAttackInfo.attackIndex,
+                            responseLevel : cardLv,
+                            cost : 0,
+                            totalPita : pitaNum
+                        },
+                    });
+                } else {
+                    // 연구(공격 업그레이드) 실패 로그
+                    gameLogger.info("game:research fail", {
+                        server : 'server1',
+                        userIP : '192.0.0.1',
+                        sessionID : socket.sessionID,
+                        userID : socket.userId,
+                        nickname : socket.nickname,
+                        data : 	{
+                            roomID : "sdfsdfb124gvv",
+                            team : socket.team,
+                            companyName : upgradeAttackInfo.companyName,
+                            section : upgradeAttackInfo.sectionIndex,
+                            state : "fail",
+                            cause : "pita",
+                            attackType : upgradeAttackInfo.attackIndex,
+                            attackLevel : cardLv,
+                            cost : 0,
+                            totalPita : pitaNum
+                        },
+                    });
+                }
             }
 
             
@@ -1457,25 +1940,77 @@ module.exports = (io) => {
 // ===================================================================================================================
         // ## [Section] 영역 클릭 시 
         socket.on('Section_Name', async(data) => {
-            console.log('[Section - Click Section] Click Area Info  : ', data);
-            data = JSON.parse(data);
-
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
             var white_total_pita = roomTotalJson[0].whiteTeam.total_pita;
-            console.log("Before White total_pita!!!", white_total_pita );
 
+            data = JSON.parse(data);
             var corpName = data.Corp;
             var sectionIdx = data.areaIdx;
+
+            // 개발자 로그 - 유지보수(영역 업그레이드) 시도
+            gameLogger.info("DetailCompany:Maintenance attempt", {
+                server : 'server1',
+                userIP : '192.0.0.1',
+                sessionID : socket.sessionID,
+                userID : socket.userID,
+                nickname : socket.nickname,
+                data : 	{
+                    roomID : socket.room,
+                    team : true, 
+                    companyName : corpName, 
+                    section : sectionIdx,
+                    state : "attempt",
+                    sectionLevel : roomTotalJson[0][corpName].sections[sectionIdx].level,
+                    cost : 0,
+                    totalPita : white_total_pita
+                },
+            });
             
             if(white_total_pita - config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level] < 0)
             {
-                console.log("[Maintainance] 피타 부족");
                 socket.emit("Short of Money");
+                // 개발자 로그 - 유지보수(영역 업그레이드) 실패(피타 부족)
+                gameLogger.info("DetailCompany:Maintenance fail", {
+                    server : 'server1',
+                    userIP : '192.0.0.1',
+                    sessionID : socket.sessionID,
+                    userID : socket.userID,
+                    nickname : socket.nickname,
+                    data : 	{
+                        roomID : socket.room,
+                        team : true, 
+                        companyName : corpName, 
+                        section : sectionIdx,
+                        state : "fail",
+                        cause : "pita",
+                        sectionLevel : roomTotalJson[0][corpName].sections[sectionIdx].level,
+                        cost : 0,
+                        totalPita : white_total_pita
+                    },
+                });
             } else {
                 // 최대 레벨 확인
                 if(roomTotalJson[0][corpName].sections[sectionIdx].level >= config.MAX_LEVEL){
-                    console.log("섹션 최대 레벨");
                     socket.emit("Out of Level");
+                    // 개발자 로그 - 유지보수(영역 업그레이드) 실패(최대 레벨)
+                    gameLogger.info("DetailCompany:Maintenance fail", {
+                        server : 'server1',
+                        userIP : '192.0.0.1',
+                        sessionID : socket.sessionID,
+                        userID : socket.userID,
+                        nickname : socket.nickname,
+                        data : 	{
+                            roomID : socket.room,
+                            team : true, 
+                            companyName : corpName, 
+                            section : sectionIdx,
+                            state : "fail",
+                            cause : "max level",
+                            sectionLevel : roomTotalJson[0][corpName].sections[sectionIdx].level,
+                            cost : 0,
+                            totalPita : white_total_pita
+                        },
+                    });
                 } else {
                     // json 변경 - pita 감소
                     var newTotalPita = white_total_pita - config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level]; //pita 감소
@@ -1483,95 +2018,130 @@ module.exports = (io) => {
                     roomTotalJson[0][corpName].sections[sectionIdx].level += 1; // 레벨 증가
                     await jsonStore.updatejson(roomTotalJson[0], socket.room);
 
-                    // update 확인(추후 삭제)
-                    var NewRoomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-                    console.log("After White total_pita!!!", white_total_pita - config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level] );
-                    console.log("================= After UPDATE ================= : ", NewRoomTotalJson[0][corpName].sections[sectionIdx]);
-
                     var area_level = sectionIdx.toString() + "-" + (roomTotalJson[0][corpName].sections[sectionIdx].level);
                     io.sockets.in(socket.room+'true').emit('New_Level', corpName, area_level.toString());
-                    // socket.to(socket.room).emit("New_Level", area_level.toString());
-                    // socket.emit('New_Level', area_level.toString());
-
                     io.sockets.in(socket.room+'true').emit('Update Pita', newTotalPita); // 화이트팀
-                    // socket.to(socket.room).emit("Load Pita Num", newTotalPita);
-                    // socket.emit("Load Pita Num", newTotalPita);    
+
+                    // 개발자 로그 - 유지보수(영역 업그레이드) 성공
+                    gameLogger.info("DetailCompany:Maintenance success", {
+                        server : 'server1',
+                        userIP : '192.0.0.1',
+                        sessionID : socket.sessionID,
+                        userID : socket.userID,
+                        nickname : socket.nickname,
+                        data : 	{
+                            roomID : socket.room,
+                            team : false, 
+                            companyName : corpName, 
+                            section : sectionIdx,
+                            state : "success",
+                            sectionLevel : roomTotalJson[0][corpName].sections[sectionIdx].level,
+                            cost :  config.MAINTENANCE_SECTION_INFO.pita[roomTotalJson[0][corpName].sections[sectionIdx].level],
+                            totalPita : newTotalPita
+                        },
+                    });
                 }
             }
         });
 
         // ## [Section] 구조도 페이지 시작 시
         socket.on('Section_Start', async (corp) => {
-            console.log("Section_Start CALLED >> ");
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-
             var corpName = corp;
             var sectionsArr = roomTotalJson[0][corpName].sections;
-            console.log("### LENGTH ### >> ", sectionsArr.length);
 
             for(var i=0; i<sectionsArr.length; i++){
                 var sectionInfo = { Corp: corpName, areaIdx: i, level: roomTotalJson[0][corpName].sections[i].level, vuln: roomTotalJson[0][corpName].sections[i].vuln}
-                console.log("[Section] sectionInfo-detail", sectionInfo);
-                
-                // socket.to(socket.room).emit("Area_Start_Emit", JSON.stringify(sectionInfo));
                 socket.emit('Area_Start_Emit', JSON.stringify(sectionInfo));
-
-
-                /*
-                [Section] sectionInfo-detail { Corp: 'companyA', areaIdx: 0, level: 0, vuln: 3 }
-                [Section] sectionInfo-detail { Corp: 'companyA', areaIdx: 1, level: 0, vuln: 1 }
-                [Section] sectionInfo-detail { Corp: 'companyA', areaIdx: 2, level: 0, vuln: 2 }
-                */
             }
         });
 
         // ## [PreDiscovery] 사전탐색 페이지 시작 시
         socket.on('PreDiscovery_Start', async (corp) => {
-            console.log("PreDiscovery_Start CALLED >> ");
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-
             var corpName = corp;
             var sectionsArr = roomTotalJson[0][corpName].sections;
 
             for(var i=0; i<sectionsArr.length; i++){
                 var sectionInfo = { Corp: corpName, areaIdx: i, vuln: roomTotalJson[0][corpName].sections[i].vuln, vulnActive: roomTotalJson[0][corpName].sections[i].vulnActive}
-                console.log("[PreDiscovery] sectionInfo-detail", sectionInfo);
-                
-                // socket.to(socket.room).emit("PreDiscovery_Start_Emit", JSON.stringify(sectionInfo));
                 socket.emit('PreDiscovery_Start_Emit', JSON.stringify(sectionInfo));
-
-
-                /*
-                [Section] sectionInfo-detail { Corp: 'companyA', areaIdx: 0, vuln: 3, vulnActive: false}
-                [Section] sectionInfo-detail { Corp: 'companyA', areaIdx: 1, vuln: 1, vulnActive: false}
-                [Section] sectionInfo-detail { Corp: 'companyA', areaIdx: 2, vuln: 2, vulnActive: false}
-                */
             }
         });
 
         // ## [Vuln] 영역 클릭 시 
         socket.on('Get_VulnActive', async (data) => {
-            console.log('[Vuln] Click Area_Name IDX : ', data);
-            data = JSON.parse(data);
-
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
             var black_total_pita = roomTotalJson[0].blackTeam.total_pita;
-            console.log("Before black_total_pita!!!", black_total_pita );
 
+            data = JSON.parse(data);
             var corpName = data.Corp;
             var sectionIdx = data.areaIdx;
 
             var vulnIdx =  roomTotalJson[0][corpName].sections[sectionIdx].vuln;
 
+            // 개발자 로그 - 취약점 탐색 시도
+            gameLogger.info("DetailCompany:Explore attempt", {
+                server : 'server1',
+                userIP : '192.0.0.1',
+                sessionID : socket.sessionID,
+                userID : socket.userID,
+                nickname : socket.nickname,
+                data : 	{
+                    roomID : socket.room,
+                    team : false, 
+                    companyName : corpName, 
+                    section : sectionIdx,
+                    state : "attempt",
+                    cost : 0,
+                    totalPita : black_total_pita
+                },
+            });
+
             
             if( roomTotalJson[0][corpName].sections[sectionIdx].vulnActive == true){
-                console.log("이미 취약점확인됨" + roomTotalJson[0][corpName].sections[sectionIdx].vulnActive.toString());
                 socket.emit("already done");
+
+                // 개발자 로그 - 취약점 탐색 실패(이미 완료됨)
+                gameLogger.info("DetailCompany:Explore fail", {
+                    server : 'server1',
+                    userIP : '192.0.0.1',
+                    sessionID : socket.sessionID,
+                    userID : socket.userID,
+                    nickname : socket.nickname,
+                    data : 	{
+                        roomID : socket.room,
+                        team : false, 
+                        companyName : corpName, 
+                        section : sectionIdx,
+                        state : "fail",
+                        cause : "already done",
+                        cost : 0,
+                        totalPita : black_total_pita
+                    },
+                });
             }
             else if(black_total_pita - config.EXPLORE_INFO.pita < 0)
             {
-                console.log("피타 부족");
                 socket.emit("Short of Money");
+
+                // 개발자 로그 - 취약점 탐색 실패(피타 부족)
+                gameLogger.info("DetailCompany:Explore fail", {
+                    server : 'server1',
+                    userIP : '192.0.0.1',
+                    sessionID : socket.sessionID,
+                    userID : socket.userID,
+                    nickname : socket.nickname,
+                    data : 	{
+                        roomID : socket.room,
+                        team : false, 
+                        companyName : corpName, 
+                        section : sectionIdx,
+                        state : "fail",
+                        cause : "pita",
+                        cost : 0,
+                        totalPita : black_total_pita
+                    },
+                });
             } else {
                 // json 변경
                 var newTotalPita = black_total_pita - config.EXPLORE_INFO.pita; // pita 감소
@@ -1579,73 +2149,73 @@ module.exports = (io) => {
                 roomTotalJson[0][corpName].sections[sectionIdx].vulnActive = true;  // vulnActive 변경
                 await jsonStore.updatejson(roomTotalJson[0], socket.room);
 
-                // 확인
-                var roomTotalJsonA = JSON.parse(await jsonStore.getjson(socket.room));
-                console.log("UPDATE 후에 JSON!!!",roomTotalJsonA[0]);
-                console.log("After black_total_pita!!!", black_total_pita - config.EXPLORE_INFO.pita);
-
-                io.sockets.in(socket.room+'false').emit('Area_VulnActive', corpName, sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
-                // socket.to(socket.room).emit("Area_VulnActive", sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
-                // socket.emit('Area_VulnActive', sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
-
                 io.sockets.in(socket.room+'false').emit('Update Pita', newTotalPita); // 블랙팀
-                // socket.to(socket.room).emit("Load Pita Num", newTotalPita);
-                // socket.emit("Load Pita Num", newTotalPita);   
+                io.sockets.in(socket.room+'false').emit("Discovery Start", corpName, sectionIdx);
 
-                // [GameLog] 로그 추가 - 사전탐색 로그
-                const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
+                // 타이머 시작
+                setTimeout(async function(){
+                    io.sockets.in(socket.room+'false').emit('Area_VulnActive', corpName, sectionIdx, roomTotalJson[0][corpName].sections[sectionIdx].vulnActive);
 
-                let today = new Date();   
-                let hours = today.getHours(); // 시
-                let minutes = today.getMinutes();  // 분
-                let seconds = today.getSeconds();  // 초
-                let now = hours+":"+minutes+":"+seconds;
+                    // [GameLog] 로그 추가 - 사전탐색 로그
+                    const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
 
-                var companyIdx =  corpName.charCodeAt(7) - 65;
-                var monitoringLog = {time: now, nickname: socket.nickname, targetCompany: corpName, targetSection: sectionNames[companyIdx][sectionIdx], actionType: "PreDiscovery", detail: "취약점 " +vulnArray[vulnIdx] +"이 발견되었습니다."};
+                    let today = new Date();   
+                    let hours = today.getHours(); // 시
+                    let minutes = today.getMinutes();  // 분
+                    let seconds = today.getSeconds();  // 초
+                    let now = hours+":"+minutes+":"+seconds;
 
-                blackLogJson[0].push(monitoringLog);
-                await jsonStore.updatejson(blackLogJson[0], socket.room+":blackLog");
-                
-                var logArr = [];
-                logArr.push(monitoringLog);
-                //socket.emit('BlackLog', logArr);
-                //socket.to(socket.room).emit('BlackLog', logArr);
-                io.sockets.in(socket.room+'false').emit('addLog', logArr);
-                console.log("EXPLORE ADD LOG");
+                    var companyIdx =  corpName.charCodeAt(7) - 65;
+                    var monitoringLog = {time: now, nickname: socket.nickname, targetCompany: corpName, targetSection: sectionNames[companyIdx][sectionIdx], actionType: "PreDiscovery", detail: "취약점 " +vulnArray[vulnIdx] +"이 발견되었습니다."};
+
+                    blackLogJson[0].push(monitoringLog);
+                    await jsonStore.updatejson(blackLogJson[0], socket.room+":blackLog");
+                    
+                    var logArr = [];
+                    logArr.push(monitoringLog);
+                    io.sockets.in(socket.room+'false').emit('addLog', logArr);
+
+                    // 개발자 로그 - 취약점 탐색 성공
+                    gameLogger.info("DetailCompany:Explore success", {
+                        server : 'server1',
+                        userIP : '192.0.0.1',
+                        sessionID : socket.sessionID,
+                        userID : socket.userID,
+                        nickname : socket.nickname,
+                        data : 	{
+                            roomID : socket.room,
+                            team : false, 
+                            companyName : corpName, 
+                            section : sectionIdx,
+                            state : "success",
+                            vuln : vulnIdx,
+                            cost : config.EXPLORE_INFO.pita,
+                            totalPita : newTotalPita
+                        },
+                    });
+                }, config.EXPLORE_INFO.time * 1000);
             }
         });
 
         // [SectionState] Section Destroy
-        socket.on('Get_Section_Destroy_State', async(corp) => {
-            console.log('Get_Section_Destroy_State CALLED  : ', corp);
-            
+        socket.on('Get_Section_Destroy_State', async(corp) => {            
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
             var corpName = corp;
-
-            //console.log("@@@@@@@@ Destroy State @@@@@@@ ",  roomTotalJson[0][corpName].sections);
             var sections = {sections: roomTotalJson[0][corpName].sections};
-
-            // socket.to(socket.room).emit("Section_Destroy_State", JSON.stringify(sections));
             socket.emit('Section_Destroy_State', JSON.stringify(sections));
         });
 
-        // [SectionState] Section Attacked Name TEST
+        // [SectionState] Section Attacked Name
         socket.on('Get_Section_Attacked_Name', async(corp) => {
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
             var corpName = corp;
-
-            //console.log("@@@@@@@@ Destroy State @@@@@@@ ",  roomTotalJson[0][corpName].sections);
             var sections = {sections: roomTotalJson[0][corpName].sections}
-
-            // socket.to(socket.room).emit("Section_Attacked_Name", JSON.stringify(sections));
             socket.emit('Section_Attacked_Name', JSON.stringify(sections));
         });
 
         // [SectionState] 관제 issue Count
         socket.on('Get_Issue_Count', async(corp) => {            
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-
             var corpName = corp;
             var sectionsArr = roomTotalJson[0][corpName].sections;
 
@@ -1655,10 +2225,7 @@ module.exports = (io) => {
                 var sectionData = roomTotalJson[0][corpName].sections[i].response.progress.length;
                 cntArr[i] = sectionData;
             }
-
-            // socket.to(socket.room).emit("Issue_Count", cntArr);
             socket.emit('Issue_Count', cntArr);
-
         });
 
         // [Abandon] 한 회사의 모든 영역이 파괴되었는지 확인 후 몰락 여부 결정
@@ -1702,11 +2269,7 @@ module.exports = (io) => {
 
                 var logArr = [];
                 logArr.push(monitoringLog);
-                // socket.emit('BlackLog', logArr);
-                // socket.to(socket.room).emit('BlackLog', logArr);
                 io.sockets.in(socket.room+'false').emit('addLog', logArr);
-                // socket.emit('WhiteLog', logArr);
-                // socket.to(socket.room).emit('WhiteLog', logArr);
                 io.sockets.in(socket.room+'true').emit('addLog', logArr);
 
                 // 회사 아이콘 색상 변경
@@ -1714,17 +2277,27 @@ module.exports = (io) => {
                 for(let company of companyNameList){
                     abandonStatusList.push(roomTotalJson[0][company]["abandonStatus"]);
                 }
-
                 
                 console.log("Section Destroy -> abandonStatusList : ", abandonStatusList);
 
-                io.sockets.in(socket.room+'false').emit('Company Status', abandonStatusList); // 블랙팀
-                io.sockets.in(socket.room+'true').emit('Company Status', abandonStatusList); // 화이트팀
+                io.sockets.in(socket.room).emit('Company Status', abandonStatusList);  // 블랙, 화이트 두 팀 모두에게 보냄
                 // io.sockets.in(socket.room).emit('Company Status', abandonStatusList);
 
 
                 // 모든 회사가 몰락인지 확인
                 AllAbandon(socket, roomTotalJson);
+
+                gameLogger.info("game:destroy company", {
+                    server : 'server1',
+                    userIP : '192.0.0.1',
+                    sessionID : socket.sessionID,
+                    userID : socket.userId,
+                    nickname : socket.nickname,
+                    data : 	{
+                        roomID : "sdfsdfb124gvv",
+                        companyName : corpName
+                    },
+                });
 
             }
             
@@ -1732,11 +2305,9 @@ module.exports = (io) => {
 
         // [Monitoring] monitoringLog 스키마 데이터 보내기
         socket.on('Get_MonitoringLog', async(corp) => {
-            console.log('Get_MonitoringLog CALLED  : ', corp);
             const monitoringLogJson = JSON.parse(await jsonStore.getjson(socket.room+":whiteLog"));
 
             var jsonArray = [];
-            console.log('Get_MonitoringLog Result : ', monitoringLogJson[0].length);
             for (var i=0; i<monitoringLogJson[0].length; i++) {
                 if(monitoringLogJson[0][i]["targetCompany"] == corp){
                     var newResult = {
@@ -1750,16 +2321,13 @@ module.exports = (io) => {
                     jsonArray.push(newResult);
                 } 
             }
-            console.log('Get_MonitoringLog NEW Result Length : ', jsonArray.length);
-            //console.log("@@@@@@@@ MonitoringLog @@@@@@@ ",  jsonArray);
             socket.emit('MonitoringLog', jsonArray);
         });
 
 
         // [Result] 최종 결과 보내기
         socket.on('Get_Final_RoomTotal', async() => {
-            // 타이머 종료
-            io.sockets.in(socket.room).emit('Timer END');
+            io.sockets.in(socket.room).emit('Timer END'); // 타이머 종료
             //socket.emit('Result_PAGE'); // 결과 페이지로 넘어가면 타이머, 로그 안보이게 하기
 
             // 양팀 남은 피타, 획득 호두, 승리팀
@@ -1790,19 +2358,14 @@ module.exports = (io) => {
                     whiteUsersInfo.push(infoJson);
                 }
             }
-            console.log("blackUsersInfo 배열 : ", blackUsersInfo);
-            console.log("whiteUsersInfo 배열 : ", whiteUsersInfo);
 
             socket.emit('playerInfo', blackUsersInfo, whiteUsersInfo, JSON.stringify(finalRoomTotal)); // 플리이어 정보(닉네임, 프로필 색) 배열, 양팀 피타, 호두, 승리팀 정보 전송
-
         });
 
         // [Result]
         socket.on('All_abandon_test', async() => {
-            console.log("All_abandon_test called");
             // 양팀 남은 피타, 획득 호두, 승리팀
             const roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-
             for(let company of companyNameList){
                 roomTotalJson[0][company]["abandonStatus"] = true;
             }
@@ -1930,6 +2493,7 @@ module.exports = (io) => {
     async function createRoom(roomType, maxPlayer){
         //  1. redis - room에 저장
         var roomPin = randomN();
+        var roomID = randomId();
         while (redis_room.checkRooms(roomPin))
         {
             console.log("룸키 중복 발생_룸 키 재발급");
@@ -1940,6 +2504,8 @@ module.exports = (io) => {
         var creationDate = nowDate();
 
         var room_info = {
+            roomID : roomID,
+            roomPin : roomPin,
             creationDate : creationDate,
             roomType : roomType,
             maxPlayer : maxPlayer
@@ -1948,7 +2514,8 @@ module.exports = (io) => {
         await redis_room.createRoom(roomPin, room_info);
 
         // 2. redis - roomManage/'roomKey' 저장
-        var room_info = {
+        var room_info_redis = {
+            'roomID' : roomID,
             'roomType' : roomType,
             'creationDate' : creationDate,
             'maxPlayer' : maxPlayer,
@@ -1963,13 +2530,15 @@ module.exports = (io) => {
             'profileColors' : '000000000000'
         };
 
-        hashtableStore.storeHashTable(roomPin, room_info, 'roomManage');
+        hashtableStore.storeHashTable(roomPin, room_info_redis, 'roomManage');
 
         // 3. redis - roomManage/publicRoom 또는 roomManage/privateRoom 에 저장
         var redisroomKey =  roomType +'Room';
         listStore.rpushList(redisroomKey, roomPin, false, 'roomManage');
 
-        return roomPin
+        
+
+        return room_info
     };
 
 
@@ -2187,52 +2756,57 @@ module.exports = (io) => {
             last  : -1
         })
 
-        var initCompany = new Company({
-            abandonStatus : false,
-            penetrationTestingLV : [1,1,1,1,1,1,1,1,1,1,1,1,1],
-            attackLV : [0,0,0,0,0,0,0,0,0,0,0,0,0],
-            sections : [
-                new Section({
-                    activation : true,
-                    destroyStatus : false ,
-                    level  : 0,
-                    vuln : 0,
-                    vulnActive : false,
-                    attackStep : 0,
-                    successAttackStep : 0,
-                    responseStep : 0,
-                    attack : progress,
-                    response : progress,
-                }),
+        var initCompanyArray = []
+        for (var i = 0; i < 5; i++){
+            var initCompany = new Company({
+                abandonStatus : false,
+                penetrationTestingLV : [1,1,1,1,1,1,1,1,1,1,1,1,1],
+                attackLV : [0,0,0,0,0,0,0,0,0,0,0,0,0],
+                sections : [
+                    new Section({
+                        activation : true,
+                        destroyStatus : false ,
+                        level  : 1,
+                        vuln : Math.floor(Math.random() * 4),
+                        vulnActive : false,
+                        attackStep : 0,
+                        successAttackStep : 0,
+                        responseStep : 0,
+                        attack : progress,
+                        response : progress,
+                    }),
+    
+                    new Section({
+                        activation : false,
+                        destroyStatus  : false ,
+                        level  : 1,
+                        vuln : Math.floor(Math.random() * 4),
+                        vulnActive : false,
+                        attackStep : 0,
+                        successAttackStep : 0,
+                        responseStep : 0,
+                        attack : progress,
+                        response : progress,
+                    }),
+    
+                    new Section({
+                        activation : false,
+                        destroyStatus  : false ,
+                        level  : 1,
+                        vuln : Math.floor(Math.random() * 4),
+                        vulnActive : false,
+                        attackStep : 0,
+                        successAttackStep : 0,
+                        responseStep : 0,
+                        attack : progress,
+                        response : progress,
+                    }),
+                ]
+            });
 
-                new Section({
-                    activation : false,
-                    destroyStatus  : false ,
-                    level  : 0,
-                    vuln : 1,
-                    vulnActive : false,
-                    attackStep : 0,
-                    successAttackStep : 0,
-                    responseStep : 0,
-                    attack : progress,
-                    response : progress,
-                }),
-
-                new Section({
-                    activation : false,
-                    destroyStatus  : false ,
-                    level  : 0,
-                    vuln : 2,
-                    vulnActive : false,
-                    attackStep : 0,
-                    successAttackStep : 0,
-                    responseStep : 0,
-                    attack : progress,
-                    response : progress,
-                }),
-            ]
-        });
-
+            initCompanyArray.push(initCompany);
+            console.log("[Init Game] initCompanyArray : ", initCompanyArray);
+        }
 
         var RoomTotalJson  = {
             roomPin : room_key,
@@ -2246,11 +2820,11 @@ module.exports = (io) => {
                 total_pita : 500,
                 users : whiteUsers
             }),
-            companyA    : initCompany,
-            companyB    : initCompany,
-            companyC    : initCompany,
-            companyD    : initCompany,
-            companyE    : initCompany,
+            companyA    : initCompanyArray[0],
+            companyB    : initCompanyArray[1],
+            companyC    : initCompanyArray[2],
+            companyD    : initCompanyArray[3],
+            companyE    : initCompanyArray[4],
         };
       
         return RoomTotalJson
@@ -2287,13 +2861,11 @@ module.exports = (io) => {
 
             var logArr = [];
             logArr.push(monitoringLog);
-            //socket.emit('BlackLog', logArr);
-            //socket.to(socket.room).emit('BlackLog', logArr);
             io.sockets.in(socket.room+'false').emit('addLog', logArr);
 
             // let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-            console.log("White Team Response list (attackCount) : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"]);
-            console.log("Black Team Attack list (attackCount) : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"]);
+            console.log("[attackcount - before setTimeout] White Team Response list : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"]);
+            console.log("[attackcount - before setTimeout] Black Team Attack list : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"]);
 
             if (step == 6) {
                 roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["destroyStatus"] = true;
@@ -2305,12 +2877,7 @@ module.exports = (io) => {
                 var destroyJson = JSON.stringify(sectionDestroy);
 
                 io.sockets.in(socket.room+'false').emit('Section Destroy', destroyJson);
-                // socket.to(socket.room).emit("Section Destroy", destroyJson);
-                // socket.emit("Section Destroy", destroyJson);
-
                 io.sockets.in(socket.room+'false').emit('is_All_Sections_Destroyed_Nickname', socket.nickname, attackJson.companyName);
-                // socket.to(socket.room).emit('is_All_Sections_Destroyed', attackJson.companyName);
-                // socket.emit('is_All_Sections_Destroyed', attackJson.companyName);
 
                 // [GameLog] 로그 추가 - 섹션 파괴 로그
                 const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
@@ -2321,8 +2888,6 @@ module.exports = (io) => {
                 let minutes = today.getMinutes();  // 분
                 let seconds = today.getSeconds();  // 초
                 let now = hours+":"+minutes+":"+seconds;
-
-                //var companyIdx =  attackJson.companyName.charCodeAt(7) - 65;
                 var monitoringLog = {time: now, nickname: "", targetCompany: attackJson.companyName, targetSection: sectionNames[companyIdx][attackJson.sectionIndex], actionType: "Damage", detail: "파괴되었습니다."};
 
                 blackLogJson[0].push(monitoringLog);
@@ -2332,13 +2897,22 @@ module.exports = (io) => {
                 
                 var logArr = [];
                 logArr.push(monitoringLog);
-                //socket.emit('BlackLog', logArr);
-                //socket.to(socket.room).emit('BlackLog', logArr);
                 socket.to(socket.room).emit('addLog', logArr);
 
                 // 영역 파괴 후 다음 영역 공격 활성화
-                if (roomTotalJson[0][attackJson.companyName]["sections"].length > attackJson.sectionIndex){
+                if (roomTotalJson[0][attackJson.companyName]["sections"].length > (attackJson.sectionIndex + 1)){
                     roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex + 1]["activation"] = true;
+
+                    var activationList = [];
+                    for (let i = 0; i < roomTotalJson[0][attackJson.companyName]["sections"].length; i++){
+                        console.log("[Section Activation Check] roomTotalJson[0][companyName]['sections'][i] : ", roomTotalJson[0][attackJson.companyName]["sections"][i]);
+                        console.log("[Section Activation Check] roomTotalJson[0][companyName]['sections'][i]['activation'] : ", roomTotalJson[0][attackJson.companyName]["sections"][i]["activation"]);
+                        activationList.push(roomTotalJson[0][attackJson.companyName]["sections"][i]["activation"]);
+                    }
+
+                    console.log("[Section Activation List] activationList : ", activationList);
+
+                    socket.to(socket.room+'true').emit("Section Activation List", attackJson.companyName, activationList);
                 } else {
                     console.log("[Section Destory] 해당 회사는 몰락함");
                 }
@@ -2350,17 +2924,39 @@ module.exports = (io) => {
                 roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["responseStep"] = step;
             }
 
-            roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["successAttackStep"] = step;
+            // roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["successAttackStep"] = step;
 
-            console.log("attackCound - successAttackStep : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["successAttackStep"]);
+            // console.log("attackCound - successAttackStep : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["successAttackStep"]);
 
-            console.log("[setTimeout] roomTotalJson attack step ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attackStep"]);
-            console.log("[setTimeout] roomTotalJson attack step, step ", step);
+            console.log("[attackcount - after setTimeout] roomTotalJson attack step ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attackStep"]);
+            console.log("[attackcount - after setTimeout] roomTotalJson attack step, step ", step);
+            console.log("[attackcount - after setTimeout] White Team Response list : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"]);
+            console.log("[attackcount - after setTimeout] Black Team Attack list : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"]);
 
             await jsonStore.updatejson(roomTotalJson[0], socket.room);
             roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));                
 
-            console.log("attack step after edit json (attackCount) : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attackStep"]);
+            console.log("[attackcount - after setTimeout] attack step after edit json : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attackStep"]);
+
+            // 공격 시도 로그
+            gameLogger.info("game:attack success", {
+                server : 'server1',
+                userIP : '192.0.0.1',
+                sessionID : socket.sessionID,
+                userID : socket.userId,
+                nickname : socket.nickname,
+                data : 	{
+                    roomID : "sdfsdfb124gvv",
+                    team : socket.team,
+                    companyName : attackJson.companyName,
+                    section : attackJson.sectionIndex,
+                    state : "success",
+                    attackType : attackJson.attackIndex,
+                    attackLevel : roomTotalJson[0][attackJson.companyName]["attackLV"][attackJson.attackIndex],
+                    cost : 0,
+                    totalPita : roomTotalJson[0].blackTeam.total_pita
+                },
+            });
 
             clearTimeout(attackStepTime);
 
@@ -2368,10 +2964,14 @@ module.exports = (io) => {
     }
 
     // 공격 별 n초 후 관제 리스트로 넘기기
-    async function monitoringCount(socket, attackJson, cardLv){
+    async function monitoringCount(socket, attackJson){
         let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
-        // 나중에 +1 없애기
-        let monitoringLevel = roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["level"] + 1;
+
+        console.log("[monitoringCount - before] White Team Response list : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"]);
+        console.log("[monitoringCount - before] Black Team Attack list : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"]);
+
+        
+        let monitoringLevel = roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["level"];
 
         var monitoringTime = setTimeout(async function(){
             roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
@@ -2400,7 +3000,8 @@ module.exports = (io) => {
                 }
             }
 
-            console.log("monitoring success? : ", Boolean(delIndex));
+            console.log("monitoring success? : ", delIndex > -1 ? "true" : "false");
+            console.log("monitoring delIndex : ", delIndex);
 
             console.log("White Team Response list (monitoringCount) : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"]);
             console.log("Black Team Attack list (monitoringCount) : ", roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["attack"]["progress"]);
@@ -2408,9 +3009,27 @@ module.exports = (io) => {
             if (delIndex > -1){
                 let json = new Object();
                 json[attackJson.attackIndex] = socket.userID;
-                attackList.splice(i, 1); 
+                attackList.splice(delIndex, 1); 
                 roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["progress"].push(json);
                 roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["response"]["last"] = attackJson.attackIndex;
+
+                // 관제 성공 로그
+                gameLogger.info("game:monitoring attack", {
+                    server : 'server1',
+                    userIP : '192.0.0.1',
+                    sessionID : socket.sessionID,
+                    userID : socket.userId,
+                    nickname : socket.nickname,
+                    data : 	{
+                        roomID : "sdfsdfb124gvv",
+                        team : socket.team,
+                        companyName : attackJson.companyName,
+                        section : attackJson.sectionIndex,
+                        attackType : attackJson.attackIndex,
+                        cost : 0,
+                        totalPita : roomTotalJson[0].blackTeam.total_pita
+                    },
+                });
 
                 // 나중에 1단계에서 취약점 외의 공격들도 감지할 수 있도록 수정하기
                 roomTotalJson[0]["blackTeam"]["users"][attacker][attackJson.companyName]["detectCnt"][attackJson.sectionIndex] += 1;
@@ -2422,6 +3041,26 @@ module.exports = (io) => {
                         roomTotalJson[0]["blackTeam"]["users"][attacker][attackJson.companyName]["IsBlocked"] = true;
                         socket.emit('OnNeutralization', true);
                         console.log("You are Blocked!!!!");
+
+                        // 공격자 무력화 로그
+                        gameLogger.info("game:blocked black", {
+                            server : 'server1',
+                            userIP : '192.0.0.1',
+                            sessionID : socket.sessionID,
+                            userID : socket.userId,
+                            nickname : socket.nickname,
+                            data : 	{
+                                roomID : "sdfsdfb124gvv",
+                                team : socket.team,
+                                companyName : attackJson.companyName,
+                                section : attackJson.sectionIndex,
+                                attackType : attackJson.attackIndex,
+                                nickname : socket.nickname,
+                                userId : socket.userId,
+                                cost : 0,
+                                totalPita : roomTotalJson[0].whiteTeam.total_pita
+                            },
+                        });
 
                         // [GameLog] 로그 추가 - 무력화(블랙) & 무력화 발견(화이트)로그
                         const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
@@ -2444,15 +3083,51 @@ module.exports = (io) => {
                         
                         var logArr = [];
                         logArr.push(monitoringLogBlack);
-                        //socket.emit('BlackLog', logArr);
-                        //socket.to(socket.room).emit('BlackLog', logArr);
                         io.sockets.in(socket.room+'false').emit('addLog', logArr);
                         logArr = [];
                         logArr.push(monitoringLogWhite);
-                        //socket.emit('WhiteLog', logArr);
-                        //socket.to(socket.room).emit('WhiteLog', logArr);
                         io.sockets.in(socket.room+'true').emit('addLog', logArr);
+                    } else {
+                        // 공격자 경고 로그
+                        gameLogger.info("game:warn black", {
+                            server : 'server1',
+                            userIP : '192.0.0.1',
+                            sessionID : socket.sessionID,
+                            userID : socket.userId,
+                            nickname : socket.nickname,
+                            data : 	{
+                                roomID : "sdfsdfb124gvv",
+                                team : socket.team,
+                                companyName : attackJson.companyName,
+                                section : attackJson.sectionIndex,
+                                attackType : attackJson.attackIndex,
+                                nickname : socket.nickname,
+                                userId : socket.userId,
+                                cost : 0,
+                                totalPita : roomTotalJson[0].whiteTeam.total_pita
+                            },
+                        });
                     }
+                } else {
+                    // 공격자 탐지 로그
+                    gameLogger.info("game:detect black", {
+                        server : 'server1',
+                        userIP : '192.0.0.1',
+                        sessionID : socket.sessionID,
+                        userID : socket.userId,
+                        nickname : socket.nickname,
+                        data : 	{
+                            roomID : "sdfsdfb124gvv",
+                            team : socket.team,
+                            companyName : attackJson.companyName,
+                            section : attackJson.sectionIndex,
+                            attackType : attackJson.attackIndex,
+                            nickname : socket.nickname,
+                            userId : socket.userId,
+                            cost : 0,
+                            totalPita : roomTotalJson[0].whiteTeam.total_pita
+                        },
+                    });
                 }
 
                 let company_blockedNum = 0;
@@ -2519,7 +3194,7 @@ module.exports = (io) => {
                 clearTimeout(monitoringTime);
                 
             } else {
-                console.log("what the");
+                console.log("관제에 실패함");
             }
 
             // [GameLog] 로그 추가 - 관제 로그 추가
@@ -2532,25 +3207,22 @@ module.exports = (io) => {
             let now = hours+":"+minutes+":"+seconds;
             var companyIdx =  attackJson.companyName.charCodeAt(7) - 65;
             var monitoringLog = {time: now, nickname: "", targetCompany: attackJson.companyName, targetSection: sectionNames[companyIdx][attackJson.sectionIndex], actionType: "Detected", detail: attack_name_list[delIndex]+"공격이 탐지 되었습니다."};
-            console.log("[GameLog] monitoringLog > ",monitoringLog);
+
             whiteLogJson[0].push(monitoringLog);
             await jsonStore.updatejson(whiteLogJson[0], socket.room+":whiteLog");
-            console.log("[GameLog] monitoringLog2 >> ",monitoringLog);
 
             var logArr = [];
             logArr.push(monitoringLog);
-            //socket.emit('WhiteLog', logArr);
-            //socket.to(socket.room).emit('WhiteLog', logArr);
             io.sockets.in(socket.room+'true').emit('addLog', logArr);
 
-        }, config["MONITORING_" + (attackJson.attackIndex + 1)]["time"][monitoringLevel - 1] * 1000);
+        }, config["MONITORING_" + (attackJson.attackIndex + 1)]["time"][monitoringLevel] * 1000);
     }
 
     // 공격은 수행하였지만 관제에서 무시되는 경우 warn만 +1
-    async function monitoringCountBlocked(socket, attackJson, cardLv){
+    async function monitoringCountBlocked(socket, attackJson){
         let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
         // 나중에 +1 없애기
-        let monitoringLevel = roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["level"] + 1;
+        let monitoringLevel = roomTotalJson[0][attackJson.companyName]["sections"][attackJson.sectionIndex]["level"];
 
         var monitoringTime = setTimeout(async function(){
             roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
@@ -2565,6 +3237,26 @@ module.exports = (io) => {
                     roomTotalJson[0]["blackTeam"]["users"][socket.userID][attackJson.companyName]["IsBlocked"] = true;
                     socket.emit('OnNeutralization', true);
                     console.log("You are Blocked!!!!");
+
+                    // 공격자 무력화 로그
+                    gameLogger.info("game:blocked black", {
+                        server : 'server1',
+                        userIP : '192.0.0.1',
+                        sessionID : socket.sessionID,
+                        userID : socket.userId,
+                        nickname : socket.nickname,
+                        data : 	{
+                            roomID : "sdfsdfb124gvv",
+                            team : socket.team,
+                            companyName : attackJson.companyName,
+                            section : attackJson.sectionIndex,
+                            attackType : attackJson.attackIndex,
+                            nickname : socket.nickname,
+                            userId : socket.userId,
+                            cost : 0,
+                            totalPita : roomTotalJson[0].whiteTeam.total_pita
+                        },
+                    });
 
                     // [GameLog] 로그 추가 - 무력화(블랙) & 무력화 발견(화이트)로그
                     const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
@@ -2595,7 +3287,47 @@ module.exports = (io) => {
                     //socket.emit('WhiteLog', logArr);
                     //socket.to(socket.room).emit('WhiteLog', logArr);
                     io.sockets.in(socket.room+'true').emit('addLog', logArr);
+                } else {
+                    // 공격자 경고 로그
+                    gameLogger.info("game:warn black", {
+                        server : 'server1',
+                        userIP : '192.0.0.1',
+                        sessionID : socket.sessionID,
+                        userID : socket.userId,
+                        nickname : socket.nickname,
+                        data : 	{
+                            roomID : "sdfsdfb124gvv",
+                            team : socket.team,
+                            companyName : attackJson.companyName,
+                            section : attackJson.sectionIndex,
+                            attackType : attackJson.attackIndex,
+                            nickname : socket.nickname,
+                            userId : socket.userId,
+                            cost : 0,
+                            totalPita : roomTotalJson[0].whiteTeam.total_pita
+                        },
+                    });
                 }
+            } else {
+                // 공격자 탐지 로그
+                gameLogger.info("game:detect black", {
+                    server : 'server1',
+                    userIP : '192.0.0.1',
+                    sessionID : socket.sessionID,
+                    userID : socket.userId,
+                    nickname : socket.nickname,
+                    data : 	{
+                        roomID : "sdfsdfb124gvv",
+                        team : socket.team,
+                        companyName : attackJson.companyName,
+                        section : attackJson.sectionIndex,
+                        attackType : attackJson.attackIndex,
+                        nickname : socket.nickname,
+                        userId : socket.userId,
+                        cost : 0,
+                        totalPita : roomTotalJson[0].whiteTeam.total_pita
+                    },
+                });
             }
 
             let company_blockedNum = 0;
@@ -2614,24 +3346,24 @@ module.exports = (io) => {
             await jsonStore.updatejson(roomTotalJson[0], socket.room);
             
             clearTimeout(monitoringTime);
-        }, config["MONITORING_" + (attackJson.attackIndex + 1)]["time"][monitoringLevel - 1] * 1000);
+        }, config["MONITORING_" + (attackJson.attackIndex + 1)]["time"][monitoringLevel] * 1000);
     }
 
     // 대응 별 n초 후 대응 성공
-    async function responseCount(socket, responseJson, step, cardLv){
+    async function responseCount(socket, responseJson, step, cooltimeLv){
         var responseStepTime = setTimeout(async function(){
             let roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
 
             let attackList = roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["attack"]["progress"];
             let invalidity = false;
 
-            let successAttackStep = roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["successAttackStep"];
+            // let successAttackStep = roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["successAttackStep"];
 
             console.log("responseCount - step : ", step);
-            console.log("responseCount - successAttackStep : ", successAttackStep);
-            if (successAttackStep == step || successAttackStep == (step + 1)){
-                invalidity = true;
-            } 
+            // console.log("responseCount - successAttackStep : ", successAttackStep);
+            // if (successAttackStep == step || successAttackStep == (step + 1)){
+            //     invalidity = true;
+            // } 
 
             // for(var i = 0; i < attackList.length; i++){ 
             //     if (Object.keys(attackList[i]) == (responseJson.attackIndex + 1)) { 
@@ -2740,44 +3472,56 @@ module.exports = (io) => {
                 
                 var logArr = [];
                 logArr.push(monitoringLog);
-                //socket.emit('WhiteLog', logArr);
-                //socket.to(socket.room).emit('WhiteLog', logArr);
                 io.sockets.in(socket.room+'true').emit('addLog', logArr);
+
+                // 대응 성공
+                gameLogger.info("game:response success", {
+                    server : 'server1',
+                    userIP : '192.0.0.1',
+                    sessionID : socket.sessionID,
+                    userID : socket.userId,
+                    nickname : socket.nickname,
+                    data : 	{
+                        roomID : "sdfsdfb124gvv",
+                        team : socket.team,
+                        companyName : responseJson.companyName,
+                        section : responseJson.sectionIndex,
+                        state : "success",
+                        responseType : responseJson.attackIndex,
+                        responseLevel : roomTotalJson[0][responseJson.companyName]["penetrationTestingLV"][responseJson.attackIndex],
+                        sectionLevel : roomTotalJson[0][responseJson.companyName]["sections"][responseJson.sectionIndex]["level"],
+                        cost : 0,
+                        totalPita : roomTotalJson[0].whiteTeam.total_pita
+                    },
+                });
             }
 
             clearTimeout(responseStepTime);
 
-        }, config["RESPONSE_" + (responseJson.attackIndex + 1)]["time"][cardLv - 1] * 1000);
+        }, config["RESPONSE_" + (responseJson.attackIndex + 1)]["time"][cooltimeLv] * 1000);
     }
 
     // 모든 회사가 몰락인지 확인, 몰락이면 게임 종료
     async function AllAbandon(socket, roomTotalJson){
-        console.log("AllAbandon CALLED");
         var gameover = true;
         for(let company of companyNameList){
-            console.log("AllAbandon abandonStatus : ", roomTotalJson[0][company]["abandonStatus"]);
             if(roomTotalJson[0][company]["abandonStatus"] == false){
                 gameover = false;
                 break;
             }
         }
-        console.log("AllAbandon CALLED", gameover);
         
         var winTeam = false;
         if(gameover){
             clearInterval(timerId);
             clearInterval(pitaTimerId);
             io.sockets.in(socket.room).emit('Load_ResultPage');
-            //io.sockets.in(socket.room).emit('Load_ResultPage');
             socket.on('Finish_Load_ResultPage', ()=> { 
                 // 남은 피타
                 var blackPitaNum = roomTotalJson[0]["blackTeam"]["total_pita"];
                 var whitePitaNum = roomTotalJson[0]["whiteTeam"]["total_pita"];
 
-
-                // 점수 계산 
-                // 화이트팀 : (남은 회사 * 1000) + 남은 피타
-                // 블랙팀 : (파괴한 회사 * 1000) + 남은 피타
+                // 화이트팀 : (남은 회사 * 1000) + 남은 피타    // 블랙팀 : (파괴한 회사 * 1000) + 남은 피타
                 var whiteScore = whitePitaNum;
                 var blackScore = (5 * 1000) + blackPitaNum;
 
@@ -2790,16 +3534,31 @@ module.exports = (io) => {
                     winTeam = null;
                 }
                 io.sockets.in(socket.room).emit('Abandon_Gameover', winTeam, blackScore, whiteScore);
-            });
-            
-        }
 
+                // 개발자 로그 - 게임 종료(모든 회사 몰락)
+                gameLogger.info("Result:Game Over", {
+                    server : 'server1',
+                    userIP : '192.0.0.1',
+                    sessionID : socket.sessionID,
+                    userID : socket.userID,
+                    nickname : socket.nickname,
+                    data : 	{
+                        roomID : socket.room,
+                        winTeam : false, 
+                        cause : "AllDestroyed", 
+                        blackScore : blackScore,
+                        whiteScore : whiteScore,
+                        blackPita : blackPitaNum,
+                        whitePita : whitePitaNum,
+                        remainCompanyNum : 0,
+                    },
+                });
+            });
+        }
     }
 
     // 타임오버로 인한 게임 종료 -> 점수계산
-    async function TimeOverGameOver(socket, roomTotalJson){
-        console.log("TimeOverGameOver CALLED");
-        
+    async function TimeOverGameOver(socket, roomTotalJson){        
         // 살아남은 회사수
         var aliveCnt = 0;
         for(let company of companyNameList){
@@ -2812,26 +3571,40 @@ module.exports = (io) => {
         var blackPitaNum = roomTotalJson[0]["blackTeam"]["total_pita"];
         var whitePitaNum = roomTotalJson[0]["whiteTeam"]["total_pita"];
 
-
-        // 점수 계산 
-        // 화이트팀 : (남은 회사 * 1000) + 남은 피타
-        // 블랙팀 : (파괴한 회사 * 1000) + 남은 피타
+        // 화이트팀 : (남은 회사 * 1000) + 남은 피타    // 블랙팀 : (파괴한 회사 * 1000) + 남은 피타
         var whiteScore = (aliveCnt * 1000) + whitePitaNum;
         var blackScore = ((5-aliveCnt) * 1000) + blackPitaNum;
 
+        var winTeam = null;
         if(whiteScore > blackScore){
-            var winTeam = true;
+            winTeam = true;
         } else if (whiteScore < blackScore){
-            var winTeam = false;
+            winTeam = false;
         } else {
             // 무승부
             winTeam = null;
         }
-        
-        console.log("TimeOverGameOver END");
-        //socket.in(socket.room).emit("Timeout_Gameover", winTeam);
+
         io.sockets.in(socket.room).emit('Timeout_Gameover', winTeam, blackScore, whiteScore);
-        //socket.in(socket.room+'false').emit("Timeout_Gameover", winTeam);
+
+        // 개발자 로그 - 게임 종료(시간종료)
+        gameLogger.info("Result:Game Over", {
+            server : 'server1',
+            userIP : '192.0.0.1',
+            sessionID : socket.sessionID,
+            userID : socket.userID,
+            nickname : socket.nickname,
+            data : 	{
+                roomID : socket.room,
+                winTeam : winTeam, 
+                cause : "Timeout", 
+                blackScore : blackScore,
+                whiteScore : whiteScore,
+                blackPita : blackPitaNum,
+                whitePita : whitePitaNum,
+                remainCompanyNum : aliveCnt,
+            },
+        });
     }   
     
     

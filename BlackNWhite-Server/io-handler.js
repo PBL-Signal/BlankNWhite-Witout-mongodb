@@ -209,6 +209,7 @@ module.exports = (io) => {
             if(permission == 1){
                 console.log('[socket-isValidRoom] UpdatePermission: 1');
                 socket.room = room;
+                socket.roomID  = JSON.parse(await redis_room.getRoomInfo(room)).roomID;
             }
 
             socket.emit('room permission',permission);
@@ -262,6 +263,8 @@ module.exports = (io) => {
                 
                 socket.room = roomPin;
                 console.log("socket.room", socket.room);
+                socket.roomID  = JSON.parse(await redis_room.getRoomInfo(roomPin)).roomID;
+                console.log("socket.room", socket.room, " socket.roomID ", socket.roomID );
                 socket.emit('enterPublicRoom');
 
                 // lobbyLogger.info('mainHome:enter_room', {
@@ -299,7 +302,8 @@ module.exports = (io) => {
                 console.log("succesCreateRoom roomPin: " , room_info.roomPin);
             }    
             socket.room = room_info.roomPin;
-          
+            socket.roomID = room_info.roomID;
+            console.log("socket.room", socket.room, "socket.roomID ", socket.roomID );
             console.log("socket.room", socket.room);
             socket.emit('enterPublicRoom');
 
@@ -339,7 +343,7 @@ module.exports = (io) => {
 
             console.log("succesCreateRoom roomPin: " , room_info.roomPin);
             socket.room = room_info.roomPin;
-
+            socket.roomID = room_info.roomID;
 
             socket.emit('succesCreateRoom', {
                 roomPin: room_info.roomPin.toString()
@@ -1178,47 +1182,123 @@ module.exports = (io) => {
             {
                 console.log("무력화 상태 아님!");
                 socket.emit('After non-Neutralization', false);
+                
+                // gameLogger.info("game:neutralization_attempt", {
+                //     server : 'server1',
+                //     userIP : '192.0.0.1',
+                //     sessionID : socket.sessionID,
+                //     userID : socket.userId,
+                //     nickname : socket.nickname,
+                //     data : 	{
+                //         roomID : socket.roomID,
+                //         team : socket.team,
+                //         companyName : company,
+                //         IsBlocked: roomTotalJson[0].blackTeam.users[socket.userID][company].IsBlocked,
+                //         state : 0,
+                //         cost :0,
+                //         totalPita : black_total_pita
+                //     },
+                // });
             }else{
                 // 가격화 
                 if (black_total_pita - config.UNBLOCK_INFO.pita < 0){
                     console.log("무력화 해제 실패!");
                     socket.emit('After non-Neutralization', false);
+                    // gameLogger.info("game:neutralization_attempt", {
+                    //     server : 'server1',
+                    //     userIP : '192.0.0.1',
+                    //     sessionID : socket.sessionID,
+                    //     userID : socket.userId,
+                    //     nickname : socket.nickname,
+                    //     data : 	{
+                    //         roomID : socket.roomID,
+                    //         team : socket.team,
+                    //         companyName : company,
+                    //         IsBlocked: roomTotalJson[0].blackTeam.users[socket.userID][company].IsBlocked,
+                    //         state : -1,
+                    //         cost :0,
+                    //         totalPita : black_total_pita
+                    //     },
+                    // });
                 }
                 else{
-                    // isBlocked 해제
-                    roomTotalJson[0].blackTeam.users[socket.userID][company].IsBlocked = false;
                     // pita 가격 마이너스
                     roomTotalJson[0].blackTeam.total_pita = black_total_pita - config.UNBLOCK_INFO.pita;
-                    
                     await jsonStore.updatejson(roomTotalJson[0], socket.room);
                     io.sockets.in(socket.room+'false').emit('Update Pita', roomTotalJson[0].blackTeam.total_pita );
-
-                    console.log("무력화 해제 성공!");
                     socket.emit('After non-Neutralization', true);
 
-                    // [GameLog] 로그 추가 - 무력화 해제 로그
-                    const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
+                    // gameLogger.info("game:neutralization_attempt", {
+                    //     server : 'server1',
+                    //     userIP : '192.0.0.1',
+                    //     sessionID : socket.sessionID,
+                    //     userID : socket.userID,
+                    //     nickname : socket.nickname,
+                    //     data : 	{
+                    //         roomID : socket.roomID,
+                    //         team : socket.team,
+                    //         companyName : company,
+                    //         IsBlocked: roomTotalJson[0].blackTeam.users[socket.userID][company].IsBlocked,
+                    //         state : 1,
+                    //         cost : config.UNBLOCK_INFO.pita,
+                    //         totalPita :roomTotalJson[0].blackTeam.total_pita 
+                    //     },
+                    // });
+                 
+                    
+                    setTimeout(async function(){
+                        //  json 불러와서 해당 영역 회사 경고 초기화 함 
+                        roomTotalJson = JSON.parse(await jsonStore.getjson(socket.room));
+                        // console.log("[setTimeout] JSON!!!",roomTotalJson);
 
-                    let today = new Date();   
-                    let hours = today.getHours(); // 시
-                    let minutes = today.getMinutes();  // 분
-                    let seconds = today.getSeconds();  // 초
-                    let now = hours+":"+minutes+":"+seconds;
-                    var monitoringLog = {time: now, nickname: socket.nickname, targetCompany: company, targetSection: "", actionType: "Neutralization", detail: socket.nickname+"무력화 해제되었습니다."};
+                        // isBlocked 해제
+                        roomTotalJson[0].blackTeam.users[socket.userID][company].IsBlocked = false;
+                        await jsonStore.updatejson(roomTotalJson[0], socket.room);
 
-                    blackLogJson[0].push(monitoringLog);
-                    await jsonStore.updatejson(blackLogJson[0], socket.room+":blackLog");
+                        console.log("무력화 해제 성공!");
 
-                    var logArr = [];
-                    logArr.push(monitoringLog);
-                    // socket.emit('BlackLog', logArr);
-                    // socket.to(socket.room).emit('BlackLog', logArr);
-                    io.sockets.in(socket.room+'false').emit('addLog', logArr);
-                    console.log("무력화 해제 성공!");
-                    socket.emit('After non-Neutralization', true);
+                        // [GameLog] 로그 추가 - 무력화 해제 로그
+                        const blackLogJson = JSON.parse(await jsonStore.getjson(socket.room+":blackLog"));
+
+                        let today = new Date();   
+                        let hours = today.getHours(); // 시
+                        let minutes = today.getMinutes();  // 분
+                        let seconds = today.getSeconds();  // 초
+                        let now = hours+":"+minutes+":"+seconds;
+                        var monitoringLog = {time: now, nickname: socket.nickname, targetCompany: company, targetSection: "", actionType: "Neutralization", detail: socket.nickname+"무력화 해제되었습니다."};
+
+                        blackLogJson[0].push(monitoringLog);
+                        await jsonStore.updatejson(blackLogJson[0], socket.room+":blackLog");
+
+                        var logArr = [];
+                        logArr.push(monitoringLog);
+                        // socket.emit('BlackLog', logArr);
+                        // socket.to(socket.room).emit('BlackLog', logArr);
+                        io.sockets.in(socket.room+'false').emit('addLog', logArr);
+                        console.log("무력화 해제 성공!");          
+
+                    //     gameLogger.info("game:neutralization_success", {
+                    //     server : 'server1',
+                    //     userIP : '192.0.0.1',
+                    //     sessionID : socket.sessionID,
+                    //     userID : socket.userID,
+                    //     nickname : socket.nickname,
+                    //     data : 	{
+                    //         roomID : socket.roomID,
+                    //         team : socket.team,
+                    //         companyName : company,
+                    //         IsBlocked: roomTotalJson[0].blackTeam.users[socket.userID][company].IsBlocked,
+                    //         state : 1,
+                    //         cost : config.UNBLOCK_INFO.pita,
+                    //         totalPita :roomTotalJson[0].blackTeam.total_pita 
+                    //     },
+                    // });          
+                    }, 10000); // 10초
+
                 }
             }
         });
+
 
         ////////////////////////////////////////////////////////////////////////////////////
         // PlayerEnter
@@ -2708,6 +2788,7 @@ module.exports = (io) => {
 
         // 5. 나머지 room 관련 정보 socket에서 삭제 및 빈 값으로 수정해주기!!
        socket.room = null;
+       socket.roomID = null;
        socket.team = null;
        socket.color = null;
     };

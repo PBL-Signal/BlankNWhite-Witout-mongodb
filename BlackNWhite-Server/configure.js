@@ -62,7 +62,7 @@ module.exports = {
     DELAY_TIME_PERCENT : [1, 1.5, 1.8, -1, -1],
     
     // 유지보수
-    MAINTENANCE_SECTION_INFO : { pita : [5, 6, 7, 8, 9], time : [5, 4, 3, 2, 1] },
+    MAINTENANCE_SECTION_INFO : { pita : [5, 6, 7, 8, 9] },
     
     // 사전탐색
     EXPLORE_INFO : { pita : 10, time : 10 },

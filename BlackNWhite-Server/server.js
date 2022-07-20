@@ -2,7 +2,7 @@ const express = require("express");
 const http = require("http");
 const cors = require("cors");
 const bodyPaser = require('body-parser');
-const REDIS_PORT = 6380
+const REDIS_PORT = 6379
 const REDIS_URL = "redis-test.i187of.ng.0001.use1.cache.amazonaws.com"
 
 // const mongoose = require('mongoose');

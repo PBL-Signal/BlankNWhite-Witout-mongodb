@@ -36,7 +36,7 @@ const Company = require("./schemas/roomTotal/Company");
 const Section = require("./schemas/roomTotal/Section");
 const Progress = require("./schemas/roomTotal/Progress");
 
-const RoomInfoTotal = require("./schemas/roomTotal/RoomInfoTotal");
+// const RoomInfoTotal = require("./schemas/roomTotal/RoomInfoTotal");
 const User = require("./schemas/roomTotal/User");
 const RoomInfo = require("./schemas/roomTotal/RoomInfo");
 
@@ -3817,7 +3817,7 @@ module.exports = (io) => {
                 //     },
                 // });
 
-                await SaveDeleteGameInfo(socket.room);
+                // await SaveDeleteGameInfo(socket.room);
             });
         }
     }
@@ -3874,60 +3874,60 @@ module.exports = (io) => {
         //     },
         // });
 
-        await SaveDeleteGameInfo(socket.room);
+        // await SaveDeleteGameInfo(socket.room);
     }   
 
   // 게임 종료시 게임 정보와 룸 정보를 mongoDB에 저장 후 redis에서 삭제
-  async function SaveDeleteGameInfo(roomPin){        
-    // 게임 정보 저장 (mongoDB)
-    var gameTotalJson = JSON.parse(await jsonStore.getjson(roomPin));
-    var gameTotalScm = new RoomTotalSchema(gameTotalJson[0]);
-    func.InsertGameRoomTotal(gameTotalScm);
+//   async function SaveDeleteGameInfo(roomPin){        
+//     // 게임 정보 저장 (mongoDB)
+//     var gameTotalJson = JSON.parse(await jsonStore.getjson(roomPin));
+//     var gameTotalScm = new RoomTotalSchema(gameTotalJson[0]);
+//     func.InsertGameRoomTotal(gameTotalScm);
 
 
-    // 룸 정보 저장 (mongoDB)
-    // 해당 룸의 모든 사용자 정보 가져와 new user 정보 추가 후 update
-    var roomMembersList =  await redis_room.RoomMembers(roomPin);
-    var roomMembersDict = {}
+//     // 룸 정보 저장 (mongoDB)
+//     // 해당 룸의 모든 사용자 정보 가져와 new user 정보 추가 후 update
+//     var roomMembersList =  await redis_room.RoomMembers(roomPin);
+//     var roomMembersDict = {}
 
-    var user;
-    for (const member of roomMembersList){
-        // roomMembersDict[member] = await redis_room.getMember(room, member);
-        user = await redis_room.getMember(roomPin, member);
+//     var user;
+//     for (const member of roomMembersList){
+//         // roomMembersDict[member] = await redis_room.getMember(room, member);
+//         user = await redis_room.getMember(roomPin, member);
 
-        // roomMembersDict[member] = ({
-        //     new BlackUsers(
-        //     userID   : user.userID,
-        //     nickname : user.nickname,
-        //     team : user.team,
-        //     status : user.status,
-        //     color : user.color,
-        //     place : user.place,
-        //     socketID : user.socketID,
-        // });
-        roomMembersDict[member] = new User(user);
-    }   
-    console.log('!!!~~roomMembersDict', roomMembersDict);
+//         // roomMembersDict[member] = ({
+//         //     new BlackUsers(
+//         //     userID   : user.userID,
+//         //     nickname : user.nickname,
+//         //     team : user.team,
+//         //     status : user.status,
+//         //     color : user.color,
+//         //     place : user.place,
+//         //     socketID : user.socketID,
+//         // });
+//         roomMembersDict[member] = new User(user);
+//     }   
+//     console.log('!!!~~roomMembersDict', roomMembersDict);
 
-    // roomInfo 정보
-    var roomInfo = JSON.parse(await redis_room.getRoomInfo(roomPin));
-    console.log('!!!~~roomInfo', roomInfo);
-    var roomInfoScm = new RoomInfo(roomInfo);
-    console.log('!!!~~roomInfoScm', roomInfoScm);
+//     // roomInfo 정보
+//     var roomInfo = JSON.parse(await redis_room.getRoomInfo(roomPin));
+//     console.log('!!!~~roomInfo', roomInfo);
+//     var roomInfoScm = new RoomInfo(roomInfo);
+//     console.log('!!!~~roomInfoScm', roomInfoScm);
 
-    // 합치기 
-    var roomTotalScm = new RoomInfoTotal({
-        Users :roomMembersDict, 
-        Info : roomInfoScm
-    });
-    func.InsertRoomInfoTotal(roomTotalScm);
+//     // 합치기 
+//     // var roomTotalScm = new RoomInfoTotal({
+//     //     Users :roomMembersDict, 
+//     //     Info : roomInfoScm
+//     // });
+//     // func.InsertRoomInfoTotal(roomTotalScm);
 
-    // 게임 정보 삭제 (redis)
-    await jsonStore.deletejson(roomPin);
+//     // 게임 정보 삭제 (redis)
+//     await jsonStore.deletejson(roomPin);
 
-     // 룸 정보 삭제 (redis)
-    redis_room.deleteRooms(roomPin); 
-  }
+//      // 룸 정보 삭제 (redis)
+//     redis_room.deleteRooms(roomPin); 
+//   }
     
 }
 

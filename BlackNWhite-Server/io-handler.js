@@ -37,8 +37,8 @@ const Section = require("./schemas/roomTotal/Section");
 const Progress = require("./schemas/roomTotal/Progress");
 
 // const RoomInfoTotal = require("./schemas/roomTotal/RoomInfoTotal");
-const User = require("./schemas/roomTotal/User");
-const RoomInfo = require("./schemas/roomTotal/RoomInfo");
+// const User = require("./schemas/roomTotal/User");
+// const RoomInfo = require("./schemas/roomTotal/RoomInfo");
 
 // MongoDB관련
 const func = require('./server_functions/db_func');

@@ -1066,7 +1066,7 @@ module.exports = (io) => {
             socket.emit('Visible LimitedTime', socket.team.toString()); // actionbar
 
             // Timer 시작
-            var time = 30; //600=10분, 1분 -> 60
+            var time = 600; //600=10분, 1분 -> 60
             var min = "";
             var sec = "";
 
@@ -1734,7 +1734,7 @@ module.exports = (io) => {
                     console.log("특정 영역 보안 레벨이 대응 레벨과 같거나 낮음 >> 대응의 레벨로 쿨타임 적용");
                     cooltimeLV = cardLv;
                 }
-                
+
                 socket.emit("Continue Event", config["RESPONSE_" + (responseJson.attackIndex + 1)]['time'][cardLv - 1]);
 
                 console.log("[Click Response] cooltimeLV", cooltimeLV);

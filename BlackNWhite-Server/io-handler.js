@@ -1067,7 +1067,7 @@ module.exports = (io) => {
             socket.emit('Visible LimitedTime', socket.team.toString()); // actionbar
 
             // Timer 시작
-            var time = 600; //600=10분, 1분 -> 60
+            var time = 30; //600=10분, 1분 -> 60
             var min = "";
             var sec = "";
 

@@ -3,6 +3,7 @@ const { Schema } = mongoose;
 
 const Progress = new Schema({
     progress  : { type : Object, required : true },
+    inProgress  : { type : Object, required : true },
     last  : { type : Number, required : true },
 })
 
